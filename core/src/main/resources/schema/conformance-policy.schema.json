@@ -1,0 +1,122 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://bifrost.krillin.dev/schema/conformance-policy.schema.json",
+  "title": "Bifrost Conformance Policy (governed conformance artifact)",
+  "description": "Protocol-independent, governed declarative conformance config: the IAM-like policy artifact binding a governed equipment definition to a strictness dial, a set of conditional cross-member constraints, and the OPC-UA node bindings that address governed members. Language-neutral — any consumer can validate a policy document against this schema without depending on Bifrost code. Bifrost itself deserializes with a lenient mapper, so this schema is documentary.",
+  "type": "object",
+  "properties": {
+    "policyRef": {
+      "description": "This policy's registry-key id.",
+      "type": "string"
+    },
+    "version": { "$ref": "#/definitions/semver" },
+    "equipmentRef": {
+      "description": "Registry-key id of the governed equipment definition this policy binds.",
+      "type": "string"
+    },
+    "equipmentVersion": { "$ref": "#/definitions/semver" },
+    "dial": { "$ref": "#/definitions/dial" },
+    "crossConstraints": {
+      "description": "Conditional cross-member bound rules (a small closed algebra).",
+      "type": "array",
+      "items": { "$ref": "#/definitions/crossConstraint" }
+    },
+    "nodeBindings": {
+      "description": "Bindings linking each governed member to its OPC-UA write/read nodes.",
+      "type": "array",
+      "items": { "$ref": "#/definitions/nodeBinding" }
+    }
+  },
+  "required": ["policyRef", "version", "equipmentRef", "equipmentVersion", "dial"],
+  "additionalProperties": false,
+  "definitions": {
+    "semver": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "SemVer major.minor.patch string."
+    },
+    "dial": {
+      "description": "Strictness dial: the mode plus, for recipe-mode, the active recipe ref/version + tolerance.",
+      "type": "object",
+      "properties": {
+        "mode": {
+          "description": "Strictness mode: \"envelope\" (governed EURange only) or \"recipe\" (active recipe + tolerance).",
+          "type": "string",
+          "enum": ["envelope", "recipe"]
+        },
+        "activeRecipeRef": {
+          "description": "Registry-key id of the active recipe (recipe-mode only; null otherwise).",
+          "type": ["string", "null"]
+        },
+        "activeRecipeVersion": {
+          "description": "Version of the active recipe (recipe-mode only; null otherwise).",
+          "type": ["string", "null"]
+        },
+        "recipeTolerance": {
+          "description": "Allowed +/- tolerance around each recipe setpoint (recipe-mode only; null otherwise).",
+          "type": ["number", "null"]
+        }
+      },
+      "required": ["mode"],
+      "additionalProperties": false
+    },
+    "crossConstraint": {
+      "description": "One conditional-bound rule: if <ifMember> <ifOp> <ifValue> then require <thenMember> <thenOp> <thenValue>.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Stable id of this rule.",
+          "type": "string"
+        },
+        "ifMember": {
+          "description": "Member name evaluated by the antecedent (condition).",
+          "type": "string"
+        },
+        "ifOp": {
+          "description": "Comparison operator of the antecedent.",
+          "type": "string",
+          "enum": ["lt", "le", "gt", "ge", "eq"]
+        },
+        "ifValue": {
+          "description": "Numeric threshold of the antecedent.",
+          "type": "number"
+        },
+        "thenMember": {
+          "description": "Member name required by the consequent (bound).",
+          "type": "string"
+        },
+        "thenOp": {
+          "description": "Comparison operator of the consequent.",
+          "type": "string",
+          "enum": ["lt", "le", "gt", "ge", "eq"]
+        },
+        "thenValue": {
+          "description": "Numeric bound of the consequent.",
+          "type": "number"
+        }
+      },
+      "required": ["id", "ifMember", "ifOp", "ifValue", "thenMember", "thenOp", "thenValue"],
+      "additionalProperties": false
+    },
+    "nodeBinding": {
+      "description": "Links a governed member to its OPC-UA nodes: the write/setpoint node matched against an incoming command, and the live instance node read for cross-member rules.",
+      "type": "object",
+      "properties": {
+        "opcNodeId": {
+          "description": "OPC-UA write/setpoint node id matched against an incoming command (null for read-only siblings never commanded).",
+          "type": ["string", "null"]
+        },
+        "readNodeId": {
+          "description": "OPC-UA live instance node id whose current value is read for cross-member rules (null if the member is never a cross-member sibling).",
+          "type": ["string", "null"]
+        },
+        "member": {
+          "description": "Governed member name this binding addresses.",
+          "type": "string"
+        }
+      },
+      "required": ["member"],
+      "additionalProperties": false
+    }
+  }
+}
