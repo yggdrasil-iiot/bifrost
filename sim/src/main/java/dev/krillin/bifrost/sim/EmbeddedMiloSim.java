@@ -13,6 +13,7 @@ import org.eclipse.milo.opcua.sdk.server.OpcUaServerConfig;
 import org.eclipse.milo.opcua.sdk.server.identity.AnonymousIdentityValidator;
 import org.eclipse.milo.opcua.sdk.server.items.DataItem;
 import org.eclipse.milo.opcua.sdk.server.items.MonitoredItem;
+import org.eclipse.milo.opcua.sdk.server.nodes.UaNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaObjectNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaObjectTypeNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaVariableNode;
@@ -140,10 +141,20 @@ final class EmbeddedMiloSim implements AutoCloseable {
                             ? dv.getValue().getValue()
                             : value;
                     System.out.println("[SIM] SET ns=2;s=Recipe/Rpm = " + v);
+                    transferToInstance("Line1/Mixer1.Rpm", v);
                 }
             });
 
-            makeDoubleNode("Recipe/Temp", "Temp", 0.0);
+            UaVariableNode temp = makeDoubleNode("Recipe/Temp", "Temp", 0.0);
+            temp.addAttributeObserver((node, attributeId, value) -> {
+                if (attributeId == AttributeId.Value) {
+                    Object v = value instanceof DataValue dv && dv.getValue() != null
+                            ? dv.getValue().getValue()
+                            : value;
+                    System.out.println("[SIM] SET ns=2;s=Recipe/Temp = " + v);
+                    transferToInstance("Line1/Mixer1.Temp", v);
+                }
+            });
 
             // Rising-edge activate handshake: ApplyRecipe is the writable Boolean TRIGGER, ApplyDone
             // is the DONE flag the sim owns. Heimdall's OpcUaApplier.call() writes ApplyRecipe=true,
@@ -163,6 +174,21 @@ final class EmbeddedMiloSim implements AutoCloseable {
 
             createMixerType();
             createMixerInstance();
+        }
+
+        /**
+         * Internal setpoint -> PV transfer (models "command applied, PV settles to setpoint",
+         * instant/no-dynamics). Resolves the instance node lazily at write-time (it is created
+         * after the Recipe observers are wired) and sets it server-side, bypassing the instance's
+         * client-read-only access level (same mechanism as the ApplyDone handshake).
+         */
+        private void transferToInstance(String instanceIdentifier, Object value) {
+            getNodeManager().getNode(newNodeId(instanceIdentifier)).ifPresent(n -> {
+                if (n instanceof UaVariableNode v) {
+                    v.setValue(new DataValue(new Variant(value)));
+                    System.out.println("[SIM] transfer " + instanceIdentifier + " = " + value);
+                }
+            });
         }
 
         private UaVariableNode makeBooleanNode(String identifier, String browseName, boolean initial) {

@@ -143,7 +143,37 @@ class MixerTypeNodeTest {
         }
     }
 
+    @Test
+    void writingRecipeSetpointTransfersToInstancePv() throws Exception {
+        try (EmbeddedMiloSim sim = new EmbeddedMiloSim().start()) {
+            OpcUaClient client = OpcUaClient.create("opc.tcp://localhost:" + EmbeddedMiloSim.BIND_PORT);
+            client.connect();
+            try {
+                // Baseline: instance PV holds its seeded value before any setpoint write.
+                assertEquals(1535.0, readValue(client, "ns=2;s=Line1/Mixer1.Rpm"));
+                assertEquals(200.0, readValue(client, "ns=2;s=Line1/Mixer1.Temp"));
+
+                // Write the southbound setpoint -> the sim transfers it to the northbound instance PV.
+                writeDouble(client, "ns=2;s=Recipe/Rpm", 1500.0);
+                assertEquals(1500.0, readValue(client, "ns=2;s=Line1/Mixer1.Rpm"));
+
+                writeDouble(client, "ns=2;s=Recipe/Temp", 250.0);
+                assertEquals(250.0, readValue(client, "ns=2;s=Line1/Mixer1.Temp"));
+
+                // The other members are untouched by the Rpm/Temp transfer.
+                assertEquals(Boolean.TRUE, readValue(client, "ns=2;s=Line1/Mixer1.Running"));
+                assertEquals(42.0, readValue(client, "ns=2;s=Line1/Mixer1.Secret"));
+            } finally {
+                client.disconnect();
+            }
+        }
+    }
+
     private static void writeBoolean(OpcUaClient client, String nodeId, boolean value) throws Exception {
+        client.writeValues(List.of(NodeId.parse(nodeId)), List.of(new DataValue(new Variant(value))));
+    }
+
+    private static void writeDouble(OpcUaClient client, String nodeId, double value) throws Exception {
         client.writeValues(List.of(NodeId.parse(nodeId)), List.of(new DataValue(new Variant(value))));
     }
 
