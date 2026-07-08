@@ -115,6 +115,8 @@ echo "[GATE] HiveMQ CE up on :1883"
 
 rm -rf "$WORK"
 mkdir -p "$WORK/registry" "$WORK/srcrepo" "$WORK/out"
+# SchemaGate reads <registryDir>/policy.json for the compat mode (fail-closed if absent).
+echo '{"mode":"FORWARD"}' > "$WORK/registry/policy.json"
 
 : > "$WORK/sim.log"
 java -jar "$SIM_JAR_WIN" > "$WORK/sim.log" 2>&1 &
