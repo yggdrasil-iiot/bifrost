@@ -76,13 +76,23 @@ class NcmdOpcUaBridgeTest {
         assertEquals("c-1", r.cmdId());
     }
 
-    @Test void denied_above_max_is_not_applied() throws Exception {
+    @Test void above_max_denied_by_conformance_not_applied() throws Exception {
+        // Post-migration: authz allows a type-ok Rpm=9999 (range left policy.json); ② envelope (governed
+        // Mixer model Rpm∈[0,3000]) denies it. The Mixer conformance policy has NO cross-constraints, so
+        // no sibling is read — Boolean Running/Secret are never readDouble'd.
+        UdtDefinition mixerDef = new UdtDefinition("Line1-Mixer", SemVer.parse("1.0.0"),
+                List.of(new Member("Rpm", "Double", null, new Range(0, 3000)),
+                        new Member("Temp", "Double", null, new Range(0, 450))),
+                List.of(), null);
+        ConformancePolicy mixerPolicy = new ConformancePolicy("Line1-Mixer-policy", "1.0.0",
+                "Line1-Mixer", "1.0.0", new ConformancePolicy.Dial("envelope", null, null, null),
+                List.of(), List.of(new NodeBinding("ns=2;s=Recipe/Rpm", null, "Rpm")));
         FakeApplier fake = new FakeApplier();
-        NcmdResponse r = bridge(fake).handle(NCMD_TOPIC,
-                cmd("c-2", "write", "ns=2;s=Recipe/Rpm", 9999.0, MetricDataType.Double, null, null));
-        assertFalse(fake.writeCalled, "an above-max write must NOT reach the applier");
+        NcmdResponse r = new NcmdOpcUaBridge(GROUP, EDGE, policy(), fake, mixerDef, mixerPolicy, null)
+                .handle(NCMD_TOPIC, cmd("c-2", "write", "ns=2;s=Recipe/Rpm", 9999.0, MetricDataType.Double, null, null));
+        assertFalse(fake.writeCalled, "an above-max write must NOT reach the applier (② envelope)");
         assertFalse(r.ok());
-        assertTrue(r.detail().contains("denied"), r.detail());
+        assertTrue(r.detail().contains("above-max"), r.detail());
     }
 
     @Test void deny_by_default_node_is_not_applied() throws Exception {
