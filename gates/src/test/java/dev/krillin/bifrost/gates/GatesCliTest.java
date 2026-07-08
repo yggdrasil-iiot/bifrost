@@ -52,15 +52,15 @@ class GatesCliTest {
         ObjectMapper mapper = JsonMapperFactory.create();
         Files.createDirectories(root);
         Files.writeString(root.resolve("policy.json"), "{\"mode\":\"" + CompatMode.FORWARD + "\"}");
-        List<Member> v1 = List.of(new Member("Rpm", "Double"), new Member("Running", "Boolean"));
-        UdtDefinition current = new UdtDefinition("Motor", SemVer.parse("1.0.0"), v1, List.of());
+        List<Member> v1 = List.of(new Member("Rpm", "Double", null, null), new Member("Running", "Boolean", null, null));
+        UdtDefinition current = new UdtDefinition("Motor", SemVer.parse("1.0.0"), v1, List.of(), null);
         Path udtDir = root.resolve("udt").resolve(current.templateRef());
         Files.createDirectories(udtDir);
         mapper.writeValue(udtDir.resolve(current.version() + ".json").toFile(), current);
 
         UdtDefinition proposed = new UdtDefinition("Motor", SemVer.parse("1.1.0"),
-                List.of(new Member("Rpm", "Double"), new Member("Running", "Boolean"), new Member("Temperature", "Double")),
-                List.of());
+                List.of(new Member("Rpm", "Double", null, null), new Member("Running", "Boolean", null, null), new Member("Temperature", "Double", null, null)),
+                List.of(), null);
         Path proposalFile = root.resolve("proposed-1.1.0.json");
         mapper.writeValue(proposalFile.toFile(), proposed);
 
@@ -71,14 +71,14 @@ class GatesCliTest {
         ObjectMapper mapper = JsonMapperFactory.create();
         Files.createDirectories(root);
         Files.writeString(root.resolve("policy.json"), "{\"mode\":\"" + CompatMode.FORWARD + "\"}");
-        List<Member> v1 = List.of(new Member("Rpm", "Double"), new Member("Running", "Boolean"));
-        UdtDefinition current = new UdtDefinition("Motor", SemVer.parse("1.0.0"), v1, List.of());
+        List<Member> v1 = List.of(new Member("Rpm", "Double", null, null), new Member("Running", "Boolean", null, null));
+        UdtDefinition current = new UdtDefinition("Motor", SemVer.parse("1.0.0"), v1, List.of(), null);
         Path udtDir = root.resolve("udt").resolve(current.templateRef());
         Files.createDirectories(udtDir);
         mapper.writeValue(udtDir.resolve(current.version() + ".json").toFile(), current);
 
         UdtDefinition proposed = new UdtDefinition("Motor", SemVer.parse("1.1.0"),
-                List.of(new Member("Rpm", "Double")), List.of());
+                List.of(new Member("Rpm", "Double", null, null)), List.of(), null);
         Path proposalFile = root.resolve("proposed-1.1.0.json");
         mapper.writeValue(proposalFile.toFile(), proposed);
 

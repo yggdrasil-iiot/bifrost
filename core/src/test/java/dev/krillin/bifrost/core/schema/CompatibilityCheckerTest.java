@@ -9,22 +9,22 @@ class CompatibilityCheckerTest {
     private final CompatibilityChecker checker = new CompatibilityChecker();
 
     private UdtDefinition motor(String version, List<Member> members) {
-        return new UdtDefinition("Motor", SemVer.parse(version), members, List.of());
+        return new UdtDefinition("Motor", SemVer.parse(version), members, List.of(), null);
     }
 
-    private final List<Member> v1 = List.of(new Member("Rpm", "Double"), new Member("Running", "Boolean"));
+    private final List<Member> v1 = List.of(new Member("Rpm", "Double", null, null), new Member("Running", "Boolean", null, null));
 
     @Test void forward_addMember_isCompatible() {
         UdtDefinition reg = motor("1.0.0", v1);
-        UdtDefinition pro = motor("1.1.0", List.of(new Member("Rpm", "Double"),
-                new Member("Running", "Boolean"), new Member("Temperature", "Double")));
+        UdtDefinition pro = motor("1.1.0", List.of(new Member("Rpm", "Double", null, null),
+                new Member("Running", "Boolean", null, null), new Member("Temperature", "Double", null, null)));
         Verdict v = checker.check(reg, pro, CompatMode.FORWARD);
         assertTrue(v.compatible(), v.violations().toString());
     }
 
     @Test void forward_removeMember_isIncompatible() {
         UdtDefinition reg = motor("1.0.0", v1);
-        UdtDefinition pro = motor("1.1.0", List.of(new Member("Rpm", "Double")));
+        UdtDefinition pro = motor("1.1.0", List.of(new Member("Rpm", "Double", null, null)));
         Verdict v = checker.check(reg, pro, CompatMode.FORWARD);
         assertFalse(v.compatible());
         assertTrue(v.violations().stream().anyMatch(x -> x.rule().equals("member.removed")));
@@ -32,8 +32,8 @@ class CompatibilityCheckerTest {
 
     @Test void backward_addMember_isIncompatible() {
         UdtDefinition reg = motor("1.0.0", v1);
-        UdtDefinition pro = motor("1.1.0", List.of(new Member("Rpm", "Double"),
-                new Member("Running", "Boolean"), new Member("Temperature", "Double")));
+        UdtDefinition pro = motor("1.1.0", List.of(new Member("Rpm", "Double", null, null),
+                new Member("Running", "Boolean", null, null), new Member("Temperature", "Double", null, null)));
         Verdict v = checker.check(reg, pro, CompatMode.BACKWARD);
         assertFalse(v.compatible());
         assertTrue(v.violations().stream().anyMatch(x -> x.rule().equals("member.added")));
@@ -41,15 +41,15 @@ class CompatibilityCheckerTest {
 
     @Test void backward_removeMember_isCompatible() {
         UdtDefinition reg = motor("1.0.0", v1);
-        UdtDefinition pro = motor("1.1.0", List.of(new Member("Rpm", "Double")));
+        UdtDefinition pro = motor("1.1.0", List.of(new Member("Rpm", "Double", null, null)));
         Verdict v = checker.check(reg, pro, CompatMode.BACKWARD);
         assertTrue(v.compatible(), v.violations().toString());
     }
 
     @Test void typeChange_isIncompatible_inEveryModeButNone() {
         UdtDefinition reg = motor("1.0.0", v1);
-        UdtDefinition pro = motor("1.1.0", List.of(new Member("Rpm", "Int32"),
-                new Member("Running", "Boolean")));
+        UdtDefinition pro = motor("1.1.0", List.of(new Member("Rpm", "Int32", null, null),
+                new Member("Running", "Boolean", null, null)));
         for (CompatMode mode : List.of(CompatMode.FORWARD, CompatMode.BACKWARD, CompatMode.FULL)) {
             Verdict v = checker.check(reg, pro, mode);
             assertFalse(v.compatible(), "mode=" + mode);
@@ -59,7 +59,7 @@ class CompatibilityCheckerTest {
 
     @Test void none_skipsAllChecks() {
         UdtDefinition reg = motor("1.0.0", v1);
-        UdtDefinition pro = motor("1.1.0", List.of(new Member("Rpm", "Int32"))); // remove + type change
+        UdtDefinition pro = motor("1.1.0", List.of(new Member("Rpm", "Int32", null, null))); // remove + type change
         Verdict v = checker.check(reg, pro, CompatMode.NONE);
         assertTrue(v.compatible(), v.violations().toString());
     }
@@ -73,8 +73,8 @@ class CompatibilityCheckerTest {
     }
 
     @Test void paramChange_classifiedLikeMembers() {
-        UdtDefinition reg = new UdtDefinition("Motor", SemVer.parse("1.0.0"), v1, List.of(new Param("Location", "String")));
-        UdtDefinition pro = new UdtDefinition("Motor", SemVer.parse("1.1.0"), v1, List.of()); // param removed
+        UdtDefinition reg = new UdtDefinition("Motor", SemVer.parse("1.0.0"), v1, List.of(new Param("Location", "String")), null);
+        UdtDefinition pro = new UdtDefinition("Motor", SemVer.parse("1.1.0"), v1, List.of(), null); // param removed
         Verdict v = checker.check(reg, pro, CompatMode.FORWARD);
         assertFalse(v.compatible());
         assertTrue(v.violations().stream().anyMatch(x -> x.rule().equals("param.removed")));

@@ -32,28 +32,28 @@ class SchemaGateTest {
         return f;
     }
 
-    private final List<Member> v1 = List.of(new Member("Rpm","Double"), new Member("Running","Boolean"));
+    private final List<Member> v1 = List.of(new Member("Rpm", "Double", null, null), new Member("Running", "Boolean", null, null));
 
     @Test void compatibleChange_returnsZero(@TempDir Path root) throws Exception {
-        seed(root, CompatMode.FORWARD, new UdtDefinition("Motor", SemVer.parse("1.0.0"), v1, List.of()));
+        seed(root, CompatMode.FORWARD, new UdtDefinition("Motor", SemVer.parse("1.0.0"), v1, List.of(), null));
         UdtDefinition add = new UdtDefinition("Motor", SemVer.parse("1.1.0"),
-                List.of(new Member("Rpm","Double"), new Member("Running","Boolean"), new Member("Temperature","Double")), List.of());
+                List.of(new Member("Rpm", "Double", null, null), new Member("Running", "Boolean", null, null), new Member("Temperature", "Double", null, null)), List.of(), null);
         int code = SchemaGate.run(new String[]{ root.toString(), proposal(root, add).toString() });
         assertEquals(0, code);
     }
 
     @Test void breakingChange_returnsOne(@TempDir Path root) throws Exception {
-        seed(root, CompatMode.FORWARD, new UdtDefinition("Motor", SemVer.parse("1.0.0"), v1, List.of()));
+        seed(root, CompatMode.FORWARD, new UdtDefinition("Motor", SemVer.parse("1.0.0"), v1, List.of(), null));
         UdtDefinition remove = new UdtDefinition("Motor", SemVer.parse("1.1.0"),
-                List.of(new Member("Rpm","Double")), List.of());
+                List.of(new Member("Rpm", "Double", null, null)), List.of(), null);
         int code = SchemaGate.run(new String[]{ root.toString(), proposal(root, remove).toString() });
         assertEquals(1, code);
     }
 
     @Test void newTemplateRef_returnsZeroAsInitialRegistration(@TempDir Path root) throws Exception {
-        seed(root, CompatMode.FORWARD, new UdtDefinition("Motor", SemVer.parse("1.0.0"), v1, List.of()));
+        seed(root, CompatMode.FORWARD, new UdtDefinition("Motor", SemVer.parse("1.0.0"), v1, List.of(), null));
         UdtDefinition motor2 = new UdtDefinition("Motor2", SemVer.parse("2.0.0"),
-                List.of(new Member("Rpm","Double")), List.of());
+                List.of(new Member("Rpm", "Double", null, null)), List.of(), null);
         int code = SchemaGate.run(new String[]{ root.toString(), proposal(root, motor2).toString() });
         assertEquals(0, code);
     }
@@ -61,9 +61,9 @@ class SchemaGateTest {
     @Test void missingPolicy_returnsTwoFailClosed(@TempDir Path root) throws Exception {
         Path dir = root.resolve("udt/Motor"); Files.createDirectories(dir);
         mapper.writeValue(dir.resolve("1.0.0.json").toFile(),
-                new UdtDefinition("Motor", SemVer.parse("1.0.0"), v1, List.of()));
+                new UdtDefinition("Motor", SemVer.parse("1.0.0"), v1, List.of(), null));
         UdtDefinition add = new UdtDefinition("Motor", SemVer.parse("1.1.0"),
-                List.of(new Member("Rpm","Double"), new Member("Running","Boolean"), new Member("X","Double")), List.of());
+                List.of(new Member("Rpm", "Double", null, null), new Member("Running", "Boolean", null, null), new Member("X", "Double", null, null)), List.of(), null);
         int code = SchemaGate.run(new String[]{ root.toString(), proposal(root, add).toString() });
         assertEquals(2, code);
     }
@@ -73,9 +73,9 @@ class SchemaGateTest {
     }
 
     @Test void promoteFlag_writesToRegistry(@TempDir Path root) throws Exception {
-        seed(root, CompatMode.FORWARD, new UdtDefinition("Motor", SemVer.parse("1.0.0"), v1, List.of()));
+        seed(root, CompatMode.FORWARD, new UdtDefinition("Motor", SemVer.parse("1.0.0"), v1, List.of(), null));
         UdtDefinition add = new UdtDefinition("Motor", SemVer.parse("1.1.0"),
-                List.of(new Member("Rpm","Double"), new Member("Running","Boolean"), new Member("Temperature","Double")), List.of());
+                List.of(new Member("Rpm", "Double", null, null), new Member("Running", "Boolean", null, null), new Member("Temperature", "Double", null, null)), List.of(), null);
         int code = SchemaGate.run(new String[]{ root.toString(), proposal(root, add).toString(), "--promote" });
         assertEquals(0, code);
         assertTrue(Files.exists(root.resolve("udt/Motor/1.1.0.json")));
