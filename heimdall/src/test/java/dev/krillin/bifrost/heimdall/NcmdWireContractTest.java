@@ -53,7 +53,7 @@ class NcmdWireContractTest {
     }
 
     private NcmdOpcUaBridge bridge(Applier applier) throws Exception {
-        return new NcmdOpcUaBridge(GROUP, EDGE, policy(), applier);
+        return new NcmdOpcUaBridge(GROUP, EDGE, policy(), applier, null, null, null);
     }
 
     /** Build a command payload INLINE, exactly matching the bridge's command wire-contract shape. */

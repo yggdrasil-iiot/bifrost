@@ -23,6 +23,9 @@ import dev.krillin.bifrost.core.acl.CommandPolicy;
 import dev.krillin.bifrost.core.acl.CommandRequest;
 import dev.krillin.bifrost.core.acl.Decision;
 import dev.krillin.bifrost.core.acl.Target;
+import dev.krillin.bifrost.core.conformance.ConformancePolicy;
+import dev.krillin.bifrost.core.schema.MasterSpec;
+import dev.krillin.bifrost.core.schema.UdtDefinition;
 
 /**
  * Self-bridge: receives Sparkplug NCMD commands over MQTT, authorizes them deny-by-default at the
@@ -45,6 +48,12 @@ public final class NcmdOpcUaBridge implements MqttCallback {
     private final Applier applier;
     private final CommandAuthorizer authorizer = new CommandAuthorizer();
 
+    // Governed conformance deps, loaded at startup (nullable => ② conformance OFF; pure authz).
+    // Loaded and stored here in B1; the ② check that consumes them is wired in B2.
+    private final UdtDefinition conformanceDef;
+    private final ConformancePolicy conformancePolicy;
+    private final MasterSpec activeRecipe;
+
     private final String ncmdTopic;
     private final String queryTopic;
     private final String ndataTopic;
@@ -53,11 +62,15 @@ public final class NcmdOpcUaBridge implements MqttCallback {
     private final SparkplugBPayloadDecoder decoder = new SparkplugBPayloadDecoder();
     private MqttClient client;
 
-    public NcmdOpcUaBridge(String group, String edge, CommandPolicy policy, Applier applier) {
+    public NcmdOpcUaBridge(String group, String edge, CommandPolicy policy, Applier applier,
+                           UdtDefinition conformanceDef, ConformancePolicy conformancePolicy, MasterSpec activeRecipe) {
         this.group = group;
         this.edge = edge;
         this.policy = policy;
         this.applier = applier;
+        this.conformanceDef = conformanceDef;
+        this.conformancePolicy = conformancePolicy;
+        this.activeRecipe = activeRecipe;
         this.ncmdTopic = "spBv1.0/" + group + "/NCMD/" + edge;
         this.queryTopic = "bifrost/" + group + "/QUERY/" + edge;
         this.ndataTopic = "spBv1.0/" + group + "/NDATA/" + edge;

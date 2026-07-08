@@ -36,7 +36,7 @@ class NcmdOpcUaBridgeTest {
     }
 
     private NcmdOpcUaBridge bridge(Applier applier) throws Exception {
-        return new NcmdOpcUaBridge(GROUP, EDGE, policy(), applier);
+        return new NcmdOpcUaBridge(GROUP, EDGE, policy(), applier, null, null, null);
     }
 
     /** Build a single-command-metric NCMD payload per the bridge's wire contract. */
