@@ -33,13 +33,11 @@ import org.eclipse.milo.opcua.stack.transport.server.tcp.OpcTcpServerTransportCo
 
 /**
  * In-JVM embedded Milo OPC-UA server for the bifrost-local runtime gate: a minimal stand-in for
- * the D3/PLC endpoint Heimdall's {@code OpcUaApplier} writes to. Concept ported from koshei's
- * {@code opcua/src/main/kotlin/koshei/opcua/EmbeddedMiloSim.kt} (which targets Milo <b>0.6.12</b>'s
- * server API) — KEEPING ONLY what this gate needs (one writable Double setpoint node), dropping the
- * trigger/done handshake, the polling thread, and the model-driven multi-node loop that file
- * carries for koshei's ApplyPort.call. Milo <b>1.0.0</b>'s server API differs substantially from
- * 0.6.12 (package layout, mandatory {@code OpcServerTransportFactory}, no bare {@code addUri}) —
- * this class targets 1.0.0 directly (verified against the actual 1.0.0 jars, not the 0.6.12 shape).
+ * the D3/PLC endpoint Heimdall's {@code OpcUaApplier} writes to. Minimal by design — it exposes
+ * only what the gate needs (one writable Double setpoint node), with no trigger/done handshake,
+ * polling thread, or multi-node model. Targets Milo <b>1.0.0</b>'s server API directly (package
+ * layout, mandatory {@code OpcServerTransportFactory}, no bare {@code addUri} — a substantial
+ * departure from the 0.6.12 server API), verified against the actual 1.0.0 jars.
  *
  * <p>Endpoint {@code opc.tcp://localhost:48400}, anonymous identity, {@code SecurityPolicy.None} —
  * matching exactly what {@code OpcUaApplier.connect()} (a bare {@code OpcUaClient.create(endpoint)}
