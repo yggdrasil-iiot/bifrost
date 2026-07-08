@@ -1,0 +1,170 @@
+package dev.krillin.bifrost.sim;
+
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+
+import org.eclipse.milo.opcua.sdk.server.EndpointConfig;
+import org.eclipse.milo.opcua.sdk.server.ManagedNamespaceWithLifecycle;
+import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
+import org.eclipse.milo.opcua.sdk.server.OpcUaServerConfig;
+import org.eclipse.milo.opcua.sdk.server.identity.AnonymousIdentityValidator;
+import org.eclipse.milo.opcua.sdk.server.items.DataItem;
+import org.eclipse.milo.opcua.sdk.server.items.MonitoredItem;
+import org.eclipse.milo.opcua.sdk.server.nodes.UaVariableNode;
+import org.eclipse.milo.opcua.stack.core.AttributeId;
+import org.eclipse.milo.opcua.stack.core.Identifiers;
+import org.eclipse.milo.opcua.stack.core.security.DefaultCertificateManager;
+import org.eclipse.milo.opcua.stack.core.security.MemoryCertificateQuarantine;
+import org.eclipse.milo.opcua.stack.core.security.SecurityPolicy;
+import org.eclipse.milo.opcua.stack.core.transport.TransportProfile;
+import org.eclipse.milo.opcua.stack.core.types.builtin.DataValue;
+import org.eclipse.milo.opcua.stack.core.types.builtin.DateTime;
+import org.eclipse.milo.opcua.stack.core.types.builtin.LocalizedText;
+import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
+import org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.Unsigned;
+import org.eclipse.milo.opcua.stack.core.types.enumerated.MessageSecurityMode;
+import org.eclipse.milo.opcua.stack.core.types.enumerated.UserTokenType;
+import org.eclipse.milo.opcua.stack.core.types.structured.BuildInfo;
+import org.eclipse.milo.opcua.stack.core.types.structured.UserTokenPolicy;
+import org.eclipse.milo.opcua.stack.transport.server.tcp.OpcTcpServerTransport;
+import org.eclipse.milo.opcua.stack.transport.server.tcp.OpcTcpServerTransportConfig;
+
+/**
+ * In-JVM embedded Milo OPC-UA server for the bifrost-local runtime gate: a minimal stand-in for
+ * the D3/PLC endpoint Heimdall's {@code OpcUaApplier} writes to. Concept ported from koshei's
+ * {@code opcua/src/main/kotlin/koshei/opcua/EmbeddedMiloSim.kt} (which targets Milo <b>0.6.12</b>'s
+ * server API) — KEEPING ONLY what this gate needs (one writable Double setpoint node), dropping the
+ * trigger/done handshake, the polling thread, and the model-driven multi-node loop that file
+ * carries for koshei's ApplyPort.call. Milo <b>1.0.0</b>'s server API differs substantially from
+ * 0.6.12 (package layout, mandatory {@code OpcServerTransportFactory}, no bare {@code addUri}) —
+ * this class targets 1.0.0 directly (verified against the actual 1.0.0 jars, not the 0.6.12 shape).
+ *
+ * <p>Endpoint {@code opc.tcp://localhost:48400}, anonymous identity, {@code SecurityPolicy.None} —
+ * matching exactly what {@code OpcUaApplier.connect()} (a bare {@code OpcUaClient.create(endpoint)}
+ * + {@code connect()}) expects. Bind address/hostname are both {@code localhost} to avoid Milo's
+ * endpoint-discovery hostname mismatch (the client re-resolves the advertised endpoint after
+ * discovery; it must be reachable as exactly {@code localhost:48400}).
+ */
+final class EmbeddedMiloSim implements AutoCloseable {
+
+    static final String NAMESPACE_URI = "urn:bifrost:opcua:sim";
+    static final int BIND_PORT = 48400;
+
+    private OpcUaServer server;
+    private SimNamespace namespace;
+
+    EmbeddedMiloSim start() throws Exception {
+        EndpointConfig endpointConfig = EndpointConfig.newBuilder()
+                .setTransportProfile(TransportProfile.TCP_UASC_UABINARY)
+                .setBindAddress("localhost")
+                .setBindPort(BIND_PORT)
+                .setHostname("localhost")
+                .setPath("")
+                .setSecurityPolicy(SecurityPolicy.None)
+                .setSecurityMode(MessageSecurityMode.None)
+                .addTokenPolicies(new UserTokenPolicy("anonymous", UserTokenType.Anonymous, null, null, null))
+                .build();
+
+        // No security policy is actually exercised (SecurityPolicy.None / anonymous-only), but the
+        // config builder still wants a CertificateManager — an in-memory, no-cert-groups instance is
+        // sufficient since it is never consulted for this endpoint.
+        DefaultCertificateManager certificateManager =
+                new DefaultCertificateManager(new MemoryCertificateQuarantine(), List.of());
+
+        OpcUaServerConfig serverConfig = OpcUaServerConfig.builder()
+                .setApplicationUri("urn:bifrost:opcua:sim-server")
+                .setApplicationName(LocalizedText.english("Bifrost OPC-UA Sim"))
+                .setProductUri("urn:bifrost:opcua:sim-server")
+                .setEndpoints(Set.of(endpointConfig))
+                .setBuildInfo(new BuildInfo(
+                        "urn:bifrost:opcua:sim-server", "krillin", "bifrost opc-ua sim",
+                        "0.1.0", "", DateTime.now()))
+                .setCertificateManager(certificateManager)
+                .setIdentityValidator(AnonymousIdentityValidator.INSTANCE)
+                .build();
+
+        server = new OpcUaServer(serverConfig, transportProfile -> {
+            assert transportProfile == TransportProfile.TCP_UASC_UABINARY;
+            return new OpcTcpServerTransport(OpcTcpServerTransportConfig.newBuilder().build());
+        });
+
+        // Pre-register the namespace URI so the custom namespace gets index 2 deterministically
+        // (index 0 = OPC-UA foundation, index 1 = server application URI).
+        server.getNamespaceTable().add(NAMESPACE_URI);
+        namespace = new SimNamespace(server);
+        namespace.startup();
+        server.startup().get(30, TimeUnit.SECONDS);
+
+        return this;
+    }
+
+    @Override
+    public void close() {
+        if (server != null) {
+            try {
+                namespace.shutdown();
+            } catch (Exception ignore) {
+                // best-effort
+            }
+            try {
+                server.shutdown().get(10, TimeUnit.SECONDS);
+            } catch (Exception ignore) {
+                // best-effort
+            }
+        }
+    }
+
+    /** Internal namespace: exposes ns=2;s=Recipe/Rpm (and Recipe/Temp) as writable Doubles. */
+    static final class SimNamespace extends ManagedNamespaceWithLifecycle {
+
+        SimNamespace(OpcUaServer server) {
+            super(server, NAMESPACE_URI);
+            getLifecycleManager().addStartupTask(this::createNodes);
+        }
+
+        private void createNodes() {
+            UaVariableNode rpm = makeDoubleNode("Recipe/Rpm", "Rpm", 0.0);
+            rpm.addAttributeObserver((node, attributeId, value) -> {
+                if (attributeId == AttributeId.Value) {
+                    Object v = value instanceof DataValue dv && dv.getValue() != null
+                            ? dv.getValue().getValue()
+                            : value;
+                    System.out.println("[SIM] SET ns=2;s=Recipe/Rpm = " + v);
+                }
+            });
+
+            makeDoubleNode("Recipe/Temp", "Temp", 0.0);
+        }
+
+        private UaVariableNode makeDoubleNode(String identifier, String browseName, double initial) {
+            return new UaVariableNode.UaVariableNodeBuilder(getNodeContext())
+                    .setNodeId(newNodeId(identifier))
+                    .setBrowseName(newQualifiedName(browseName))
+                    .setDisplayName(LocalizedText.english(browseName))
+                    .setDataType(Identifiers.Double)
+                    .setTypeDefinition(Identifiers.BaseDataVariableType)
+                    .setAccessLevel(Unsigned.ubyte(3))
+                    .setUserAccessLevel(Unsigned.ubyte(3))
+                    .setValue(new DataValue(new Variant(initial)))
+                    .buildAndAdd();
+        }
+
+        @Override
+        public void onDataItemsCreated(List<DataItem> dataItems) {
+        }
+
+        @Override
+        public void onDataItemsModified(List<DataItem> dataItems) {
+        }
+
+        @Override
+        public void onDataItemsDeleted(List<DataItem> dataItems) {
+        }
+
+        @Override
+        public void onMonitoringModeChanged(List<MonitoredItem> monitoredItems) {
+        }
+    }
+}

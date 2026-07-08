@@ -4,3 +4,4 @@ target/
 node_modules/
 *.iml
 dependency-reduced-pom.xml
+build/

@@ -20,6 +20,7 @@
     <module>core</module>
     <module>heimdall</module>
     <module>gates</module>
+    <module>sim</module>
   </modules>
 
   <properties>
@@ -63,6 +64,14 @@
       <dependency>
         <groupId>org.eclipse.milo</groupId>
         <artifactId>milo-sdk-client</artifactId>
+        <version>${milo.version}</version>
+      </dependency>
+
+      <!-- OPC UA server (Milo sdk-server) — used ONLY by the `sim` module (a standalone embedded
+           OPC-UA sim for the runtime gate); Heimdall itself never depends on the server SDK. -->
+      <dependency>
+        <groupId>org.eclipse.milo</groupId>
+        <artifactId>milo-sdk-server</artifactId>
         <version>${milo.version}</version>
       </dependency>
 

@@ -1,0 +1,15 @@
+# Local bifrost runtime-gate broker.
+#   docker compose up -d hivemq-ce   → MQTT on tcp://localhost:1883
+#
+# ⚠️ HiveMQ CE 2026.x is secure-by-default: without a security extension it refuses ALL MQTT
+#    connections ("No security extension present, MQTT clients can not connect"). For local
+#    development we enable the bundled allow-all extension via HIVEMQ_ALLOW_ALL_CLIENTS=true.
+services:
+  hivemq-ce:
+    image: hivemq/hivemq-ce:latest
+    container_name: bifrost-hivemq-ce
+    ports:
+      - "1883:1883"     # MQTT
+    environment:
+      HIVEMQ_ALLOW_ALL_CLIENTS: "true"
+    restart: unless-stopped
