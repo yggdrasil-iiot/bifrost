@@ -8,6 +8,11 @@
     { "$ref": "#/definitions/masterSpec" }
   ],
   "definitions": {
+    "semver": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "SemVer major.minor.patch string."
+    },
     "generalSpec": {
       "description": "ISA-88 general recipe: product-domain, equipment-independent spec carrying equipment-independent setpoint intents.",
       "type": "object",
@@ -16,11 +21,7 @@
           "description": "This spec's registry-key id.",
           "type": "string"
         },
-        "version": {
-          "description": "SemVer of this spec, serialized as a major.minor.patch string.",
-          "type": "string",
-          "pattern": "^\\d+\\.\\d+\\.\\d+$"
-        },
+        "version": { "$ref": "#/definitions/semver" },
         "productDomain": {
           "description": "The product domain this general recipe applies to (equipment-independent).",
           "type": "string"
@@ -42,11 +43,7 @@
           "description": "This spec's registry-key id.",
           "type": "string"
         },
-        "version": {
-          "description": "SemVer of this spec, serialized as a major.minor.patch string.",
-          "type": "string",
-          "pattern": "^\\d+\\.\\d+\\.\\d+$"
-        },
+        "version": { "$ref": "#/definitions/semver" },
         "site": {
           "description": "The site whose equipment this master recipe is bound to.",
           "type": "string"
@@ -55,11 +52,7 @@
           "description": "Registry-key id of the equipment definition this master recipe binds.",
           "type": "string"
         },
-        "equipmentVersion": {
-          "description": "SemVer of the bound equipment definition, serialized as a major.minor.patch string.",
-          "type": "string",
-          "pattern": "^\\d+\\.\\d+\\.\\d+$"
-        },
+        "equipmentVersion": { "$ref": "#/definitions/semver" },
         "setpoints": {
           "description": "Concrete setpoints, each addressed to an equipment member by name.",
           "type": "array",

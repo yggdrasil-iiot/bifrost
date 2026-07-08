@@ -76,5 +76,5 @@ lowercase-hex-encode the digest. A consumer that recomputes this over the
 ## Deliberately out of scope here
 
 This document covers the recipe/canonical publish manifest only. It does not cover the UDT
-definition (`definition.schema.json`) or command-policy (`policy.schema.json`) document
-formats, which are separate JSON-Schema specs alongside this file.
+definition (`definition.schema.json`), spec/recipe (`spec.schema.json`), or command-policy
+(`policy.schema.json`) document formats, which are separate JSON-Schema specs alongside this file.

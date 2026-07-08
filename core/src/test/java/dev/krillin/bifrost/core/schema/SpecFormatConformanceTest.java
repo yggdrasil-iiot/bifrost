@@ -74,4 +74,31 @@ class SpecFormatConformanceTest {
         Set<com.networknt.schema.ValidationMessage> errors = schema.validate(node);
         assertTrue(errors.isEmpty(), "expected valid GeneralSpec to pass schema: " + errors);
     }
+
+    @Test
+    void generalSpecMissingProductDomainFailsSchema() throws Exception {
+        ObjectMapper mapper = JsonMapperFactory.create();
+        String badJson = "{ \"specRef\": \"MixProductA\", \"version\": \"1.0.0\", "
+                + "\"setpointIntents\": [{\"key\":\"mixSpeed\",\"type\":\"Double\",\"value\":1500}] }";
+        JsonSchema schema = loadSchema("/schema/spec.schema.json");
+        JsonNode node = mapper.readTree(badJson);
+        Set<com.networknt.schema.ValidationMessage> errors = schema.validate(node);
+        assertFalse(errors.isEmpty(), "general-spec missing productDomain must fail schema validation");
+    }
+
+    @Test
+    void hybridSpecCarryingBothBranchesFailsSchema() throws Exception {
+        // Fields from BOTH branches (general's productDomain + master's site/equipmentRef): under
+        // additionalProperties:false neither branch accepts it, so the root oneOf matches nothing.
+        ObjectMapper mapper = JsonMapperFactory.create();
+        String badJson = "{ \"specRef\": \"MixProductA\", \"version\": \"1.0.0\", "
+                + "\"productDomain\": \"MixProductA\", \"site\": \"Line1\", "
+                + "\"equipmentRef\": \"Line1-Mixer\", \"equipmentVersion\": \"1.0.0\", "
+                + "\"setpointIntents\": [{\"key\":\"mixSpeed\",\"type\":\"Double\",\"value\":1500}], "
+                + "\"setpoints\": [{\"member\":\"Rpm\",\"type\":\"Double\",\"value\":1500}] }";
+        JsonSchema schema = loadSchema("/schema/spec.schema.json");
+        JsonNode node = mapper.readTree(badJson);
+        Set<com.networknt.schema.ValidationMessage> errors = schema.validate(node);
+        assertFalse(errors.isEmpty(), "hybrid doc carrying both branches' fields must fail schema validation");
+    }
 }
