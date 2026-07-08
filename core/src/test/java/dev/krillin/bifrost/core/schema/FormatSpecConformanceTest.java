@@ -57,6 +57,25 @@ class FormatSpecConformanceTest {
     }
 
     @Test
+    void legacyMemberWithNullSemanticIdConformsToPublishedSchema() throws Exception {
+        UdtDefinition def = new UdtDefinition(
+                "types/Legacy",
+                new SemVer(1, 0, 0),
+                List.of(new Member("Legacy", "Double", null, null)),
+                List.of(),
+                null);
+
+        ObjectMapper mapper = JsonMapperFactory.create();
+        String json = mapper.writeValueAsString(def);
+        System.out.println("Legacy UdtDefinition JSON: " + json);
+
+        JsonSchema schema = loadSchema("/schema/definition.schema.json");
+        JsonNode node = mapper.readTree(json);
+        Set<com.networknt.schema.ValidationMessage> errors = schema.validate(node);
+        assertTrue(errors.isEmpty(), "legacy member with null semanticId must pass schema: " + errors);
+    }
+
+    @Test
     void udtDefinitionWithNonStringVersionFailsSchema() throws Exception {
         ObjectMapper mapper = JsonMapperFactory.create();
         String badJson = "{ \"templateRef\": null, \"version\": 100, "

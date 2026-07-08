@@ -45,8 +45,8 @@
           "type": "string"
         },
         "semanticId": {
-          "description": "Concept-dictionary reference giving this member its meaning (AAS Property semanticId).",
-          "type": "string"
+          "description": "Optional concept-dictionary reference giving this member its meaning (AAS Property semanticId); populated by the northbound modeler, null for un-annotated/legacy members.",
+          "type": ["string", "null"]
         },
         "range": {
           "description": "Numeric operating range (inclusive low/high), or null for non-numeric members.",
@@ -64,7 +64,7 @@
           ]
         }
       },
-      "required": ["name", "type", "semanticId"],
+      "required": ["name", "type"],
       "additionalProperties": false
     },
     "param": {
