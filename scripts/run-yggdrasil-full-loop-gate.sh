@@ -203,6 +203,10 @@ export OPCUA_URL="$ENDPOINT"
 export SPB_GROUP="$GROUP"
 export SPB_EDGE="$EDGE"
 export POLICY_PATH="$POLICY_PATH"
+# Rpm range moved from policy.json to the governed model (conformance track): activate ② so L5's
+# Rpm=9999 above-max DENY comes from the governed Mixer model, not a hand-authored policy.json bound.
+export REGISTRY_PATH="$(cygpath -m "$(pwd)/heimdall/registry")"
+export CONFORMANCE_PATH="$(cygpath -m "$(pwd)/heimdall/registry/conformance/Line1-Mixer/1.0.0.json")"
 : > "$WORK/bridge.log"
 java -jar "$HEIMDALL_JAR_WIN" > "$WORK/bridge.log" 2>&1 &
 BRIDGE_PID=$!
