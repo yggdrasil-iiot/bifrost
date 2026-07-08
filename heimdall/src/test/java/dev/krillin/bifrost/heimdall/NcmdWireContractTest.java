@@ -215,6 +215,11 @@ class NcmdWireContractTest {
             return readResult;
         }
 
+        @Override public double readDouble(String nodeId) {
+            lastReadNode = nodeId;
+            return Double.parseDouble(readResult.value());
+        }
+
         @Override public Result write(String nodeId, double value) {
             writeCalled = true;
             lastWriteNode = nodeId;

@@ -49,6 +49,20 @@ public final class OpcUaApplier implements Applier {
     }
 
     @Override
+    public double readDouble(String nodeId) throws UaException {
+        // Reuse the existing stringified read and parse — fail-closed if the value is null/non-numeric.
+        ReadBack rb = read(nodeId);
+        if (rb.value() == null) {
+            throw new UaException(StatusCode.BAD, "readDouble from " + nodeId + " returned null value");
+        }
+        try {
+            return Double.parseDouble(rb.value().trim());
+        } catch (NumberFormatException e) {
+            throw new UaException(StatusCode.BAD, "readDouble from " + nodeId + " non-numeric: " + rb.value());
+        }
+    }
+
+    @Override
     public Result write(String nodeId, double value) throws UaException {
         StatusCode sc = client.writeValues(
                 List.of(NodeId.parse(nodeId)),

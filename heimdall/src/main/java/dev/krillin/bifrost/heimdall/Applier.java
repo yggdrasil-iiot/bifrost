@@ -10,6 +10,13 @@ public interface Applier {
     /** Read a node's current value (no authorization — reads are observation, not command). */
     ReadBack read(String nodeId) throws Exception;
 
+    /**
+     * Read a node's current value as a primitive {@code double} — used by the ② conformance check to
+     * pull the live value of a bound numeric cross-member sibling. Throws if the node is unreadable or
+     * its value is non-numeric (the bridge treats any such failure as fail-closed DENY).
+     */
+    double readDouble(String nodeId) throws Exception;
+
     /** Write a Double setpoint and confirm by numeric read-back equality. */
     Result write(String nodeId, double value) throws Exception;
 

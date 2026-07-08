@@ -1,6 +1,10 @@
 package dev.krillin.bifrost.heimdall;
 
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
 import org.eclipse.paho.client.mqttv3.MqttCallback;
@@ -23,8 +27,13 @@ import dev.krillin.bifrost.core.acl.CommandPolicy;
 import dev.krillin.bifrost.core.acl.CommandRequest;
 import dev.krillin.bifrost.core.acl.Decision;
 import dev.krillin.bifrost.core.acl.Target;
+import dev.krillin.bifrost.core.conformance.ConformanceEvaluator;
 import dev.krillin.bifrost.core.conformance.ConformancePolicy;
+import dev.krillin.bifrost.core.conformance.ConformanceVerdict;
+import dev.krillin.bifrost.core.conformance.CrossConstraint;
+import dev.krillin.bifrost.core.conformance.NodeBinding;
 import dev.krillin.bifrost.core.schema.MasterSpec;
+import dev.krillin.bifrost.core.schema.Setpoint;
 import dev.krillin.bifrost.core.schema.UdtDefinition;
 
 /**
@@ -114,6 +123,38 @@ public final class NcmdOpcUaBridge implements MqttCallback {
         if (!d.allowed()) {
             System.out.println("[BRIDGE] DENY cmd=" + name + " val=" + value + " reason=" + d.reason());
             return NcmdResponse.apply(cmdId, false, "denied: " + d.reason());
+        }
+
+        // ① authz already passed (d.allowed()). ② conformance (opt-in: only when a policy is loaded):
+        if (conformancePolicy != null && conformanceDef != null) {
+            NodeBinding binding = conformancePolicy.nodeBindings().stream()
+                    .filter(b -> name.equals(b.opcNodeId())).findFirst().orElse(null);
+            if (binding != null) {
+                try {
+                    List<Setpoint> state = new ArrayList<>();
+                    state.add(new Setpoint(binding.member(), dataType, ((Number) value).doubleValue()));
+                    Set<String> needed = new LinkedHashSet<>();
+                    for (CrossConstraint c : conformancePolicy.crossConstraints()) {
+                        needed.add(c.ifMember()); needed.add(c.thenMember());
+                    }
+                    needed.remove(binding.member());
+                    for (String sibMember : needed) {
+                        NodeBinding sb = conformancePolicy.nodeBindings().stream()
+                                .filter(b -> sibMember.equals(b.member()) && b.readNodeId() != null).findFirst().orElse(null);
+                        if (sb != null) state.add(new Setpoint(sibMember, "Double", applier.readDouble(sb.readNodeId())));
+                    }
+                    ConformanceVerdict cv = new ConformanceEvaluator()
+                            .evaluate(conformanceDef, conformancePolicy, activeRecipe, state);
+                    if (!cv.ok()) {
+                        String reason = cv.violations().get(0).rule() + ": " + cv.violations().get(0).detail();
+                        System.out.println("[BRIDGE] DENY cmd=" + name + " val=" + value + " reason=" + reason);
+                        return NcmdResponse.apply(cmdId, false, "denied: " + reason);
+                    }
+                } catch (Exception confEx) {   // fail-closed: any conformance/read error DENIES
+                    System.out.println("[BRIDGE] DENY cmd=" + name + " val=" + value + " reason=conformance-error: " + confEx.getMessage());
+                    return NcmdResponse.apply(cmdId, false, "denied: conformance-error");
+                }
+            }
         }
 
         try {
