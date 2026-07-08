@@ -3,3 +3,4 @@ target/
 .idea/
 node_modules/
 *.iml
+dependency-reduced-pom.xml

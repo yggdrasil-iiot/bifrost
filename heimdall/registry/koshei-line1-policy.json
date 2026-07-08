@@ -1,0 +1,12 @@
+{
+  "version": "1.0.0",
+  "rules": [
+    { "id": "rpm",  "principal": "koshei", "target": { "group": "Koshei:Line1", "edge": "recipe-edge" },
+      "command": "ns=2;s=Recipe/Rpm",  "constraint": { "type": "Double", "min": 0, "max": 3000 } },
+    { "id": "temp", "principal": "koshei", "target": { "group": "Koshei:Line1", "edge": "recipe-edge" },
+      "command": "ns=2;s=Recipe/Temp", "constraint": { "type": "Double", "min": 0, "max": 450 } },
+    { "id": "activate", "principal": "koshei", "target": { "group": "Koshei:Line1", "edge": "recipe-edge" },
+      "command": "ns=2;s=Recipe/ApplyRecipe" }
+  ],
+  "default": "deny"
+}
