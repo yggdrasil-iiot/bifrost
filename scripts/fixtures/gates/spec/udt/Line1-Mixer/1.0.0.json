@@ -1,0 +1,11 @@
+{
+  "templateRef": "Line1-Mixer",
+  "version": "1.0.0",
+  "members": [
+    { "name": "Rpm",     "type": "Double",  "semanticId": "urn:bifrost:sem:Mixer/Rpm",     "range": { "low": 0, "high": 3000 } },
+    { "name": "Temp",    "type": "Double",  "semanticId": "urn:bifrost:sem:Mixer/Temp",    "range": { "low": 0, "high": 450 } },
+    { "name": "Running", "type": "Boolean", "semanticId": "urn:bifrost:sem:Mixer/Running", "range": null }
+  ],
+  "params": [],
+  "conformsTo": null
+}
