@@ -11,7 +11,7 @@ import java.util.Optional;
 
 /**
  * Provenance ③ CLI over the core recipe-publish/verify machinery. Two subcommands:
- *   publish &lt;registryDir&gt; &lt;sourceRepoDir&gt; &lt;sourcePath&gt; &lt;ref&gt; [&lt;version&gt;]  — delegates to RecipePublish (mint).
+ *   publish &lt;registryDir&gt; &lt;sourceRepoDir&gt; &lt;sourcePath&gt; &lt;ref&gt; [&lt;version&gt;] [--kind &lt;kind&gt;]  — delegates to RecipePublish (mint); --kind flows through the raw pass-through.
  *   verify  &lt;registryDir&gt; &lt;ref&gt;                                                — recomputes sha256 over the
  *           materialized canonical bytes and compares to the manifest's self-attested contentSha256.
  * Exit: 0 = ok/verified, 1 = tamper detected (verify mismatch), 2 = error/usage.

@@ -33,8 +33,11 @@ public final class RecipeDefinitionStore {
             return existing;
         }
         Files.createDirectories(dir);
-        // Wart: the canonical on-disk filename stays "recipe-setpoints.yaml" regardless of kind
-        // (acceptable for the skeleton — master-spec bytes also land in a file so named).
+        // SKELETON WART: this store is recipe-shaped throughout — the on-disk path is registry/recipe/<ref>/…,
+        // the canonical file is always named recipe-setpoints.yaml (here and in resolveUnchecked), and the
+        // RecipePublish log line says "recipe". Only the manifest's `kind` field distinguishes a master-spec
+        // artifact. Acceptable for the skeleton; a real master-spec store (Chunk 4/5) must generalize path +
+        // filename + naming, not just this line.
         Files.write(dir.resolve("recipe-setpoints.yaml"), contentBytes);
         RecipeManifest m = new RecipeManifest(kind, ref, version, defRef, contentSha256, sourcePath, atMillis);
         mapper.writerWithDefaultPrettyPrinter().writeValue(manifestFile.toFile(), m);

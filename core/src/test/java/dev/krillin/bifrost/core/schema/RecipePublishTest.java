@@ -86,6 +86,41 @@ class RecipePublishTest {
         assertEquals("2.0.0", resolved.manifest().version());
     }
 
+    @Test void kindFlagBeforePositionalsIsParsed(@TempDir Path tmp) throws Exception {
+        Path repo = Files.createDirectories(tmp.resolve("repo"));
+        Path registry = tmp.resolve("registry");
+        Files.createDirectories(repo.resolve("model"));
+        Files.write(repo.resolve("model/recipe-setpoints.yaml"), "a: 1\n".getBytes(StandardCharsets.UTF_8));
+        run(repo, "git", "init", "-q");
+        run(repo, "git", "config", "user.email", "t@t"); run(repo, "git", "config", "user.name", "t");
+        run(repo, "git", "add", "."); run(repo, "git", "commit", "-q", "-m", "seed");
+
+        // --kind at the FRONT, before any positional — proves the scan is truly position-independent
+        int code = RecipePublish.run(new String[]{ "--kind", "master-spec", registry.toString(), repo.toString(), "model/recipe-setpoints.yaml", "line1" });
+        assertEquals(0, code);
+        var resolved = new RecipeDefinitionStore(registry).latest("line1").orElseThrow();
+        assertEquals("master-spec", resolved.manifest().kind());
+        assertEquals("1.0.0", resolved.manifest().version(), "version still defaults when only --kind precedes positionals");
+        assertEquals("line1", resolved.manifest().ref());
+        assertEquals("model/recipe-setpoints.yaml", resolved.manifest().sourcePath());
+    }
+
+    @Test void duplicateKindLastWins(@TempDir Path tmp) throws Exception {
+        Path repo = Files.createDirectories(tmp.resolve("repo"));
+        Path registry = tmp.resolve("registry");
+        Files.createDirectories(repo.resolve("model"));
+        Files.write(repo.resolve("model/recipe-setpoints.yaml"), "a: 1\n".getBytes(StandardCharsets.UTF_8));
+        run(repo, "git", "init", "-q");
+        run(repo, "git", "config", "user.email", "t@t"); run(repo, "git", "config", "user.name", "t");
+        run(repo, "git", "add", "."); run(repo, "git", "commit", "-q", "-m", "seed");
+
+        // two --kind flags: last one wins (deliberate design choice)
+        int code = RecipePublish.run(new String[]{ "--kind", "recipe-setpoints", registry.toString(), repo.toString(), "model/recipe-setpoints.yaml", "line1", "--kind", "master-spec" });
+        assertEquals(0, code);
+        var resolved = new RecipeDefinitionStore(registry).latest("line1").orElseThrow();
+        assertEquals("master-spec", resolved.manifest().kind(), "duplicate --kind must be last-wins");
+    }
+
     @Test void kindFlagWithoutValueIsUsageError(@TempDir Path tmp) throws Exception {
         Path registry = tmp.resolve("registry");
         int code = RecipePublish.run(new String[]{ registry.toString(), tmp.resolve("repo").toString(), "model/recipe-setpoints.yaml", "line1", "--kind" });

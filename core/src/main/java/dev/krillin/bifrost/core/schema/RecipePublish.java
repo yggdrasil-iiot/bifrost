@@ -15,13 +15,14 @@ import java.util.concurrent.TimeUnit;
 public final class RecipePublish {
 
     private static final String USAGE = "Usage: RecipePublish <registryDir> <sourceRepoDir> <sourcePath> <ref> [<version>] [--kind <kind>]";
+    private static final String DEFAULT_KIND = "recipe-setpoints";
 
     public static void main(String[] args) { System.exit(run(args)); }
 
     public static int run(String[] args) {
         // Scan out the position-independent --kind <value> flag, leaving only positionals behind.
         // --kind may appear at index 4 (no version) or index 5 (version given) — order-agnostic scan.
-        String kind = "recipe-setpoints";
+        String kind = DEFAULT_KIND;
         List<String> pos = new ArrayList<>();
         for (int i = 0; i < args.length; i++) {
             if ("--kind".equals(args[i])) {
