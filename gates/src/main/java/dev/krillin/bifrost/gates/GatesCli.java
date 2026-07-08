@@ -4,7 +4,7 @@ import java.util.Arrays;
 
 /**
  * Single dispatcher entrypoint for the Bifrost CI gate CLIs.
- * Usage: gates &lt;schema|policy|provenance&gt; &lt;args...&gt;
+ * Usage: gates &lt;schema|spec|policy|provenance&gt; &lt;args...&gt;
  */
 public final class GatesCli {
 
@@ -12,7 +12,7 @@ public final class GatesCli {
 
     public static int run(String[] args) {
         if (args.length == 0) {
-            System.err.println("Usage: gates <schema|policy|provenance> <args...>");
+            System.err.println("Usage: gates <schema|spec|policy|provenance> <args...>");
             return 2;
         }
         String sub = args[0];
@@ -20,6 +20,8 @@ public final class GatesCli {
         switch (sub) {
             case "schema":
                 return SchemaGate.run(rest);
+            case "spec":
+                return SpecGate.run(rest);
             case "policy":
                 return PolicyGate.run(rest);
             case "provenance":
