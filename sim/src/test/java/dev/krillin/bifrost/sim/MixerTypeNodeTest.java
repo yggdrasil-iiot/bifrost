@@ -14,6 +14,7 @@ import org.eclipse.milo.opcua.stack.core.types.builtin.DataValue;
 import org.eclipse.milo.opcua.stack.core.types.builtin.ExtensionObject;
 import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
 import org.eclipse.milo.opcua.stack.core.types.builtin.QualifiedName;
+import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
 import org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.UInteger;
 import org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.Unsigned;
 import org.eclipse.milo.opcua.stack.core.types.enumerated.BrowseDirection;
@@ -118,6 +119,32 @@ class MixerTypeNodeTest {
                 client.disconnect();
             }
         }
+    }
+
+    @Test
+    void applyRecipeHandshakeSetsAndRearmsDone() throws Exception {
+        try (EmbeddedMiloSim sim = new EmbeddedMiloSim().start()) {
+            OpcUaClient client = OpcUaClient.create("opc.tcp://localhost:" + EmbeddedMiloSim.BIND_PORT);
+            client.connect();
+            try {
+                // Rearmed baseline: done is false before any trigger.
+                assertEquals(Boolean.FALSE, readValue(client, "ns=2;s=Recipe/ApplyDone"));
+
+                // Rising edge: trigger -> true sets done -> true.
+                writeBoolean(client, "ns=2;s=Recipe/ApplyRecipe", true);
+                assertEquals(Boolean.TRUE, readValue(client, "ns=2;s=Recipe/ApplyDone"));
+
+                // Release: trigger -> false rearms done -> false.
+                writeBoolean(client, "ns=2;s=Recipe/ApplyRecipe", false);
+                assertEquals(Boolean.FALSE, readValue(client, "ns=2;s=Recipe/ApplyDone"));
+            } finally {
+                client.disconnect();
+            }
+        }
+    }
+
+    private static void writeBoolean(OpcUaClient client, String nodeId, boolean value) throws Exception {
+        client.writeValues(List.of(NodeId.parse(nodeId)), List.of(new DataValue(new Variant(value))));
     }
 
     private static Object readValue(OpcUaClient client, String nodeId) throws Exception {

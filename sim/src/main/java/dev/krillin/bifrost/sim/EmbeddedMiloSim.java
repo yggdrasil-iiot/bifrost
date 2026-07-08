@@ -40,8 +40,9 @@ import org.eclipse.milo.opcua.stack.transport.server.tcp.OpcTcpServerTransportCo
 /**
  * In-JVM embedded Milo OPC-UA server for the bifrost-local runtime gate: a minimal stand-in for
  * the D3/PLC endpoint Heimdall's {@code OpcUaApplier} writes to. Minimal by design — it exposes
- * only what the gate needs (one writable Double setpoint node), with no trigger/done handshake,
- * polling thread, or multi-node model. Targets Milo <b>1.0.0</b>'s server API directly (package
+ * writable Double setpoint nodes plus a single rising-edge activate handshake (a writable Boolean
+ * trigger + a sim-owned done flag) matching {@code OpcUaApplier.call()}; no polling thread or
+ * broader equipment model. Targets Milo <b>1.0.0</b>'s server API directly (package
  * layout, mandatory {@code OpcServerTransportFactory}, no bare {@code addUri} — a substantial
  * departure from the 0.6.12 server API), verified against the actual 1.0.0 jars.
  *
@@ -120,7 +121,10 @@ final class EmbeddedMiloSim implements AutoCloseable {
         }
     }
 
-    /** Internal namespace: exposes ns=2;s=Recipe/Rpm (and Recipe/Temp) as writable Doubles. */
+    /**
+     * Internal namespace: exposes ns=2;s=Recipe/Rpm (and Recipe/Temp) as writable Doubles, plus the
+     * ns=2;s=Recipe/ApplyRecipe trigger + ns=2;s=Recipe/ApplyDone rising-edge activate handshake.
+     */
     static final class SimNamespace extends ManagedNamespaceWithLifecycle {
 
         SimNamespace(OpcUaServer server) {
@@ -141,8 +145,37 @@ final class EmbeddedMiloSim implements AutoCloseable {
 
             makeDoubleNode("Recipe/Temp", "Temp", 0.0);
 
+            // Rising-edge activate handshake: ApplyRecipe is the writable Boolean TRIGGER, ApplyDone
+            // is the DONE flag the sim owns. Heimdall's OpcUaApplier.call() writes ApplyRecipe=true,
+            // polls ApplyDone until true (confirm), then writes ApplyRecipe=false to release/rearm.
+            UaVariableNode applyDone = makeBooleanNode("Recipe/ApplyDone", "ApplyDone", false);
+            makeBooleanNode("Recipe/ApplyRecipe", "ApplyRecipe", false)
+                    .addAttributeObserver((node, attributeId, value) -> {
+                        if (attributeId == AttributeId.Value) {
+                            Object v = value instanceof DataValue dv && dv.getValue() != null
+                                    ? dv.getValue().getValue()
+                                    : value;
+                            System.out.println("[SIM] SET ns=2;s=Recipe/ApplyRecipe = " + v);
+                            // Rising edge (trigger -> true) sets done; release (trigger -> false) rearms done.
+                            applyDone.setValue(new DataValue(new Variant(Boolean.TRUE.equals(v))));
+                        }
+                    });
+
             createMixerType();
             createMixerInstance();
+        }
+
+        private UaVariableNode makeBooleanNode(String identifier, String browseName, boolean initial) {
+            return new UaVariableNode.UaVariableNodeBuilder(getNodeContext())
+                    .setNodeId(newNodeId(identifier))
+                    .setBrowseName(newQualifiedName(browseName))
+                    .setDisplayName(LocalizedText.english(browseName))
+                    .setDataType(Identifiers.Boolean)
+                    .setTypeDefinition(Identifiers.BaseDataVariableType)
+                    .setAccessLevel(Unsigned.ubyte(3))
+                    .setUserAccessLevel(Unsigned.ubyte(3))
+                    .setValue(new DataValue(new Variant(initial)))
+                    .buildAndAdd();
         }
 
         private UaVariableNode makeDoubleNode(String identifier, String browseName, double initial) {
