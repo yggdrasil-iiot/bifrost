@@ -44,6 +44,14 @@
       <artifactId>junit-jupiter</artifactId>
       <scope>test</scope>
     </dependency>
+    <!-- Pinned explicitly: not in parent dependencyManagement. Used only to prove our own
+         serialization conforms to the published language-neutral JSON-Schema specs. -->
+    <dependency>
+      <groupId>com.networknt</groupId>
+      <artifactId>json-schema-validator</artifactId>
+      <version>1.5.1</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
 </project>

@@ -1,0 +1,76 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://bifrost.krillin.dev/schema/policy.schema.json",
+  "title": "Bifrost Command Policy",
+  "description": "Deny-by-default command authorization policy-as-code. Language-neutral — any consumer can validate a policy document against this schema without depending on Bifrost code.",
+  "type": "object",
+  "properties": {
+    "version": {
+      "description": "Policy document format version.",
+      "type": "string"
+    },
+    "rules": {
+      "description": "Ordered authorization rules; each rule is an implicit-allow candidate matched by principal/target/command.",
+      "type": "array",
+      "items": { "$ref": "#/definitions/rule" }
+    },
+    "default": {
+      "description": "Effect applied when no rule matches. Deny-by-default is the invariant: this must always be \"deny\".",
+      "type": "string",
+      "enum": ["deny"]
+    }
+  },
+  "required": ["version", "rules", "default"],
+  "additionalProperties": false,
+  "definitions": {
+    "rule": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Rule identifier.",
+          "type": "string"
+        },
+        "principal": {
+          "description": "Requesting principal (e.g. an HMI/SCADA identity) this rule authorizes.",
+          "type": "string"
+        },
+        "target": { "$ref": "#/definitions/target" },
+        "command": {
+          "description": "Command name this rule authorizes.",
+          "type": "string"
+        },
+        "constraint": {
+          "description": "Value-domain constraint on the command payload, or null for a trigger-only rule (only value=true is permitted).",
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/definitions/constraint" }
+          ]
+        }
+      },
+      "required": ["id", "principal", "target", "command", "constraint"],
+      "additionalProperties": false
+    },
+    "target": {
+      "description": "Command target. device is null for node-level commands. Wildcards (\"*\") are supported in group and edge.",
+      "type": "object",
+      "properties": {
+        "group": { "type": "string" },
+        "edge": { "type": "string" },
+        "device": { "type": ["string", "null"] }
+      },
+      "required": ["group", "edge", "device"],
+      "additionalProperties": false
+    },
+    "constraint": {
+      "description": "Value domain constraint. type is MetricDataType.toString() (e.g. \"Double\"). min/max are each optional; null means unbounded. Bounds are inclusive.",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string" },
+        "min": { "type": ["number", "null"] },
+        "max": { "type": ["number", "null"] }
+      },
+      "required": ["type", "min", "max"],
+      "additionalProperties": false
+    }
+  }
+}

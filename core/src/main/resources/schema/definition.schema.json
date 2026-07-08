@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://bifrost.krillin.dev/schema/definition.schema.json",
+  "title": "Bifrost UDT Definition",
+  "description": "Protocol-independent UDT data contract (Sparkplug Template-shaped): the unit of source of truth in the Bifrost registry. Language-neutral — any consumer can validate a definition document against this schema without depending on Bifrost code.",
+  "type": "object",
+  "properties": {
+    "templateRef": {
+      "description": "Reference to a parent template this UDT extends, or null if this is a root definition.",
+      "type": ["string", "null"]
+    },
+    "version": {
+      "description": "SemVer of this definition, serialized as a major.minor.patch string.",
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "members": {
+      "description": "UDT members (Sparkplug Template metrics).",
+      "type": "array",
+      "items": { "$ref": "#/definitions/namedType" }
+    },
+    "params": {
+      "description": "UDT template parameters.",
+      "type": "array",
+      "items": { "$ref": "#/definitions/namedType" }
+    }
+  },
+  "required": ["version", "members", "params"],
+  "additionalProperties": false,
+  "definitions": {
+    "namedType": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Member/param name.",
+          "type": "string"
+        },
+        "type": {
+          "description": "Type name, as returned by MetricDataType.toString() (members) or ParameterDataType.toString() (params), e.g. \"Double\", \"Boolean\", \"Int32\".",
+          "type": "string"
+        }
+      },
+      "required": ["name", "type"],
+      "additionalProperties": false
+    }
+  }
+}
