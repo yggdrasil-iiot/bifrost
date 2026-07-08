@@ -1,0 +1,1 @@
+{"templateRef":"Motor","version":"1.0.0","members":[{"name":"Rpm","type":"Double"},{"name":"Running","type":"Boolean"}],"params":[]}

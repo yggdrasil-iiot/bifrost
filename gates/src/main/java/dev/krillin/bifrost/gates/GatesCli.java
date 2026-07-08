@@ -23,9 +23,7 @@ public final class GatesCli {
             case "policy":
                 return PolicyGate.run(rest);
             case "provenance":
-                // TODO(Task 7): provenance -> ProvenancePublish.run(rest)
-                System.err.println("provenance subcommand not yet implemented");
-                return 2;
+                return ProvenancePublish.run(rest);
             default:
                 System.err.println("unknown subcommand: " + sub);
                 return 2;
