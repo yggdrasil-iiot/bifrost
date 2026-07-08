@@ -9,19 +9,33 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Mints a recipe version reference. The ONLY place git runs in the whole feature — once, at publish.
- * Usage: RecipePublish <registryDir> <sourceRepoDir> <sourcePathRelToRepo> <ref> [<version>]
+ * Usage: RecipePublish <registryDir> <sourceRepoDir> <sourcePathRelToRepo> <ref> [<version>] [--kind <kind>]
  * Exit: 0 published (or no-op re-publish), 1 refused (dirty / no commit), 2 error/usage.
  */
 public final class RecipePublish {
 
+    private static final String USAGE = "Usage: RecipePublish <registryDir> <sourceRepoDir> <sourcePath> <ref> [<version>] [--kind <kind>]";
+
     public static void main(String[] args) { System.exit(run(args)); }
 
     public static int run(String[] args) {
-        if (args.length < 4) { System.err.println("Usage: RecipePublish <registryDir> <sourceRepoDir> <sourcePath> <ref> [<version>]"); return 2; }
-        Path registry = Path.of(args[0]);
-        Path repo = Path.of(args[1]);
-        String sourcePath = args[2], ref = args[3];
-        String version = args.length > 4 ? args[4] : "1.0.0";
+        // Scan out the position-independent --kind <value> flag, leaving only positionals behind.
+        // --kind may appear at index 4 (no version) or index 5 (version given) — order-agnostic scan.
+        String kind = "recipe-setpoints";
+        List<String> pos = new ArrayList<>();
+        for (int i = 0; i < args.length; i++) {
+            if ("--kind".equals(args[i])) {
+                if (i + 1 >= args.length) { System.err.println("[PUBLISH] error: --kind requires a value\n" + USAGE); return 2; }
+                kind = args[++i];
+            } else {
+                pos.add(args[i]);
+            }
+        }
+        if (pos.size() < 4) { System.err.println(USAGE); return 2; }
+        Path registry = Path.of(pos.get(0));
+        Path repo = Path.of(pos.get(1));
+        String sourcePath = pos.get(2), ref = pos.get(3);
+        String version = pos.size() > 4 ? pos.get(4) : "1.0.0";
         try {
             String status = gitText(repo, "status", "--porcelain", "--", sourcePath);
             if (status == null) { System.err.println("[PUBLISH] error: git status failed"); return 2; }
@@ -33,7 +47,7 @@ public final class RecipePublish {
             if (blob == null) { System.err.println("[PUBLISH] error: git show failed"); return 2; }
             String sha256 = sha256hex(blob);
             RecipeManifest m = new RecipeDefinitionStore(registry)
-                    .publish(ref, version, blob, defRef, sha256, sourcePath, System.currentTimeMillis());
+                    .publish(kind, ref, version, blob, defRef, sha256, sourcePath, System.currentTimeMillis());
             System.out.println("[PUBLISH] recipe " + ref + "/" + m.version() + " defRef=" + defRef + " sha256=" + sha256);
             return 0;
         } catch (Exception e) { System.err.println("[PUBLISH] error: " + e.getMessage()); return 2; }

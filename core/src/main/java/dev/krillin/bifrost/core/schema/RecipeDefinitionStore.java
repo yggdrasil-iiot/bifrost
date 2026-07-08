@@ -22,7 +22,7 @@ public final class RecipeDefinitionStore {
 
     public record Resolved(Path canonicalPath, RecipeManifest manifest) {}
 
-    public RecipeManifest publish(String ref, String version, byte[] contentBytes,
+    public RecipeManifest publish(String kind, String ref, String version, byte[] contentBytes,
                                   String defRef, String contentSha256, String sourcePath, long atMillis) throws IOException {
         Path dir = root.resolve("recipe").resolve(ref).resolve(version);
         Path manifestFile = dir.resolve("manifest.json");
@@ -33,8 +33,10 @@ public final class RecipeDefinitionStore {
             return existing;
         }
         Files.createDirectories(dir);
+        // Wart: the canonical on-disk filename stays "recipe-setpoints.yaml" regardless of kind
+        // (acceptable for the skeleton — master-spec bytes also land in a file so named).
         Files.write(dir.resolve("recipe-setpoints.yaml"), contentBytes);
-        RecipeManifest m = new RecipeManifest("recipe-setpoints", ref, version, defRef, contentSha256, sourcePath, atMillis);
+        RecipeManifest m = new RecipeManifest(kind, ref, version, defRef, contentSha256, sourcePath, atMillis);
         mapper.writerWithDefaultPrettyPrinter().writeValue(manifestFile.toFile(), m);
         return m;
     }

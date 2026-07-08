@@ -55,6 +55,20 @@ class ProvenancePublishTest {
         assertEquals(0, verifyCode);
     }
 
+    @Test void kindFlagFlowsThroughPassThrough(@TempDir Path tmp) throws Exception {
+        byte[] content = "endpoint: x\nsetpoints: {rpm: 1500}\n".getBytes(StandardCharsets.UTF_8);
+        Path repo = seedRepo(tmp, content);
+        Path registry = tmp.resolve("registry");
+
+        int publishCode = ProvenancePublish.run(new String[]{
+                "publish", registry.toString(), repo.toString(), "model/recipe-setpoints.yaml", "line1", "--kind", "master-spec"
+        });
+        assertEquals(0, publishCode);
+
+        var resolved = new RecipeDefinitionStore(registry).latest("line1").orElseThrow();
+        assertEquals("master-spec", resolved.manifest().kind(), "--kind must flow through the provenance publish pass-through");
+    }
+
     @Test void verify_detectsTamper(@TempDir Path tmp) throws Exception {
         byte[] content = "endpoint: x\nsetpoints: {rpm: 1500}\n".getBytes(StandardCharsets.UTF_8);
         Path repo = seedRepo(tmp, content);
