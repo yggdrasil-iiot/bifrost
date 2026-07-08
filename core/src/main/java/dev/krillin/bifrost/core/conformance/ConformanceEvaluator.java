@@ -6,6 +6,13 @@ import dev.krillin.bifrost.core.schema.*;
  *  type, envelope (from model), cross-member (from policy), recipe (recipe-mode). Violations accumulate. */
 public final class ConformanceEvaluator {
 
+    /**
+     * Evaluate a candidate state against model + policy + active recipe. Notes on semantics:
+     * an ABSENT antecedent member means the cross-constraint is NOT triggered (design-time specs must
+     * enumerate the sibling in the evaluated state for the check to fire); the {@code eq} op is exact-double;
+     * the recipe tolerance band is {@code |target|*tol} (so target=0 ⇒ exact match required); recipe-mode
+     * only checks members that are present in the active recipe.
+     */
     public ConformanceVerdict evaluate(UdtDefinition def, ConformancePolicy policy,
             MasterSpec activeRecipe, List<Setpoint> state) {
         List<Violation> v = new ArrayList<>();
@@ -32,13 +39,19 @@ public final class ConformanceEvaluator {
         if (policy != null) {
             for (CrossConstraint c : policy.crossConstraints()) {
                 Double a = values.get(c.ifMember());
+                if (a == null) continue;                        // antecedent member not in state -> rule not triggered
+                if (!cmp(a, c.ifOp(), c.ifValue())) continue;   // antecedent false -> vacuously satisfied
                 Double b = values.get(c.thenMember());
-                if (a == null || b == null) continue;              // both members must be present in the state
-                if (cmp(a, c.ifOp(), c.ifValue()) && !cmp(b, c.thenOp(), c.thenValue())) {
+                if (b == null) {                                // antecedent holds but consequent unevaluable -> FAIL-CLOSED
+                    v.add(new Violation("conformance.cross." + c.id(),
+                        "cross-member " + c.id() + ": " + c.ifMember() + " " + c.ifOp() + " " + c.ifValue()
+                        + " holds but consequent member '" + c.thenMember() + "' is absent from the evaluated state (cannot verify)"));
+                    continue;
+                }
+                if (!cmp(b, c.thenOp(), c.thenValue())) {
                     v.add(new Violation("conformance.cross." + c.id(),
                         "cross-member " + c.id() + ": when " + c.ifMember() + " " + c.ifOp() + " " + c.ifValue()
-                        + ", require " + c.thenMember() + " " + c.thenOp() + " " + c.thenValue()
-                        + " (was " + b + ") — e.g. weld-lobe above-max"));
+                        + ", require " + c.thenMember() + " " + c.thenOp() + " " + c.thenValue() + " (was " + b + ")"));
                 }
             }
         }
