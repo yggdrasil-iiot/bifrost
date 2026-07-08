@@ -173,6 +173,20 @@ final class EmbeddedMiloSim implements AutoCloseable {
 
             createMixerType();
             createMixerInstance();
+
+            UaVariableNode weldCurrent = makeDoubleNode("Weld/WeldCurrent", "WeldCurrent", 0.0);
+            weldCurrent.addAttributeObserver((node, attributeId, value) -> {
+                if (attributeId == AttributeId.Value) {
+                    Object v = value instanceof DataValue dv && dv.getValue() != null
+                            ? dv.getValue().getValue()
+                            : value;
+                    System.out.println("[SIM] SET ns=2;s=Weld/WeldCurrent = " + v);
+                    transferToInstance("BodyShop/Weld1.WeldCurrent", v);
+                }
+            });
+
+            createWeldType();
+            createWeldInstance();
         }
 
         /**
@@ -268,6 +282,58 @@ final class EmbeddedMiloSim implements AutoCloseable {
             mixer1.addComponent(iTemp);
             mixer1.addComponent(iRun);
             mixer1.addComponent(iSec);
+        }
+
+        /**
+         * WeldControllerType ObjectType (ns=2;s=WeldControllerType): a weld controller's members
+         * (WeldCurrent, WeldTime, ElectrodeForce), each with an EURange engineering-range property.
+         * Mirrors {@link #createMixerType()} — exposed so the northbound app can browse the TYPE to
+         * derive a canonical spec definition for the downstream runtime conformance gate.
+         */
+        private void createWeldType() {
+            UaObjectTypeNode weldType = new UaObjectTypeNode.UaObjectTypeNodeBuilder(getNodeContext())
+                    .setNodeId(newNodeId("WeldControllerType"))
+                    .setBrowseName(newQualifiedName("WeldControllerType"))
+                    .setDisplayName(LocalizedText.english("WeldControllerType"))
+                    .setIsAbstract(false)
+                    .buildAndAdd();
+            // WeldControllerType is-subtype-of BaseObjectType (inverse HasSubtype); a browser walks this up.
+            weldType.addReference(new Reference(weldType.getNodeId(), Identifiers.HasSubtype,
+                    Identifiers.BaseObjectType.expanded(), false));
+
+            UaVariableNode current = typeMember("WeldControllerType.WeldCurrent", "WeldCurrent", Identifiers.Double, 0.0);
+            UaVariableNode time = typeMember("WeldControllerType.WeldTime", "WeldTime", Identifiers.Double, 0.0);
+            UaVariableNode force = typeMember("WeldControllerType.ElectrodeForce", "ElectrodeForce", Identifiers.Double, 0.0);
+            weldType.addComponent(current);
+            weldType.addComponent(time);
+            weldType.addComponent(force);
+            attachEuRange(current, "WeldControllerType.WeldCurrent.EURange", 0.0, 12.0);
+            attachEuRange(time, "WeldControllerType.WeldTime.EURange", 0.0, 500.0);
+            attachEuRange(force, "WeldControllerType.ElectrodeForce.EURange", 0.0, 6.0);
+        }
+
+        /**
+         * BodyShop/Weld1: a concrete weld controller instance typed by WeldControllerType, browsable
+         * under the Objects folder, with its three members seeded to static values. ElectrodeForce
+         * seeds to 2.5 (below the 3.0 weld-lobe threshold) so the downstream runtime gate's
+         * composition case triggers. Mirrors {@link #createMixerInstance()}.
+         */
+        private void createWeldInstance() {
+            UaObjectNode weld1 = new UaObjectNode.UaObjectNodeBuilder(getNodeContext())
+                    .setNodeId(newNodeId("BodyShop/Weld1"))
+                    .setBrowseName(newQualifiedName("Weld1"))
+                    .setDisplayName(LocalizedText.english("Weld1"))
+                    .setTypeDefinition(newNodeId("WeldControllerType"))
+                    .buildAndAdd();
+            // Browsable under the Objects folder (inverse Organizes).
+            weld1.addReference(new Reference(weld1.getNodeId(), Identifiers.Organizes,
+                    Identifiers.ObjectsFolder.expanded(), false));
+            UaVariableNode iCurrent = typeMember("BodyShop/Weld1.WeldCurrent", "WeldCurrent", Identifiers.Double, 6.0);
+            UaVariableNode iTime = typeMember("BodyShop/Weld1.WeldTime", "WeldTime", Identifiers.Double, 200.0);
+            UaVariableNode iForce = typeMember("BodyShop/Weld1.ElectrodeForce", "ElectrodeForce", Identifiers.Double, 2.5);
+            weld1.addComponent(iCurrent);
+            weld1.addComponent(iTime);
+            weld1.addComponent(iForce);
         }
 
         private UaVariableNode typeMember(String id, String name, NodeId dataType, Object initial) {
