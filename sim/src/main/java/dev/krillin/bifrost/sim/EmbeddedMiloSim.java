@@ -13,6 +13,7 @@ import org.eclipse.milo.opcua.sdk.server.OpcUaServerConfig;
 import org.eclipse.milo.opcua.sdk.server.identity.AnonymousIdentityValidator;
 import org.eclipse.milo.opcua.sdk.server.items.DataItem;
 import org.eclipse.milo.opcua.sdk.server.items.MonitoredItem;
+import org.eclipse.milo.opcua.sdk.server.nodes.UaObjectNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaObjectTypeNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaVariableNode;
 import org.eclipse.milo.opcua.stack.core.AttributeId;
@@ -141,6 +142,7 @@ final class EmbeddedMiloSim implements AutoCloseable {
             makeDoubleNode("Recipe/Temp", "Temp", 0.0);
 
             createMixerType();
+            createMixerInstance();
         }
 
         private UaVariableNode makeDoubleNode(String identifier, String browseName, double initial) {
@@ -183,6 +185,31 @@ final class EmbeddedMiloSim implements AutoCloseable {
             mixerType.addComponent(sec);
             attachEuRange(rpm, "MixerType.Rpm.EURange", 0.0, 3000.0);
             attachEuRange(temp, "MixerType.Temp.EURange", 0.0, 450.0);
+        }
+
+        /**
+         * Line1/Mixer1: a concrete Mixer instance typed by MixerType, browsable under the Objects
+         * folder, with its four members seeded to static values (no polling/update thread — the
+         * static seed is intentional and in scope for this gate).
+         */
+        private void createMixerInstance() {
+            UaObjectNode mixer1 = new UaObjectNode.UaObjectNodeBuilder(getNodeContext())
+                    .setNodeId(newNodeId("Line1/Mixer1"))
+                    .setBrowseName(newQualifiedName("Mixer1"))
+                    .setDisplayName(LocalizedText.english("Mixer1"))
+                    .setTypeDefinition(newNodeId("MixerType"))
+                    .buildAndAdd();
+            // Browsable under the Objects folder (inverse Organizes).
+            mixer1.addReference(new Reference(mixer1.getNodeId(), Identifiers.Organizes,
+                    Identifiers.ObjectsFolder.expanded(), false));
+            UaVariableNode iRpm = typeMember("Line1/Mixer1.Rpm", "Rpm", Identifiers.Double, 1535.0);
+            UaVariableNode iTemp = typeMember("Line1/Mixer1.Temp", "Temp", Identifiers.Double, 200.0);
+            UaVariableNode iRun = typeMember("Line1/Mixer1.Running", "Running", Identifiers.Boolean, true);
+            UaVariableNode iSec = typeMember("Line1/Mixer1.Secret", "Secret", Identifiers.Double, 42.0);
+            mixer1.addComponent(iRpm);
+            mixer1.addComponent(iTemp);
+            mixer1.addComponent(iRun);
+            mixer1.addComponent(iSec);
         }
 
         private UaVariableNode typeMember(String id, String name, NodeId dataType, Object initial) {

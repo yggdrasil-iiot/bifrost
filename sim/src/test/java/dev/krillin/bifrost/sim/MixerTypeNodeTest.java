@@ -95,6 +95,36 @@ class MixerTypeNodeTest {
         }
     }
 
+    @Test
+    void readMixerInstanceValues() throws Exception {
+        try (EmbeddedMiloSim sim = new EmbeddedMiloSim().start()) {
+            OpcUaClient client = OpcUaClient.create("opc.tcp://localhost:" + EmbeddedMiloSim.BIND_PORT);
+            client.connect();
+            try {
+                assertEquals(1535.0, readValue(client, "ns=2;s=Line1/Mixer1.Rpm"));
+                assertEquals(200.0, readValue(client, "ns=2;s=Line1/Mixer1.Temp"));
+                assertEquals(Boolean.TRUE, readValue(client, "ns=2;s=Line1/Mixer1.Running"));
+                assertEquals(42.0, readValue(client, "ns=2;s=Line1/Mixer1.Secret"));
+
+                BrowseResult membersResult = client.browse(new BrowseDescription(
+                        NodeId.parse("ns=2;s=Line1/Mixer1"), BrowseDirection.Forward,
+                        Identifiers.HasComponent, false, NODECLASS_ALL, RESULT_ALL));
+                Set<String> memberNames = new LinkedHashSet<>();
+                for (ReferenceDescription ref : safeRefs(membersResult)) {
+                    memberNames.add(ref.getBrowseName().getName());
+                }
+                assertEquals(Set.of("Rpm", "Temp", "Running", "Secret"), memberNames);
+            } finally {
+                client.disconnect();
+            }
+        }
+    }
+
+    private static Object readValue(OpcUaClient client, String nodeId) throws Exception {
+        DataValue dv = client.readValue(0.0, TimestampsToReturn.Neither, NodeId.parse(nodeId));
+        return dv.getValue() != null ? dv.getValue().getValue() : null;
+    }
+
     private static NodeId findEuRangeNodeId(OpcUaClient client, NodeId memberId) throws Exception {
         BrowseResult propsResult = client.browse(new BrowseDescription(
                 memberId, BrowseDirection.Forward, Identifiers.HasProperty, false,
