@@ -25,21 +25,21 @@ import dev.krillin.bifrost.core.acl.CommandPolicy;
  */
 class NcmdOpcUaBridgeTest {
 
-    private static final String GROUP = "Koshei:Line1";
+    private static final String GROUP = "Bifrost:Line1";
     private static final String EDGE = "recipe-edge";
     private static final String NCMD_TOPIC = "spBv1.0/" + GROUP + "/NCMD/" + EDGE;
-    private static final String QUERY_TOPIC = "koshei/" + GROUP + "/QUERY/" + EDGE;
+    private static final String QUERY_TOPIC = "bifrost/" + GROUP + "/QUERY/" + EDGE;
 
     private CommandPolicy policy() throws Exception {
         return AclMapperFactory.create()
-                .readValue(Path.of("registry/koshei-line1-policy.json").toFile(), CommandPolicy.class);
+                .readValue(Path.of("registry/policy.json").toFile(), CommandPolicy.class);
     }
 
     private NcmdOpcUaBridge bridge(Applier applier) throws Exception {
         return new NcmdOpcUaBridge(GROUP, EDGE, policy(), applier);
     }
 
-    /** Build a single-command-metric NCMD payload mirroring koshei's SpbCodec.encodeCommand. */
+    /** Build a single-command-metric NCMD payload per the bridge's wire contract. */
     private static SparkplugBPayload cmd(String cmdId, String op, String name, Object value,
                                          MetricDataType dt, String doneNode, Long timeoutMs) throws Exception {
         PropertySetBuilder pb = new PropertySetBuilder()

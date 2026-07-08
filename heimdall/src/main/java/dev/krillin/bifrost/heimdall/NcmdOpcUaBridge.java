@@ -26,15 +26,16 @@ import dev.krillin.bifrost.core.acl.Target;
 
 /**
  * Self-bridge: receives Sparkplug NCMD commands over MQTT, authorizes them deny-by-default at the
- * edge (independently of koshei's own D4 authorization), applies them to OPC-UA via an injected
- * {@link Applier}, confirms by read-back, and publishes a correlated Sparkplug NDATA response.
+ * edge, applies them to OPC-UA via an injected {@link Applier}, confirms by read-back, and
+ * publishes a correlated Sparkplug NDATA response.
  *
  * <p>The core is the pure, broker-free {@link #handle(String, SparkplugBPayload)} — unit-tested with
  * a fake applier + the real {@link CommandAuthorizer}/policy. The Paho wiring ({@link #connect},
  * {@link #messageArrived}) is a thin shell that decodes, dispatches {@code handle} off the callback
- * thread, and publishes the encoded response. The wire contract (property keys {@code op}/
+ * thread, and publishes the encoded response. The QUERY topic and response encoding follow
+ * Heimdall's own Sparkplug command/response wire contract: property keys {@code op}/
  * {@code doneNode}/{@code timeoutMs}, response metrics {@code ok}/{@code value}/{@code good}/
- * {@code detail}) mirrors koshei's {@code SpbCodec} byte-for-byte.
+ * {@code detail}.
  */
 public final class NcmdOpcUaBridge implements MqttCallback {
 
@@ -58,7 +59,7 @@ public final class NcmdOpcUaBridge implements MqttCallback {
         this.policy = policy;
         this.applier = applier;
         this.ncmdTopic = "spBv1.0/" + group + "/NCMD/" + edge;
-        this.queryTopic = "koshei/" + group + "/QUERY/" + edge;
+        this.queryTopic = "bifrost/" + group + "/QUERY/" + edge;
         this.ndataTopic = "spBv1.0/" + group + "/NDATA/" + edge;
     }
 
@@ -120,7 +121,7 @@ public final class NcmdOpcUaBridge implements MqttCallback {
     // ----- Paho shell (exercised only by the live gate) -----
 
     public void connect(String broker) throws Exception {
-        client = new MqttClient(broker, "koshei-ncmd-bridge", new MemoryPersistence());
+        client = new MqttClient(broker, "bifrost-ncmd-bridge", new MemoryPersistence());
         client.setCallback(this);
         MqttConnectOptions opts = new MqttConnectOptions();
         opts.setCleanSession(true);
@@ -158,7 +159,7 @@ public final class NcmdOpcUaBridge implements MqttCallback {
         }).start();
     }
 
-    /** Encode a response payload — mirrors koshei's SpbCodec.encodeResponse metric names/types. */
+    /** Encode a response payload per Heimdall's response wire contract (metric names/types below). */
     byte[] encodeResponse(NcmdResponse r) throws Exception {
         SparkplugBPayloadBuilder b = new SparkplugBPayloadBuilder()
                 .setUuid(r.cmdId())

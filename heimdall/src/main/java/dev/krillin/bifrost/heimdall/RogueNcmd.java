@@ -16,14 +16,15 @@ import org.eclipse.tahu.message.model.SparkplugBPayload;
 import org.eclipse.tahu.message.model.SparkplugBPayload.SparkplugBPayloadBuilder;
 
 /**
- * Rogue NCMD publisher — bypasses koshei entirely and publishes a single-command-metric Sparkplug
- * NCMD straight to the broker, to prove the bridge's edge authorization (deny-by-default + range)
- * denies commands koshei never issued. Used by {@code run-r2-ncmd-gate.sh} T3 (deny-by-default node)
- * and T4 (defense-in-depth: an allowed node but out-of-range value).
+ * Rogue NCMD publisher — bypasses any legitimate upstream writer entirely and publishes a
+ * single-command-metric Sparkplug NCMD straight to the broker, to prove the bridge's edge
+ * authorization (deny-by-default + range) denies commands no authorized writer ever issued. Used
+ * by the runtime NCMD gate's T3 (deny-by-default node) and T4 (defense-in-depth: an allowed node
+ * but out-of-range value).
  *
- * <p>Wire contract (mirrors koshei {@code SpbCodec}): one metric whose {@code name} = the OPC-UA
- * nodeId, {@code value}/{@code dataType} the setpoint, plus a payload uuid and an {@code op=write}
- * String property on the metric; published to {@code spBv1.0/<group>/NCMD/<edge>}.
+ * <p>Wire contract: one metric whose {@code name} = the OPC-UA nodeId, {@code value}/
+ * {@code dataType} the setpoint, plus a payload uuid and an {@code op=write} String property on
+ * the metric; published to {@code spBv1.0/<group>/NCMD/<edge>}.
  *
  * <p>args: {@code {nodeId, value, dataType}} — only {@code Double} is needed for the gate.
  * Run: {@code mvn -q compile exec:java -Dexec.mainClass=dev.krillin.bifrost.heimdall.RogueNcmd
@@ -38,7 +39,7 @@ public final class RogueNcmd {
         Object value = "Double".equals(dataType) ? Double.parseDouble(args[1]) : args[1];
 
         String broker = env("MQTT_URL", "tcp://localhost:1883");
-        String group = env("SPB_GROUP", "Koshei:Line1");
+        String group = env("SPB_GROUP", "Bifrost:Line1");
         String edge = env("SPB_EDGE", "recipe-edge");
         String topic = "spBv1.0/" + group + "/NCMD/" + edge;
         String uuid = UUID.randomUUID().toString();

@@ -21,8 +21,7 @@ import dev.krillin.bifrost.core.acl.AclMapperFactory;
 import dev.krillin.bifrost.core.acl.CommandPolicy;
 
 /**
- * Cross-repo wire-contract pin for the lab (bridge) side of the Sparkplug B NCMD command/response
- * format. It is the mirror of koshei's {@code WireContractTest} (Kotlin) and uses the IDENTICAL
+ * Wire-contract pin for the bridge side of the Sparkplug B NCMD command/response format, using
  * canonical cases (cmdId {@code vec-w1}/{@code vec-c1}/{@code vec-r1}, node {@code ns=2;s=Recipe/Rpm},
  * value {@code 1500.0}, doneNode {@code ns=2;s=Recipe/ApplyDone}, timeoutMs {@code 30000}...).
  *
@@ -38,26 +37,26 @@ import dev.krillin.bifrost.core.acl.CommandPolicy;
  *       {@code value}(String)/{@code good}(Boolean).</li>
  * </ul>
  * If the bridge renames a property key or a response metric name/type, THIS test goes RED at
- * unit-test time — instead of surfacing only as a T1 timeout at the live cross-repo gate.
+ * unit-test time — instead of surfacing only as a T1 timeout at the live runtime gate.
  */
 class NcmdWireContractTest {
 
-    private static final String GROUP = "Koshei:Line1";
+    private static final String GROUP = "Bifrost:Line1";
     private static final String EDGE = "recipe-edge";
     private static final String NCMD_TOPIC = "spBv1.0/" + GROUP + "/NCMD/" + EDGE;
-    private static final String QUERY_TOPIC = "koshei/" + GROUP + "/QUERY/" + EDGE;
+    private static final String QUERY_TOPIC = "bifrost/" + GROUP + "/QUERY/" + EDGE;
     private static final String NDATA_TOPIC = "spBv1.0/" + GROUP + "/NDATA/" + EDGE;
 
     private CommandPolicy policy() throws Exception {
         return AclMapperFactory.create()
-                .readValue(Path.of("registry/koshei-line1-policy.json").toFile(), CommandPolicy.class);
+                .readValue(Path.of("registry/policy.json").toFile(), CommandPolicy.class);
     }
 
     private NcmdOpcUaBridge bridge(Applier applier) throws Exception {
         return new NcmdOpcUaBridge(GROUP, EDGE, policy(), applier);
     }
 
-    /** Build a command payload INLINE, exactly mirroring koshei's SpbCodec.encodeCommand shape. */
+    /** Build a command payload INLINE, exactly matching the bridge's command wire-contract shape. */
     private static SparkplugBPayload cmd(String cmdId, String op, String name, Object value,
                                          MetricDataType dt, String doneNode, Long timeoutMs)
             throws Exception {
@@ -177,7 +176,7 @@ class NcmdWireContractTest {
     @Test void bridge_derives_the_pinned_topic_strings() throws Exception {
         // A QUERY-topic read bypasses authorization: this only holds if the bridge's queryTopic
         // equals the pinned QUERY string. An NCMD-topic write is authorized+applied. Together they
-        // pin that the bridge derives spBv1.0/{group}/NCMD and koshei/{group}/QUERY from group/edge.
+        // pin that the bridge derives spBv1.0/{group}/NCMD and bifrost/{group}/QUERY from group/edge.
         FakeApplier fake = new FakeApplier();
         assertTrue(bridge(fake).handle(QUERY_TOPIC,
                 cmd("vec-r1", "read", "ns=2;s=Recipe/Temp", null, MetricDataType.String, null, null)).ok());

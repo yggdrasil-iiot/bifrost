@@ -13,20 +13,19 @@ import dev.krillin.bifrost.core.acl.CommandRequest;
 import dev.krillin.bifrost.core.acl.Target;
 
 /**
- * The koshei-line1 edge policy is deny-by-default: only the three declared nodes
+ * The Bifrost:Line1 edge policy is deny-by-default: only the three declared nodes
  * (Rpm 0-3000, Temp 0-450, ApplyRecipe trigger-only) may be commanded, and only
- * within their value domain. Everything else is denied at the edge, independently
- * of koshei's own D4 authorization.
+ * within their value domain. Everything else is denied at the edge.
  */
 class NcmdBridgePolicyTest {
 
-    private static final Path POLICY = Path.of("registry/koshei-line1-policy.json");
+    private static final Path POLICY = Path.of("registry/policy.json");
 
     private CommandPolicy load() throws Exception {
         return AclMapperFactory.create().readValue(POLICY.toFile(), CommandPolicy.class);
     }
 
-    private static final Target T = new Target("Koshei:Line1", "recipe-edge", null);
+    private static final Target T = new Target("Bifrost:Line1", "recipe-edge", null);
 
     @Test void rpm_within_range_allowed() throws Exception {
         CommandAuthorizer a = new CommandAuthorizer();

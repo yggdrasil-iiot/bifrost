@@ -13,8 +13,7 @@ import org.eclipse.milo.opcua.stack.core.types.enumerated.TimestampsToReturn;
 /**
  * Milo 1.0.0 OPC-UA client implementation of {@link Applier} — the write leg the lab lacked.
  *
- * <p>Semantics are a direct port of koshei R1 {@code OpcUaApplyPort} (Kotlin, Milo 0.6.12) adapted
- * to the Milo 1.0.0 Java client, whose read/write/connect are <b>synchronous</b> and throw the
+ * <p>The Milo 1.0.0 Java client's read/write/connect are <b>synchronous</b> and throw the
  * checked {@link UaException} — there is no singular {@code writeValue} and no
  * {@code CompletableFuture.get(...)}: writes go through the batch {@code writeValues(List,List)}.
  *
@@ -93,7 +92,7 @@ public final class OpcUaApplier implements Applier {
                     // `done` for the next activate. Best-effort — the activation is already confirmed;
                     // a failed de-assert only annotates detail and is surfaced by the next call's
                     // baseline guard. We write only the trigger (our output), never the equipment's
-                    // done bit (often read-only). Ports koshei R1 OpcUaApplyPort.call (ON_RELEASE).
+                    // done bit (often read-only): apply the command value, then release the trigger.
                     String note;
                     try {
                         StatusCode dc = client.writeValues(
@@ -101,8 +100,8 @@ public final class OpcUaApplier implements Applier {
                                 List.of(new DataValue(new Variant(Boolean.FALSE)))).get(0);
                         note = dc.isGood() ? "" : " (warning: trigger de-assert not confirmed: " + dc + ")";
                     } catch (Exception e) {
-                        // Catch broadly (like R1 direct OpcUaApplyPort.call): a de-assert must NEVER fail
-                        // an already-confirmed activation, including on an unchecked throwable.
+                        // Catch broadly: a de-assert must NEVER fail an already-confirmed activation,
+                        // including on an unchecked throwable.
                         note = " (warning: trigger de-assert failed: " + e.getMessage() + ")";
                     }
                     return new Result(true, "rising-edge confirmed on " + doneNodeId + note);
