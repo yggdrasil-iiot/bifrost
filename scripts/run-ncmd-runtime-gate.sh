@@ -117,6 +117,8 @@ export OPCUA_URL="opc.tcp://localhost:48400"
 export SPB_GROUP="Bifrost:Line1"
 export SPB_EDGE="recipe-edge"
 export POLICY_PATH="$POLICY_PATH"
+export REGISTRY_PATH="$(cygpath -m "$(pwd)/heimdall/registry")"
+export CONFORMANCE_PATH="$(cygpath -m "$(pwd)/heimdall/registry/conformance/Line1-Mixer/1.0.0.json")"
 
 : > "$BRIDGE_LOG"
 java -jar "$HEIMDALL_JAR_WIN" >"$BRIDGE_LOG" 2>&1 &
