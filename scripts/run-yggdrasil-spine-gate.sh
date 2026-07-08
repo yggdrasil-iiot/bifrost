@@ -292,7 +292,7 @@ set +e
 java -jar "$GATES_JAR_WIN" provenance verify "$REGISTRY_WIN" MixProductA
 code=$?
 set -e
-[ "$code" -ne 0 ] || fail "provenance verify of a TAMPERED master-spec was accepted (exit 0) — expected reject"
+[ "$code" -eq 1 ] || fail "provenance verify of a TAMPERED master-spec returned $code — expected reject (exit 1 = content-hash mismatch; 2 would be an error, not a governance reject)"
 echo "[GATE] (c) OK: provenance ③ verify accepted clean, rejected tampered master-spec (exit $code)"
 
 # ---------------------------------------------------------------------------
