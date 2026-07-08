@@ -58,4 +58,20 @@ class SpecConformanceCheckerTest {
         assertTrue(v.conformant(), v.violations().toString());
         assertTrue(v.violations().stream().noneMatch(x -> x.rule().startsWith("spec.range")));
     }
+
+    @Test void singleSetpoint_accumulatesTypeAndRange_noShortCircuit() {
+        // One setpoint wrong on BOTH axes: Rpm is Double range [0,3000], setpoint is Int32 9999.
+        // A wrong-type value is still range-checked — deliberate no-short-circuit design.
+        SpecVerdict v = checker.check(mixer, spec(List.of(new Setpoint("Rpm", "Int32", 9999))));
+        assertFalse(v.conformant());
+        assertEquals(2, v.violations().size(), v.violations().toString());
+        assertTrue(v.violations().stream().anyMatch(x -> x.rule().equals("spec.type.mismatch")));
+        assertTrue(v.violations().stream().anyMatch(x -> x.rule().equals("spec.range.above-max")));
+    }
+
+    @Test void emptySetpoints_isVacuouslyConformant() {
+        SpecVerdict v = checker.check(mixer, spec(List.of()));
+        assertTrue(v.conformant());
+        assertTrue(v.violations().isEmpty());
+    }
 }
