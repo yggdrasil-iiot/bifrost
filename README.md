@@ -1,0 +1,1 @@
+Bifrost — a governance product for the IT↔OT boundary: schema-compat, deny-by-default command authz, and version provenance, as CI gates + a runtime write-boundary daemon (Heimdall). Consumers integrate via a published data/wire contract, never shared code.

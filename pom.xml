@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Bifrost — governance product for the IT<->OT boundary: schema-compat, deny-by-default
+  command authz, and version provenance, as CI gates + a runtime write-boundary daemon
+  (Heimdall). Parent POM: shared dependency/plugin version management for the three
+  modules (core, heimdall, gates).
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>dev.krillin.bifrost</groupId>
+  <artifactId>bifrost-parent</artifactId>
+  <version>0.1.0-SNAPSHOT</version>
+  <packaging>pom</packaging>
+  <name>Bifrost Parent</name>
+
+  <modules>
+    <module>core</module>
+    <module>heimdall</module>
+    <module>gates</module>
+  </modules>
+
+  <properties>
+    <maven.compiler.release>17</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+    <tahu.version>1.0.14</tahu.version>
+    <milo.version>1.0.0</milo.version>
+    <jackson.version>2.17.2</jackson.version>
+    <chicory.version>1.4.0</chicory.version>
+    <logback.version>1.3.14</logback.version>
+    <junit.version>5.10.3</junit.version>
+
+    <maven-surefire-plugin.version>3.2.5</maven-surefire-plugin.version>
+    <maven-shade-plugin.version>3.6.0</maven-shade-plugin.version>
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <!-- Sparkplug B encode/decode + model (Metric, SparkplugBPayload, UDT/Template, StatePayload) -->
+      <dependency>
+        <groupId>org.eclipse.tahu</groupId>
+        <artifactId>tahu-core</artifactId>
+        <version>${tahu.version}</version>
+      </dependency>
+      <!-- Edge node session machinery (bdSeq mgr, MQTT client wrapper, MetricHandler) -->
+      <dependency>
+        <groupId>org.eclipse.tahu</groupId>
+        <artifactId>tahu-edge</artifactId>
+        <version>${tahu.version}</version>
+      </dependency>
+      <!-- Host application machinery (STATE, rebirth, sequence-reorder, tag model) -->
+      <dependency>
+        <groupId>org.eclipse.tahu</groupId>
+        <artifactId>tahu-host</artifactId>
+        <version>${tahu.version}</version>
+      </dependency>
+
+      <!-- OPC UA client (Milo sdk-client) — southbound: browse/read/write an OPC UA server;
+           Heimdall's write-boundary enforcement point. -->
+      <dependency>
+        <groupId>org.eclipse.milo</groupId>
+        <artifactId>milo-sdk-client</artifactId>
+        <version>${milo.version}</version>
+      </dependency>
+
+      <!-- logging: Tahu uses slf4j + pulls logback-core 1.3.14 transitively.
+           Pin logback-classic to the SAME 1.3.x line (classic/core must match). -->
+      <dependency>
+        <groupId>ch.qos.logback</groupId>
+        <artifactId>logback-classic</artifactId>
+        <version>${logback.version}</version>
+      </dependency>
+
+      <!-- Schema registry / data-contract JSON (de)serialization. Declared directly rather
+           than relying on transitive versions; core/annotations/databind pinned together. -->
+      <dependency>
+        <groupId>com.fasterxml.jackson.core</groupId>
+        <artifactId>jackson-core</artifactId>
+        <version>${jackson.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.fasterxml.jackson.core</groupId>
+        <artifactId>jackson-annotations</artifactId>
+        <version>${jackson.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.fasterxml.jackson.core</groupId>
+        <artifactId>jackson-databind</artifactId>
+        <version>${jackson.version}</version>
+      </dependency>
+
+      <!-- Chicory: pure-JVM WebAssembly runtime, used to evaluate OPA-compiled-to-WASM
+           policies in-process (no sidecar). `wasm` = parser/module types; `runtime` =
+           Instance/Memory/HostFunction. -->
+      <dependency>
+        <groupId>com.dylibso.chicory</groupId>
+        <artifactId>wasm</artifactId>
+        <version>${chicory.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.dylibso.chicory</groupId>
+        <artifactId>runtime</artifactId>
+        <version>${chicory.version}</version>
+      </dependency>
+
+      <!-- JUnit 5 for the pure-logic test suites. -->
+      <dependency>
+        <groupId>org.junit.jupiter</groupId>
+        <artifactId>junit-jupiter</artifactId>
+        <version>${junit.version}</version>
+        <scope>test</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-surefire-plugin</artifactId>
+          <version>${maven-surefire-plugin.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-shade-plugin</artifactId>
+          <version>${maven-shade-plugin.version}</version>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+  </build>
+
+</project>
