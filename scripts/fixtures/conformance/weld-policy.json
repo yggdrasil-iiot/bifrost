@@ -1,0 +1,8 @@
+{
+  "version": "1.0.0",
+  "rules": [
+    { "id": "weld-current", "principal": "recipe-writer", "target": { "group": "Bifrost:Line1", "edge": "recipe-edge" },
+      "command": "ns=2;s=Weld/WeldCurrent", "constraint": { "type": "Double" } }
+  ],
+  "default": "deny"
+}

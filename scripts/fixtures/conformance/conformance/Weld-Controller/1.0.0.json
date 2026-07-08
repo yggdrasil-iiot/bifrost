@@ -1,0 +1,14 @@
+{
+  "policyRef": "Weld-Controller-policy",
+  "version": "1.0.0",
+  "equipmentRef": "Weld-Controller",
+  "equipmentVersion": "1.0.0",
+  "dial": { "mode": "envelope", "activeRecipeRef": null, "activeRecipeVersion": null, "recipeTolerance": null },
+  "crossConstraints": [
+    { "id": "weld-lobe", "ifMember": "ElectrodeForce", "ifOp": "lt", "ifValue": 3.0, "thenMember": "WeldCurrent", "thenOp": "le", "thenValue": 8.0 }
+  ],
+  "nodeBindings": [
+    { "opcNodeId": "ns=2;s=Weld/WeldCurrent", "readNodeId": null, "member": "WeldCurrent" },
+    { "opcNodeId": null, "readNodeId": "ns=2;s=BodyShop/Weld1.ElectrodeForce", "member": "ElectrodeForce" }
+  ]
+}

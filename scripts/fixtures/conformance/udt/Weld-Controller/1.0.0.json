@@ -1,0 +1,11 @@
+{
+  "templateRef": "Weld-Controller",
+  "version": "1.0.0",
+  "members": [
+    { "name": "WeldCurrent",    "type": "Double", "semanticId": "urn:bifrost:sem:Weld/WeldCurrent",    "range": { "low": 0, "high": 12 } },
+    { "name": "WeldTime",       "type": "Double", "semanticId": "urn:bifrost:sem:Weld/WeldTime",       "range": { "low": 0, "high": 500 } },
+    { "name": "ElectrodeForce", "type": "Double", "semanticId": "urn:bifrost:sem:Weld/ElectrodeForce", "range": { "low": 0, "high": 6 } }
+  ],
+  "params": [],
+  "conformsTo": null
+}
