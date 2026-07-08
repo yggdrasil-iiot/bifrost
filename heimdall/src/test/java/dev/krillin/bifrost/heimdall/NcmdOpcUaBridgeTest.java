@@ -177,6 +177,39 @@ class NcmdOpcUaBridgeTest {
         assertTrue(r.ok());
     }
 
+    @Test void bad_quality_sibling_read_is_denied_fail_closed() throws Exception {
+        // The antecedent (ElectrodeForce) live read fails/bad-quality => ② fail-closed => DENY, never applied.
+        FakeApplier fake = new FakeApplier();
+        fake.throwOnReadDoubleNode = FORCE_READ_NODE;   // Fix 1: bad-quality read must not be trusted
+        NcmdResponse r = weldBridge(fake).handle(NCMD_TOPIC,
+                cmd("w-4", "write", WELD_NODE, 7.0, MetricDataType.Double, null, null));
+        assertFalse(fake.writeCalled, "a write must NOT apply when the antecedent read failed");
+        assertFalse(r.ok());
+        assertTrue(r.detail().contains("conformance-error"), r.detail());
+    }
+
+    /** Policy whose ElectrodeForce binding has readNodeId=null — the antecedent can't be resolved. */
+    private ConformancePolicy weldPolicyUnresolvableSibling() {
+        return new ConformancePolicy("weld-lobe-policy", "1.0.0", "Weld-Controller", "1.0.0",
+                new ConformancePolicy.Dial("envelope", null, null, null),
+                List.of(new CrossConstraint("weld-lobe", "ElectrodeForce", "lt", 3.0, "WeldCurrent", "le", 8.0)),
+                List.of(new NodeBinding(WELD_NODE, null, "WeldCurrent"),
+                        new NodeBinding(null, null, "ElectrodeForce")));   // no readNodeId => unresolvable
+    }
+
+    @Test void unresolvable_antecedent_binding_is_denied_fail_closed() throws Exception {
+        // Fix 2: a needed cross-member with no numeric readNodeId cannot be verified => fail-closed DENY.
+        FakeApplier fake = new FakeApplier();
+        fake.readDoubleResult = 2.5;
+        NcmdOpcUaBridge bridge = new NcmdOpcUaBridge(GROUP, EDGE, weldAclPolicy(), fake,
+                weldDef(), weldPolicyUnresolvableSibling(), null);
+        NcmdResponse r = bridge.handle(NCMD_TOPIC,
+                cmd("w-5", "write", WELD_NODE, 7.0, MetricDataType.Double, null, null));
+        assertFalse(fake.writeCalled, "a write must NOT apply when a needed antecedent binding is unresolvable");
+        assertFalse(r.ok());
+        assertTrue(r.detail().contains("conformance-error"), r.detail());
+    }
+
     @Test void above_envelope_max_is_denied_by_conformance() throws Exception {
         // Authz allows 13 (max 100), but the governed envelope caps WeldCurrent at 12 ⇒ spec.range.above-max.
         FakeApplier fake = new FakeApplier();
@@ -197,6 +230,7 @@ class NcmdOpcUaBridgeTest {
         long lastCallTimeout;
         String lastReadDoubleNode;
         double readDoubleResult = 0.0;
+        String throwOnReadDoubleNode;   // if set, readDouble(node) throws (simulates a bad-quality/failed read)
         Result writeResult = new Result(true, "written+confirmed");
         Result callResult = new Result(true, "rising-edge confirmed");
         ReadBack readResult = new ReadBack("1500.0", true);
@@ -205,8 +239,11 @@ class NcmdOpcUaBridgeTest {
             readCalled = true;
             return readResult;
         }
-        @Override public double readDouble(String nodeId) {
+        @Override public double readDouble(String nodeId) throws Exception {
             lastReadDoubleNode = nodeId;
+            if (nodeId.equals(throwOnReadDoubleNode)) {
+                throw new Exception("readDouble bad quality " + nodeId);
+            }
             return readDoubleResult;
         }
         @Override public Result write(String nodeId, double value) {

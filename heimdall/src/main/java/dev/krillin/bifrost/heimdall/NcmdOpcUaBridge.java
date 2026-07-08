@@ -33,6 +33,7 @@ import dev.krillin.bifrost.core.conformance.ConformanceVerdict;
 import dev.krillin.bifrost.core.conformance.CrossConstraint;
 import dev.krillin.bifrost.core.conformance.NodeBinding;
 import dev.krillin.bifrost.core.schema.MasterSpec;
+import dev.krillin.bifrost.core.schema.Member;
 import dev.krillin.bifrost.core.schema.Setpoint;
 import dev.krillin.bifrost.core.schema.UdtDefinition;
 
@@ -141,7 +142,16 @@ public final class NcmdOpcUaBridge implements MqttCallback {
                     for (String sibMember : needed) {
                         NodeBinding sb = conformancePolicy.nodeBindings().stream()
                                 .filter(b -> sibMember.equals(b.member()) && b.readNodeId() != null).findFirst().orElse(null);
-                        if (sb != null) state.add(new Setpoint(sibMember, "Double", applier.readDouble(sb.readNodeId())));
+                        // Fail-closed: a needed cross-member with no numeric readNodeId cannot be verified,
+                        // so DON'T silently skip it (that would leave the antecedent absent => not-triggered => fail-open).
+                        if (sb == null) throw new IllegalStateException(
+                                "cross-constraint member '" + sibMember + "' has no readNodeId binding — cannot verify");
+                        // Derive the sibling's type from the governed model (not hardcoded "Double") so a
+                        // non-Double numeric sibling doesn't spuriously trip spec.type.mismatch.
+                        String sibType = conformanceDef.members().stream()
+                                .filter(dm -> dm.name().equals(sibMember)).map(Member::type)
+                                .findFirst().orElse("Double");
+                        state.add(new Setpoint(sibMember, sibType, applier.readDouble(sb.readNodeId())));
                     }
                     ConformanceVerdict cv = new ConformanceEvaluator()
                             .evaluate(conformanceDef, conformancePolicy, activeRecipe, state);
