@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+import org.eclipse.milo.opcua.sdk.core.Reference;
 import org.eclipse.milo.opcua.sdk.server.EndpointConfig;
 import org.eclipse.milo.opcua.sdk.server.ManagedNamespaceWithLifecycle;
 import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
@@ -12,6 +13,7 @@ import org.eclipse.milo.opcua.sdk.server.OpcUaServerConfig;
 import org.eclipse.milo.opcua.sdk.server.identity.AnonymousIdentityValidator;
 import org.eclipse.milo.opcua.sdk.server.items.DataItem;
 import org.eclipse.milo.opcua.sdk.server.items.MonitoredItem;
+import org.eclipse.milo.opcua.sdk.server.nodes.UaObjectTypeNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaVariableNode;
 import org.eclipse.milo.opcua.stack.core.AttributeId;
 import org.eclipse.milo.opcua.stack.core.Identifiers;
@@ -21,12 +23,15 @@ import org.eclipse.milo.opcua.stack.core.security.SecurityPolicy;
 import org.eclipse.milo.opcua.stack.core.transport.TransportProfile;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DataValue;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DateTime;
+import org.eclipse.milo.opcua.stack.core.types.builtin.ExtensionObject;
 import org.eclipse.milo.opcua.stack.core.types.builtin.LocalizedText;
+import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
 import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
 import org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.Unsigned;
 import org.eclipse.milo.opcua.stack.core.types.enumerated.MessageSecurityMode;
 import org.eclipse.milo.opcua.stack.core.types.enumerated.UserTokenType;
 import org.eclipse.milo.opcua.stack.core.types.structured.BuildInfo;
+import org.eclipse.milo.opcua.stack.core.types.structured.Range;
 import org.eclipse.milo.opcua.stack.core.types.structured.UserTokenPolicy;
 import org.eclipse.milo.opcua.stack.transport.server.tcp.OpcTcpServerTransport;
 import org.eclipse.milo.opcua.stack.transport.server.tcp.OpcTcpServerTransportConfig;
@@ -134,6 +139,8 @@ final class EmbeddedMiloSim implements AutoCloseable {
             });
 
             makeDoubleNode("Recipe/Temp", "Temp", 0.0);
+
+            createMixerType();
         }
 
         private UaVariableNode makeDoubleNode(String identifier, String browseName, double initial) {
@@ -147,6 +154,58 @@ final class EmbeddedMiloSim implements AutoCloseable {
                     .setUserAccessLevel(Unsigned.ubyte(3))
                     .setValue(new DataValue(new Variant(initial)))
                     .buildAndAdd();
+        }
+
+        /**
+         * MixerType ObjectType (ns=2;s=MixerType): a Mixer's members (Rpm, Temp, Running, Secret)
+         * plus EURange engineering-range properties on the numeric members (Rpm, Temp). Exposed so a
+         * future northbound "Mímir" app can browse the TYPE (not an instance) to derive a canonical
+         * spec definition.
+         */
+        private void createMixerType() {
+            UaObjectTypeNode mixerType = new UaObjectTypeNode.UaObjectTypeNodeBuilder(getNodeContext())
+                    .setNodeId(newNodeId("MixerType"))
+                    .setBrowseName(newQualifiedName("MixerType"))
+                    .setDisplayName(LocalizedText.english("MixerType"))
+                    .setIsAbstract(false)
+                    .buildAndAdd();
+            // MixerType is-subtype-of BaseObjectType (inverse HasSubtype); a browser walks this up.
+            mixerType.addReference(new Reference(mixerType.getNodeId(), Identifiers.HasSubtype,
+                    Identifiers.BaseObjectType.expanded(), false));
+
+            UaVariableNode rpm = typeMember("MixerType.Rpm", "Rpm", Identifiers.Double, 0.0);
+            UaVariableNode temp = typeMember("MixerType.Temp", "Temp", Identifiers.Double, 0.0);
+            UaVariableNode run = typeMember("MixerType.Running", "Running", Identifiers.Boolean, false);
+            UaVariableNode sec = typeMember("MixerType.Secret", "Secret", Identifiers.Double, 0.0);
+            mixerType.addComponent(rpm);
+            mixerType.addComponent(temp);
+            mixerType.addComponent(run);
+            mixerType.addComponent(sec);
+            attachEuRange(rpm, "MixerType.Rpm.EURange", 0.0, 3000.0);
+            attachEuRange(temp, "MixerType.Temp.EURange", 0.0, 450.0);
+        }
+
+        private UaVariableNode typeMember(String id, String name, NodeId dataType, Object initial) {
+            return new UaVariableNode.UaVariableNodeBuilder(getNodeContext())
+                    .setNodeId(newNodeId(id)).setBrowseName(newQualifiedName(name))
+                    .setDisplayName(LocalizedText.english(name))
+                    .setDataType(dataType).setTypeDefinition(Identifiers.BaseDataVariableType)
+                    .setAccessLevel(Unsigned.ubyte(1)).setUserAccessLevel(Unsigned.ubyte(1))
+                    .setValue(new DataValue(new Variant(initial))).buildAndAdd();
+        }
+
+        private void attachEuRange(UaVariableNode member, String id, double low, double high) {
+            ExtensionObject eu = ExtensionObject.encode(
+                    getNodeContext().getServer().getStaticEncodingContext(), new Range(low, high));
+            UaVariableNode euRange = new UaVariableNode.UaVariableNodeBuilder(getNodeContext())
+                    .setNodeId(newNodeId(id)).setBrowseName(newQualifiedName("EURange"))
+                    .setDisplayName(LocalizedText.english("EURange"))
+                    .setDataType(Identifiers.Range).setTypeDefinition(Identifiers.PropertyType)
+                    .setValue(new DataValue(new Variant(eu))).buildAndAdd();
+            // NB: UaNode.addProperty(...) is PACKAGE-PRIVATE (uncallable from this package) — wire
+            // HasProperty explicitly.
+            member.addReference(new Reference(member.getNodeId(), Identifiers.HasProperty,
+                    euRange.getNodeId().expanded(), /* forward */ true));
         }
 
         @Override
