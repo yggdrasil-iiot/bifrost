@@ -1,0 +1,3 @@
+{ "specRef": "MixProductA", "version": "1.0.0", "productDomain": "MixProductA",
+  "setpointIntents": [ { "key": "mixSpeed", "type": "Double", "value": 1500 },
+                       { "key": "mixTemp",  "type": "Double", "value": 200 } ] }
