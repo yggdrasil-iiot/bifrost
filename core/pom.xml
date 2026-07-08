@@ -8,12 +8,42 @@
     <groupId>dev.krillin.bifrost</groupId>
     <artifactId>bifrost-parent</artifactId>
     <version>0.1.0-SNAPSHOT</version>
+    <relativePath>../pom.xml</relativePath>
   </parent>
 
   <artifactId>bifrost-core</artifactId>
   <packaging>jar</packaging>
   <name>Bifrost Core</name>
 
-  <!-- Rule model + evaluators (schema-compat, authz, provenance). Populated in a later task. -->
+  <!-- Rule model + evaluators: schema-compat (schema/), deny-by-default command authz
+       (acl/), OPA-in-WASM policy evaluation (acl/opa/). Pure logic — no tahu/milo/kafka. -->
+
+  <dependencies>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-annotations</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.dylibso.chicory</groupId>
+      <artifactId>wasm</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.dylibso.chicory</groupId>
+      <artifactId>runtime</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
 
 </project>
