@@ -1,10 +1,12 @@
 package dev.krillin.bifrost.gates;
 
+import dev.krillin.bifrost.core.conformance.ConformanceEvaluator;
+import dev.krillin.bifrost.core.conformance.ConformancePolicy;
+import dev.krillin.bifrost.core.conformance.ConformancePolicyStore;
+import dev.krillin.bifrost.core.conformance.ConformanceVerdict;
 import dev.krillin.bifrost.core.schema.DefinitionStore;
 import dev.krillin.bifrost.core.schema.JsonMapperFactory;
 import dev.krillin.bifrost.core.schema.MasterSpec;
-import dev.krillin.bifrost.core.schema.SpecConformanceChecker;
-import dev.krillin.bifrost.core.schema.SpecVerdict;
 import dev.krillin.bifrost.core.schema.UdtDefinition;
 import dev.krillin.bifrost.core.schema.Violation;
 
@@ -43,16 +45,14 @@ public final class SpecGate {
             }
             UdtDefinition def = defOpt.get();
 
-            SpecVerdict v = new SpecConformanceChecker().check(def, spec);
-            System.out.println("[GATE] ref=" + spec.specRef()
-                    + " equipment=" + spec.equipmentRef() + "@" + spec.equipmentVersion()
-                    + " setpoints=" + spec.setpoints().size());
-            if (v.conformant()) {
-                System.out.println("[GATE] PASS ✅");
-                return 0;
-            }
+            ConformancePolicy policy = new ConformancePolicyStore()
+                    .loadFor(registryDir, def.templateRef(), def.version().toString()).orElse(null);
+            ConformanceVerdict verdict = new ConformanceEvaluator().evaluate(def, policy, null, spec.setpoints());
+            System.out.println("[GATE] ref=" + spec.specRef() + " equipment=" + spec.equipmentRef()
+                    + "@" + spec.equipmentVersion() + " setpoints=" + spec.setpoints().size());
+            if (verdict.ok()) { System.out.println("[GATE] PASS ✅"); return 0; }
             System.out.println("[GATE] FAIL ❌ — violations:");
-            for (Violation viol : v.violations()) System.out.println("  - [" + viol.rule() + "] " + viol.detail());
+            for (Violation viol : verdict.violations()) System.out.println("  - [" + viol.rule() + "] " + viol.detail());
             return 1;
         } catch (Exception e) {
             System.err.println("[GATE] error: " + e.getMessage());
