@@ -67,6 +67,21 @@ class SpecGateTest {
         assertEquals(2, SpecGate.run(new String[]{ root.toString() }));
     }
 
+    @Test void malformedMasterJson_returnsTwo(@TempDir Path root) throws Exception {
+        seedMixer(root);
+        Path f = root.resolve("malformed.json");
+        Files.writeString(f, "{ not valid json");
+        assertEquals(2, SpecGate.run(new String[]{ root.toString(), f.toString() }));
+    }
+
+    @Test void masterMissingEquipmentRef_returnsTwo(@TempDir Path root) throws Exception {
+        seedMixer(root);
+        Path f = root.resolve("no-equipment-ref.json");
+        Files.writeString(f, "{\"specRef\":\"Mix-Recipe\",\"version\":\"1.0.0\",\"site\":\"Busan\","
+                + "\"setpoints\":[{\"member\":\"Rpm\",\"type\":\"Double\",\"value\":1500}]}");
+        assertEquals(2, SpecGate.run(new String[]{ root.toString(), f.toString() }));
+    }
+
     @Test void equipmentNotInRegistry_returnsTwo(@TempDir Path root) throws Exception {
         seedMixer(root);
         MasterSpec spec = new MasterSpec("Mix-Recipe", "1.0.0", "Busan", "Line1-Mixer", "9.9.9",

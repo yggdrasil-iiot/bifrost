@@ -8,8 +8,8 @@ import dev.krillin.bifrost.core.schema.SpecVerdict;
 import dev.krillin.bifrost.core.schema.UdtDefinition;
 import dev.krillin.bifrost.core.schema.Violation;
 
-import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
 
 /**
  * Master-spec conformance gate for CI: checks that a {@link MasterSpec}'s setpoints are admissible
@@ -27,16 +27,21 @@ public final class SpecGate {
             System.err.println("Usage: SpecGate <registryDir> <masterSpecFile>");
             return 2;
         }
+        Path registryDir = Path.of(args[0]);
         try {
             MasterSpec spec = JsonMapperFactory.create().readValue(Path.of(args[1]).toFile(), MasterSpec.class);
-            Path defPath = Path.of(args[0]).resolve("udt")
-                    .resolve(spec.equipmentRef()).resolve(spec.equipmentVersion() + ".json");
-            if (!Files.exists(defPath)) {
+            if (spec.equipmentRef() == null || spec.equipmentVersion() == null) {
+                System.err.println("[GATE] error: master spec missing equipmentRef/equipmentVersion");
+                return 2;
+            }
+            Optional<UdtDefinition> defOpt =
+                    new DefinitionStore(registryDir).load(spec.equipmentRef(), spec.equipmentVersion());
+            if (defOpt.isEmpty()) {
                 System.err.println("[GATE] error: equipment " + spec.equipmentRef() + "@"
                         + spec.equipmentVersion() + " not in registry");
                 return 2;
             }
-            UdtDefinition def = new DefinitionStore(Path.of(args[0])).load(defPath);
+            UdtDefinition def = defOpt.get();
 
             SpecVerdict v = new SpecConformanceChecker().check(def, spec);
             System.out.println("[GATE] ref=" + spec.specRef()

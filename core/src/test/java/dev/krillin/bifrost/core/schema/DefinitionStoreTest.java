@@ -56,4 +56,12 @@ class DefinitionStoreTest {
         write(f, def);
         assertEquals(def, new DefinitionStore(root).load(f));
     }
+
+    @Test void loadPinned_returnsDefWhenPresentEmptyWhenAbsent(@TempDir Path root) throws Exception {
+        UdtDefinition def = new UdtDefinition("Motor", SemVer.parse("1.0.0"), List.of(new Member("Rpm", "Double", null, null)), List.of(), null);
+        write(root.resolve("udt/Motor/1.0.0.json"), def);
+        DefinitionStore store = new DefinitionStore(root);
+        assertEquals(def, store.load("Motor", "1.0.0").orElseThrow());
+        assertTrue(store.load("Motor", "9.9.9").isEmpty());
+    }
 }
