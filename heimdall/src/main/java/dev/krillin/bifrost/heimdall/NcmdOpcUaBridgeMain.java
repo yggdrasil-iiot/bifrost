@@ -74,10 +74,32 @@ public final class NcmdOpcUaBridgeMain {
                         + cp.equipmentRef() + "@" + cp.equipmentVersion()));
         MasterSpec recipe = null;
         if (cp.dial() != null && "recipe".equals(cp.dial().mode())) {
-            recipe = new MasterSpecStore()
-                    .load(registryDir, cp.dial().activeRecipeRef(), cp.dial().activeRecipeVersion())
-                    .orElseThrow(() -> new IllegalStateException("conformance active recipe not in registry: "
-                            + cp.dial().activeRecipeRef() + "@" + cp.dial().activeRecipeVersion()));
+            String ref = cp.dial().activeRecipeRef();
+            if (config.activationTarget() != null && !config.activationTarget().isBlank()) {
+                // governed activation: the ledger's active pointer (not the dial) picks the version; verify-then-trust.
+                java.nio.file.Path ledgerDir = (config.activationPath() != null && !config.activationPath().isBlank())
+                        ? java.nio.file.Path.of(config.activationPath()) : registryDir;
+                var active = new dev.krillin.bifrost.core.activation.ActivationLedger(ledgerDir)
+                        .active(config.activationTarget(), "recipe", ref)
+                        .orElseThrow(() -> new IllegalStateException("activation.edge.no-active-pointer: no active recipe for target "
+                                + config.activationTarget() + " ref " + ref));
+                java.nio.file.Path specFile = new MasterSpecStore().file(registryDir, ref, active.version());
+                if (!java.nio.file.Files.isRegularFile(specFile))
+                    throw new IllegalStateException("activation.edge.artifact-missing: " + specFile);
+                byte[] bytes = java.nio.file.Files.readAllBytes(specFile);      // verify BEFORE parse
+                String sha = dev.krillin.bifrost.core.activation.Sha256.hex(bytes);
+                if (!sha.equals(active.contentSha256()))
+                    throw new IllegalStateException("activation.edge.content-mismatch: ref " + ref + "@" + active.version()
+                            + " edge sha " + sha + " != approved " + active.contentSha256());
+                recipe = cmapper.readValue(bytes, MasterSpec.class);
+                System.out.println("[BRIDGE] activation bound " + ref + "@" + active.version()
+                        + " (approved by " + active.approvedBy() + ", sha256 " + sha + ")");
+            } else {
+                recipe = new MasterSpecStore()
+                        .load(registryDir, ref, cp.dial().activeRecipeVersion())
+                        .orElseThrow(() -> new IllegalStateException("conformance active recipe not in registry: "
+                                + ref + "@" + cp.dial().activeRecipeVersion()));
+            }
         }
         System.out.println("[BRIDGE] conformance loaded " + cp.equipmentRef() + "@" + cp.equipmentVersion()
                 + " dial=" + (cp.dial() == null ? "none" : cp.dial().mode()));
