@@ -1,0 +1,47 @@
+package dev.krillin.bifrost.core.activation;
+import java.time.Clock;
+import java.util.*;
+import dev.krillin.bifrost.core.schema.Violation;
+
+/** Governs the activation act: only resolvable+content-sealed bytes, four-eyes SoD, guarded rollback.
+ *  Fail-closed — any check fails ⇒ refuse, ledger untouched. */
+public final class ActivationService {
+    private final ArtifactResolver resolver;
+    private final ActivationLedger ledger;
+    private final Clock clock;
+    public ActivationService(ArtifactResolver resolver, ActivationLedger ledger, Clock clock) {
+        this.resolver = resolver; this.ledger = ledger; this.clock = clock;
+    }
+
+    public ActivationVerdict activate(ActivationRequest r) {
+        try {
+            var resolved = resolver.resolve(r.kind(), r.ref(), r.version());
+            if (resolved.isEmpty()) return refuse("activation.artifact.unresolved",
+                    r.kind() + " " + r.ref() + "@" + r.version() + " is not a resolvable governed artifact");
+            if (r.approvedBy() == null || r.approvedBy().isBlank())
+                return refuse("activation.approval.missing", "activation requires a distinct approver (--approved-by)");
+            if (r.approvedBy().equals(r.by()))
+                return refuse("activation.approval.self", "approver '" + r.by() + "' must differ from the activator (four-eyes)");
+            if (r.rollback() && !versionInHistory(r))
+                return refuse("activation.rollback.unknown-version",
+                        "cannot rollback to " + r.version() + " — never activated on target " + r.target());
+            String prior = ledger.active(r.target(), r.kind(), r.ref()).map(ActivationEvent::version).orElse(null);
+            ActivationEvent e = new ActivationEvent(r.target(), r.kind(), r.ref(), r.version(),
+                    resolved.get().sha256(), r.by(), r.approvedBy(), clock.millis(), prior,
+                    r.rollback() ? "ROLLBACK" : "ACTIVATE");
+            ledger.append(e);
+            return new ActivationVerdict(true, e, List.of());
+        } catch (Exception ex) {
+            return refuse("activation.error", ex.getMessage());
+        }
+    }
+
+    private boolean versionInHistory(ActivationRequest r) throws Exception {
+        for (ActivationEvent e : ledger.history(r.target()))
+            if (e.kind().equals(r.kind()) && e.ref().equals(r.ref()) && e.version().equals(r.version())) return true;
+        return false;
+    }
+    private static ActivationVerdict refuse(String rule, String detail) {
+        return new ActivationVerdict(false, null, List.of(new Violation(rule, detail)));
+    }
+}
