@@ -65,11 +65,14 @@ public final class ActivateGate {
 
     private static int log(String[] a) throws Exception {
         if (a.length < 2) { System.err.println("Usage: activation-log <reg> <target>"); return 2; }
-        List<ActivationEvent> hist = new ActivationLedger(Path.of(a[0])).history(a[1]);
+        List<LedgerEntry> hist = new ActivationLedger(Path.of(a[0])).history(a[1]);
         System.out.println("[GATE] activation-log target=" + a[1] + " events=" + hist.size());
-        for (ActivationEvent e : hist)
+        for (LedgerEntry en : hist) {
+            ActivationEvent e = en.event();
             System.out.println("  " + e.action() + " " + e.kind() + "/" + e.ref() + "@" + e.version()
-                + " by=" + e.activatedBy() + " approvedBy=" + e.approvedBy() + " prior=" + e.priorVersion() + " sha256=" + e.contentSha256());
+                + " by=" + e.activatedBy() + " approvedBy=" + e.approvedBy() + " prior=" + e.priorVersion()
+                + " sha256=" + e.contentSha256() + " entryHash=" + en.entryHash());
+        }
         return 0;
     }
 

@@ -17,25 +17,41 @@ public final class ActivationLedger {
     public void append(ActivationEvent e) throws IOException {
         Path f = file(e.target());
         Files.createDirectories(f.getParent());
-        Files.writeString(f, mapper.writeValueAsString(e) + "\n",
+        String prevHash = tailEntryHash(f);
+        LedgerEntry entry = new LedgerEntry(e, prevHash, LedgerChain.entryHash(e, prevHash));
+        Files.writeString(f, mapper.writeValueAsString(entry) + "\n",
                 StandardOpenOption.CREATE, StandardOpenOption.APPEND);
     }
 
-    public List<ActivationEvent> history(String target) throws IOException {
+    /** The prevHash for the next append = the last entry's entryHash (GENESIS if the ledger is empty).
+     *  Reads the file tail only; does NOT re-verify the whole chain on every append (spec §7). */
+    private String tailEntryHash(Path f) throws IOException {
+        if (!Files.isRegularFile(f)) return LedgerChain.GENESIS;
+        String last = null;
+        for (String line : Files.readAllLines(f)) if (!line.isBlank()) last = line;
+        return last == null ? LedgerChain.GENESIS : mapper.readValue(last, LedgerEntry.class).entryHash();
+    }
+
+    public List<LedgerEntry> history(String target) throws IOException {
         Path f = file(target);
         if (!Files.isRegularFile(f)) return List.of();
-        List<ActivationEvent> out = new ArrayList<>();
+        List<LedgerEntry> out = new ArrayList<>();
         for (String line : Files.readAllLines(f)) {
-            if (!line.isBlank()) out.add(mapper.readValue(line, ActivationEvent.class));
+            if (!line.isBlank()) out.add(mapper.readValue(line, LedgerEntry.class));
         }
         return out;
     }
 
     public Optional<ActivationEvent> active(String target, String kind, String ref) throws IOException {
         ActivationEvent found = null;
-        for (ActivationEvent e : history(target)) {
+        for (LedgerEntry en : history(target)) {
+            ActivationEvent e = en.event();
             if (e.kind().equals(kind) && e.ref().equals(ref)) found = e;   // last match wins
         }
         return Optional.ofNullable(found);
+    }
+
+    public ChainVerdict verifyChain(String target) throws IOException {
+        return LedgerChain.verify(history(target));
     }
 }

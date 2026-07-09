@@ -37,8 +37,10 @@ public final class ActivationService {
     }
 
     private boolean versionInHistory(ActivationRequest r) throws Exception {
-        for (ActivationEvent e : ledger.history(r.target()))
+        for (LedgerEntry en : ledger.history(r.target())) {
+            ActivationEvent e = en.event();
             if (e.kind().equals(r.kind()) && e.ref().equals(r.ref()) && e.version().equals(r.version())) return true;
+        }
         return false;
     }
     private static ActivationVerdict refuse(String rule, String detail) {
