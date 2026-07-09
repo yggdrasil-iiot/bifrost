@@ -54,4 +54,15 @@ class LoadConformanceActivationTest {
         var ex = assertThrows(Exception.class, () -> NcmdOpcUaBridgeMain.loadConformance(cfg()));
         assertTrue(ex.getMessage().contains("activation.edge.content-mismatch"));
     }
+    @Test void brokenLedgerChainFailsClosed() throws Exception {
+        activate("1.0.0");
+        // out-of-band tamper: editing approvedBy on entry-0's raw JSONL line breaks its self-hash
+        // (approvedBy "bob" occurs once), so verifyChain fails BEFORE the active pointer is read.
+        Path f = reg.resolve("activation").resolve("Line1.jsonl");
+        List<String> lines = Files.readAllLines(f);
+        lines.set(0, lines.get(0).replace("\"bob\"", "\"eve\""));
+        Files.write(f, lines);
+        var ex = assertThrows(Exception.class, () -> NcmdOpcUaBridgeMain.loadConformance(cfg()));
+        assertTrue(ex.getMessage().contains("activation.edge.ledger-chain-broken"), ex.getMessage());
+    }
 }

@@ -79,7 +79,13 @@ public final class NcmdOpcUaBridgeMain {
                 // governed activation: the ledger's active pointer (not the dial) picks the version; verify-then-trust.
                 java.nio.file.Path ledgerDir = (config.activationPath() != null && !config.activationPath().isBlank())
                         ? java.nio.file.Path.of(config.activationPath()) : registryDir;
-                var active = new dev.krillin.bifrost.core.activation.ActivationLedger(ledgerDir)
+                dev.krillin.bifrost.core.activation.ActivationLedger ledger =
+                        new dev.krillin.bifrost.core.activation.ActivationLedger(ledgerDir);
+                dev.krillin.bifrost.core.activation.ChainVerdict chain = ledger.verifyChain(config.activationTarget());
+                if (!chain.intact())
+                    throw new IllegalStateException("activation.edge.ledger-chain-broken: target "
+                            + config.activationTarget() + " index " + chain.brokenIndex() + " rule " + chain.rule());
+                var active = ledger
                         .active(config.activationTarget(), "recipe", ref)
                         .orElseThrow(() -> new IllegalStateException("activation.edge.no-active-pointer: no active recipe for target "
                                 + config.activationTarget() + " ref " + ref));
