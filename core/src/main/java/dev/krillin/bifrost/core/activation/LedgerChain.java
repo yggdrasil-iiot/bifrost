@@ -9,7 +9,11 @@ import java.util.List;
  *  preimage is an explicit, ordered, delimiter-joined field concatenation (NOT JSON) so the writer and
  *  every verifier hash byte-for-byte identical input regardless of serialization stability.
  *  If a field is ever added to ActivationEvent, it MUST be added to preimage() below (spec §4.2) or new
- *  events would be left un-chained on that field. */
+ *  events would be left un-chained on that field.
+ *  LIMITATION (spec §9): the preimage assumes field values never contain the SEP (0x1F) delimiter or the
+ *  NULL_SENTINEL sequence; this is not enforced. A malicious *writer* injecting a delimiter to force a
+ *  preimage collision is outside T4's threat model (tamper-evidence of the recorded history against
+ *  retroactive edits) — that authenticity gap is closed by T5 signed/authenticated writes. */
 public final class LedgerChain {
     private LedgerChain() {}
 

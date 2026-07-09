@@ -88,7 +88,7 @@ public final class ActivateGate {
         ActivationLedger ledger = new ActivationLedger(reg);
         java.util.List<LedgerEntry> hist = ledger.history(target);
         if (hist.isEmpty()) { System.err.println("[GATE] verify-chain: no such target ledger: " + target); return 2; }
-        ChainVerdict v = ledger.verifyChain(target);
+        ChainVerdict v = LedgerChain.verify(hist);   // verify the already-read history (avoid a 2nd file read)
         if (v.intact()) {
             System.out.println("[GATE] verify-chain target=" + target + " entries=" + hist.size() + " => INTACT");
             return 0;

@@ -5,8 +5,12 @@ import java.io.IOException;
 import java.nio.file.*;
 import java.util.*;
 
-/** Append-only JSONL audit ledger at registry/activation/<target>.jsonl. The LAST event per (kind,ref)
- *  is the current active pointer. Single control-plane writer (no concurrent-writer coordination). */
+/** Append-only, hash-chained JSONL audit ledger at registry/activation/<target>.jsonl. Each line is a
+ *  {@link LedgerEntry} (event + prevHash + entryHash) linking to the prior line, so the whole target
+ *  history is tamper-evident (see {@link LedgerChain}). The LAST event per (kind,ref) is the current
+ *  active pointer. Single control-plane writer (no concurrent-writer coordination).
+ *  Line shape is LedgerEntry, not a flat ActivationEvent — registries are gate-regenerated, so there is
+ *  no legacy flat-line data to migrate (a legacy flat line would fail to parse; see spec §9). */
 public final class ActivationLedger {
     private final Path root;
     private final ObjectMapper mapper = JsonMapperFactory.create();
@@ -24,7 +28,8 @@ public final class ActivationLedger {
     }
 
     /** The prevHash for the next append = the last entry's entryHash (GENESIS if the ledger is empty).
-     *  Reads the file tail only; does NOT re-verify the whole chain on every append (spec §7). */
+     *  Reads the whole file to take the last non-blank line (O(n) read), but does NOT re-verify the chain
+     *  per append — a pre-existing break is caught by verifyChain / the Heimdall edge, not here (spec §7). */
     private String tailEntryHash(Path f) throws IOException {
         if (!Files.isRegularFile(f)) return LedgerChain.GENESIS;
         String last = null;
