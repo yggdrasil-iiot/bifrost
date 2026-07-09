@@ -1,0 +1,11 @@
+{
+  "policyRef": "Line1-Mixer-policy",
+  "version": "1.0.0",
+  "equipmentRef": "Line1-Mixer",
+  "equipmentVersion": "1.0.0",
+  "dial": { "mode": "recipe", "activeRecipeRef": "mix-recipe", "activeRecipeVersion": "0.0.0", "recipeTolerance": 0.0 },
+  "crossConstraints": [],
+  "nodeBindings": [
+    { "opcNodeId": "ns=2;s=Recipe/Rpm", "readNodeId": null, "member": "Rpm" }
+  ]
+}
