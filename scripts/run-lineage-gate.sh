@@ -41,6 +41,7 @@ COMPOSE_WIN=""
 
 # ---------------------------------------------------------------------------
 command -v docker >/dev/null 2>&1 || { echo "[LINEAGE] FAIL: docker not found on PATH — Docker Desktop is required for the MQTT broker"; exit 1; }
+command -v python >/dev/null 2>&1 || { echo "[LINEAGE] FAIL: python not found on PATH"; exit 1; }
 
 fail() {
   echo "[LINEAGE] FAIL: $*"
@@ -166,6 +167,7 @@ echo "[LINEAGE] LN1b: activation-log shows both entries (events=2)"
 
 # raw-ledger chain assertion (prevHash is not projected by activation-log): entry#1 prevHash==GENESIS,
 # entry#2 prevHash==entry#1 entryHash. Fail-closed via python exit code.
+set +e
 GENESIS="$GENESIS" python - "$LEDGER" <<'PY'
 import sys, os, json
 p=sys.argv[1]; ls=[l for l in open(p,encoding='utf-8').read().splitlines() if l.strip()]
@@ -176,7 +178,9 @@ assert e0["prevHash"]==gen, f"entry#1 prevHash {e0['prevHash']} != GENESIS"
 assert e1["prevHash"]==e0["entryHash"], f"entry#2 prevHash {e1['prevHash']} != entry#1 entryHash {e0['entryHash']}"
 print("[LINEAGE] LN1c: raw ledger chained - entry#1 prevHash==GENESIS, entry#2 prevHash==entry#1 entryHash")
 PY
-[ $? -eq 0 ] || fail "LN1 raw-ledger chain assertion failed"
+rc=$?
+set -e
+[ "$rc" -eq 0 ] || fail "LN1 raw-ledger chain assertion failed"
 echo "[LINEAGE] LN1 chain intact + audited => PASS"
 
 # ---------------------------------------------------------------------------
