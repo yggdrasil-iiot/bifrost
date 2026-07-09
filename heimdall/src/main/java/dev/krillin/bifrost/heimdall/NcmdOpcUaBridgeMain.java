@@ -33,7 +33,7 @@ public final class NcmdOpcUaBridgeMain {
 
     /** Resolved runtime configuration — a testable seam around the env lookups below. */
     record Config(String broker, String opcua, String group, String edge, String policyPath,
-                  String registryPath, String conformancePath) {}
+                  String registryPath, String conformancePath, String activationPath, String activationTarget) {}
 
     static Config resolve(Function<String, String> getenv) {
         String broker = env(getenv, "MQTT_URL", "tcp://localhost:1883");
@@ -43,7 +43,9 @@ public final class NcmdOpcUaBridgeMain {
         String policyPath = env(getenv, "POLICY_PATH", "registry/policy.json");
         String registryPath = env(getenv, "REGISTRY_PATH", "registry");
         String conformancePath = env(getenv, "CONFORMANCE_PATH", null);
-        return new Config(broker, opcua, group, edge, policyPath, registryPath, conformancePath);
+        String activationPath = env(getenv, "ACTIVATION_PATH", null);
+        String activationTarget = env(getenv, "ACTIVATION_TARGET", null);
+        return new Config(broker, opcua, group, edge, policyPath, registryPath, conformancePath, activationPath, activationTarget);
     }
 
     /**
