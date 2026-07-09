@@ -18,9 +18,14 @@ public final class MasterSpecStore {
 
     private final ObjectMapper mapper = JsonMapperFactory.create();
 
+    /** Pure path of the pinned recipe artifact: {@code <registryDir>/spec/<ref>/<version>.json}. */
+    public Path file(Path registryDir, String ref, String version) {
+        return registryDir.resolve("spec").resolve(ref).resolve(version + ".json");
+    }
+
     /** Loads the pinned recipe at spec/&lt;ref&gt;/&lt;version&gt;.json, or empty if that file does not exist. */
     public Optional<MasterSpec> load(Path registryDir, String ref, String version) throws IOException {
-        Path file = registryDir.resolve("spec").resolve(ref).resolve(version + ".json");
+        Path file = file(registryDir, ref, version);
         if (!Files.isRegularFile(file)) return Optional.empty();
         return Optional.of(mapper.readValue(file.toFile(), MasterSpec.class));
     }

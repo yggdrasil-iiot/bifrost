@@ -37,4 +37,18 @@ class MasterSpecStoreTest {
     @Test void absentFile_returnsEmpty(@TempDir Path registryDir) throws Exception {
         assertTrue(store.load(registryDir, "Mix-Recipe", "1.0.0").isEmpty());
     }
+
+    @Test void fileResolvesPerVersionPath(@TempDir Path reg) throws Exception {
+        Path f = new MasterSpecStore().file(reg, "mix-recipe", "1.0.0");
+        assertEquals(reg.resolve("spec").resolve("mix-recipe").resolve("1.0.0.json"), f);
+    }
+
+    @Test void loadRoundTripsAtThatPath(@TempDir Path reg) throws Exception {
+        MasterSpec spec = new MasterSpec("mix-recipe", "1.0.0", "Line1", "Line1-Mixer", "1.0.0",
+                List.of(new Setpoint("Rpm", "Double", 1500)));
+        Path f = new MasterSpecStore().file(reg, "mix-recipe", "1.0.0");
+        Files.createDirectories(f.getParent());
+        JsonMapperFactory.create().writeValue(f.toFile(), spec);
+        assertEquals(spec, new MasterSpecStore().load(reg, "mix-recipe", "1.0.0").orElseThrow());
+    }
 }
