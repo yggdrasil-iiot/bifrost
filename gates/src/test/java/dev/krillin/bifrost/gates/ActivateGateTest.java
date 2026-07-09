@@ -39,4 +39,26 @@ class ActivateGateTest {
         run("activate", reg.toString(), "Line1","recipe","mix-recipe","1.0.0","--by","alice","--approved-by","bob");
         assertEquals(0, run("activation-log", reg.toString(), "Line1"));
     }
+
+    @Test void verify_chain_intact_exit0(@TempDir java.nio.file.Path reg) throws Exception {
+        var ledger = new dev.krillin.bifrost.core.activation.ActivationLedger(reg);
+        ledger.append(new dev.krillin.bifrost.core.activation.ActivationEvent("Line1","recipe","mix","1.0.0","shaA","alice","bob",1L,null,"ACTIVATE"));
+        ledger.append(new dev.krillin.bifrost.core.activation.ActivationEvent("Line1","recipe","mix","1.1.0","shaB","alice","bob",2L,"1.0.0","ACTIVATE"));
+        assertEquals(0, ActivateGate.run(new String[]{"activation","verify-chain", reg.toString(), "Line1"}));
+        assertEquals(0, GatesCli.run(new String[]{"activation","verify-chain", reg.toString(), "Line1"}));
+    }
+
+    @Test void verify_chain_tampered_exit1(@TempDir java.nio.file.Path reg) throws Exception {
+        var ledger = new dev.krillin.bifrost.core.activation.ActivationLedger(reg);
+        ledger.append(new dev.krillin.bifrost.core.activation.ActivationEvent("Line1","recipe","mix","1.0.0","shaA","alice","bob",1L,null,"ACTIVATE"));
+        java.nio.file.Path f = reg.resolve("activation").resolve("Line1.jsonl");
+        java.util.List<String> lines = java.nio.file.Files.readAllLines(f);
+        lines.set(0, lines.get(0).replace("\"bob\"","\"eve\""));
+        java.nio.file.Files.write(f, lines);
+        assertEquals(1, ActivateGate.run(new String[]{"activation","verify-chain", reg.toString(), "Line1"}));
+    }
+
+    @Test void verify_chain_no_such_target_exit2(@TempDir java.nio.file.Path reg) throws Exception {
+        assertEquals(2, ActivateGate.run(new String[]{"activation","verify-chain", reg.toString(), "Nope"}));
+    }
 }
