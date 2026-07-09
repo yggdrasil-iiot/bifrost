@@ -15,9 +15,9 @@ class DefinitionStoreTest {
     }
 
     @Test void latest_picksHighestSemVer(@TempDir Path root) throws Exception {
-        UdtDefinition v100 = new UdtDefinition("Motor", SemVer.parse("1.0.0"), List.of(new Member("Rpm","Double")), List.of());
-        UdtDefinition v110 = new UdtDefinition("Motor", SemVer.parse("1.10.0"), List.of(new Member("Rpm","Double")), List.of());
-        UdtDefinition v19  = new UdtDefinition("Motor", SemVer.parse("1.9.0"),  List.of(new Member("Rpm","Double")), List.of());
+        UdtDefinition v100 = new UdtDefinition("Motor", SemVer.parse("1.0.0"), List.of(new Member("Rpm", "Double", null, null)), List.of(), null);
+        UdtDefinition v110 = new UdtDefinition("Motor", SemVer.parse("1.10.0"), List.of(new Member("Rpm", "Double", null, null)), List.of(), null);
+        UdtDefinition v19  = new UdtDefinition("Motor", SemVer.parse("1.9.0"),  List.of(new Member("Rpm", "Double", null, null)), List.of(), null);
         write(root.resolve("udt/Motor/1.0.0.json"), v100);
         write(root.resolve("udt/Motor/1.10.0.json"), v110);
         write(root.resolve("udt/Motor/1.9.0.json"), v19);
@@ -34,7 +34,7 @@ class DefinitionStoreTest {
 
     @Test void promote_writesVersionedFile(@TempDir Path root) throws Exception {
         DefinitionStore store = new DefinitionStore(root);
-        UdtDefinition def = new UdtDefinition("Motor2", SemVer.parse("2.0.0"), List.of(new Member("Rpm","Double")), List.of());
+        UdtDefinition def = new UdtDefinition("Motor2", SemVer.parse("2.0.0"), List.of(new Member("Rpm", "Double", null, null)), List.of(), null);
         store.promote(def);
         Path expected = root.resolve("udt/Motor2/2.0.0.json");
         assertTrue(Files.exists(expected));
@@ -51,9 +51,17 @@ class DefinitionStoreTest {
     }
 
     @Test void load_readsDefinitionFile(@TempDir Path root) throws Exception {
-        UdtDefinition def = new UdtDefinition("Motor", SemVer.parse("1.0.0"), List.of(new Member("Rpm","Double")), List.of());
+        UdtDefinition def = new UdtDefinition("Motor", SemVer.parse("1.0.0"), List.of(new Member("Rpm", "Double", null, null)), List.of(), null);
         Path f = root.resolve("proposed.json");
         write(f, def);
         assertEquals(def, new DefinitionStore(root).load(f));
+    }
+
+    @Test void loadPinned_returnsDefWhenPresentEmptyWhenAbsent(@TempDir Path root) throws Exception {
+        UdtDefinition def = new UdtDefinition("Motor", SemVer.parse("1.0.0"), List.of(new Member("Rpm", "Double", null, null)), List.of(), null);
+        write(root.resolve("udt/Motor/1.0.0.json"), def);
+        DefinitionStore store = new DefinitionStore(root);
+        assertEquals(def, store.load("Motor", "1.0.0").orElseThrow());
+        assertTrue(store.load("Motor", "9.9.9").isEmpty());
     }
 }

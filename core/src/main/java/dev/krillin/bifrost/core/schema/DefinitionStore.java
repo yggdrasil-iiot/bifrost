@@ -44,6 +44,13 @@ public final class DefinitionStore {
         return mapper.readValue(file.toFile(), UdtDefinition.class);
     }
 
+    /** Loads the pinned definition at udt/&lt;ref&gt;/&lt;version&gt;.json, or empty if that file does not exist. */
+    public Optional<UdtDefinition> load(String templateRef, String version) throws IOException {
+        Path file = root.resolve("udt").resolve(templateRef).resolve(version + ".json");
+        if (!Files.isRegularFile(file)) return Optional.empty();
+        return Optional.of(load(file));
+    }
+
     /** Returns the compatibility mode from policy.json. Throws IOException (fail-closed) if the file is absent or unparseable. */
     public CompatMode policyMode() throws IOException {
         Path p = root.resolve("policy.json");

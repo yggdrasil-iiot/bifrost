@@ -1,0 +1,7 @@
+{
+  "specRef": "mix-recipe", "version": "1.0.0", "site": "Line1",
+  "equipmentRef": "Line1-Mixer", "equipmentVersion": "1.0.0",
+  "setpoints": [
+    { "member": "Rpm", "type": "Double", "value": 1500.0 }
+  ]
+}

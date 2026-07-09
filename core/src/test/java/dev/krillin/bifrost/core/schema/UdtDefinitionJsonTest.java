@@ -9,8 +9,8 @@ class UdtDefinitionJsonTest {
     @Test void roundTrip_preservesAllFields() throws Exception {
         ObjectMapper mapper = JsonMapperFactory.create();
         UdtDefinition def = new UdtDefinition("Motor", SemVer.parse("1.0.0"),
-                List.of(new Member("Rpm", "Double"), new Member("Running", "Boolean")),
-                List.of(new Param("Location", "String")));
+                List.of(new Member("Rpm", "Double", null, null), new Member("Running", "Boolean", null, null)),
+                List.of(new Param("Location", "String")), null);
 
         String json = mapper.writeValueAsString(def);
         assertTrue(json.contains("\"version\":\"1.0.0\""), json);

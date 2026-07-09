@@ -1,0 +1,106 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://bifrost.krillin.dev/schema/spec.schema.json",
+  "title": "Bifrost Spec (ISA-88 two-layer)",
+  "description": "Protocol-independent recipe/spec contract describing BOTH ISA-88 layers: a general recipe (product-domain, equipment-independent, carrying setpoint intents) and a master recipe (a general recipe bound to a site's equipment, carrying concrete setpoints addressed to equipment members). A document is exactly one of the two. Language-neutral — any consumer can validate a spec document against this schema without depending on Bifrost code.",
+  "oneOf": [
+    { "$ref": "#/definitions/generalSpec" },
+    { "$ref": "#/definitions/masterSpec" }
+  ],
+  "definitions": {
+    "semver": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "SemVer major.minor.patch string."
+    },
+    "generalSpec": {
+      "description": "ISA-88 general recipe: product-domain, equipment-independent spec carrying equipment-independent setpoint intents.",
+      "type": "object",
+      "properties": {
+        "specRef": {
+          "description": "This spec's registry-key id.",
+          "type": "string"
+        },
+        "version": { "$ref": "#/definitions/semver" },
+        "productDomain": {
+          "description": "The product domain this general recipe applies to (equipment-independent).",
+          "type": "string"
+        },
+        "setpointIntents": {
+          "description": "Equipment-independent setpoint intents, keyed by logical name.",
+          "type": "array",
+          "items": { "$ref": "#/definitions/setpointIntent" }
+        }
+      },
+      "required": ["specRef", "version", "productDomain", "setpointIntents"],
+      "additionalProperties": false
+    },
+    "masterSpec": {
+      "description": "ISA-88 master recipe: a general recipe bound to a specific site's equipment, carrying concrete setpoints addressed to equipment members.",
+      "type": "object",
+      "properties": {
+        "specRef": {
+          "description": "This spec's registry-key id.",
+          "type": "string"
+        },
+        "version": { "$ref": "#/definitions/semver" },
+        "site": {
+          "description": "The site whose equipment this master recipe is bound to.",
+          "type": "string"
+        },
+        "equipmentRef": {
+          "description": "Registry-key id of the equipment definition this master recipe binds.",
+          "type": "string"
+        },
+        "equipmentVersion": { "$ref": "#/definitions/semver" },
+        "setpoints": {
+          "description": "Concrete setpoints, each addressed to an equipment member by name.",
+          "type": "array",
+          "items": { "$ref": "#/definitions/setpoint" }
+        }
+      },
+      "required": ["specRef", "version", "site", "equipmentRef", "equipmentVersion", "setpoints"],
+      "additionalProperties": false
+    },
+    "setpointIntent": {
+      "description": "An equipment-independent setpoint intent: logical key + type + numeric value.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "description": "Logical, equipment-independent key.",
+          "type": "string"
+        },
+        "type": {
+          "description": "Type name, e.g. \"Double\", \"Int32\".",
+          "type": "string"
+        },
+        "value": {
+          "description": "Numeric value.",
+          "type": "number"
+        }
+      },
+      "required": ["key", "type", "value"],
+      "additionalProperties": false
+    },
+    "setpoint": {
+      "description": "A concrete setpoint addressed to an equipment member: member name + type + numeric value.",
+      "type": "object",
+      "properties": {
+        "member": {
+          "description": "Equipment member name this setpoint addresses.",
+          "type": "string"
+        },
+        "type": {
+          "description": "Type name, e.g. \"Double\", \"Int32\".",
+          "type": "string"
+        },
+        "value": {
+          "description": "Numeric value.",
+          "type": "number"
+        }
+      },
+      "required": ["member", "type", "value"],
+      "additionalProperties": false
+    }
+  }
+}

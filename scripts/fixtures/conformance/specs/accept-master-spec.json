@@ -1,0 +1,8 @@
+{
+  "specRef": "WeldAcceptA", "version": "1.0.0", "site": "BodyShop",
+  "equipmentRef": "Weld-Controller", "equipmentVersion": "1.0.0",
+  "setpoints": [
+    { "member": "ElectrodeForce", "type": "Double", "value": 4.0 },
+    { "member": "WeldCurrent",    "type": "Double", "value": 9.0 }
+  ]
+}

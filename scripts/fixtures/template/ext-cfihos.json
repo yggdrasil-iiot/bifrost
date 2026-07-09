@@ -1,0 +1,9 @@
+{
+  "classId": "WeldController-corp",
+  "properties": [
+    { "name": "WeldCurrent",    "propertyId": "corp:weld/current", "datatype": "REAL", "minValue": 0, "maxValue": 15,  "requirement": "M" },
+    { "name": "WeldTime",       "propertyId": "corp:weld/time",    "datatype": "REAL", "minValue": 0, "maxValue": 600, "requirement": "M" },
+    { "name": "ElectrodeForce", "propertyId": "corp:weld/force",   "datatype": "REAL", "minValue": 0, "maxValue": 8,   "requirement": "M" },
+    { "name": "AmbientTemp",    "propertyId": "corp:weld/ambient", "datatype": "REAL", "minValue": 0, "maxValue": 60,  "requirement": "O" }
+  ]
+}

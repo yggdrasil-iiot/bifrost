@@ -1,6 +1,10 @@
 package dev.krillin.bifrost.heimdall;
 
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
 import org.eclipse.paho.client.mqttv3.MqttCallback;
@@ -23,6 +27,15 @@ import dev.krillin.bifrost.core.acl.CommandPolicy;
 import dev.krillin.bifrost.core.acl.CommandRequest;
 import dev.krillin.bifrost.core.acl.Decision;
 import dev.krillin.bifrost.core.acl.Target;
+import dev.krillin.bifrost.core.conformance.ConformanceEvaluator;
+import dev.krillin.bifrost.core.conformance.ConformancePolicy;
+import dev.krillin.bifrost.core.conformance.ConformanceVerdict;
+import dev.krillin.bifrost.core.conformance.CrossConstraint;
+import dev.krillin.bifrost.core.conformance.NodeBinding;
+import dev.krillin.bifrost.core.schema.MasterSpec;
+import dev.krillin.bifrost.core.schema.Member;
+import dev.krillin.bifrost.core.schema.Setpoint;
+import dev.krillin.bifrost.core.schema.UdtDefinition;
 
 /**
  * Self-bridge: receives Sparkplug NCMD commands over MQTT, authorizes them deny-by-default at the
@@ -45,6 +58,12 @@ public final class NcmdOpcUaBridge implements MqttCallback {
     private final Applier applier;
     private final CommandAuthorizer authorizer = new CommandAuthorizer();
 
+    // Governed conformance deps, loaded at startup (nullable => ② conformance OFF; pure authz).
+    // Loaded and stored here in B1; the ② check that consumes them is wired in B2.
+    private final UdtDefinition conformanceDef;
+    private final ConformancePolicy conformancePolicy;
+    private final MasterSpec activeRecipe;
+
     private final String ncmdTopic;
     private final String queryTopic;
     private final String ndataTopic;
@@ -53,11 +72,15 @@ public final class NcmdOpcUaBridge implements MqttCallback {
     private final SparkplugBPayloadDecoder decoder = new SparkplugBPayloadDecoder();
     private MqttClient client;
 
-    public NcmdOpcUaBridge(String group, String edge, CommandPolicy policy, Applier applier) {
+    public NcmdOpcUaBridge(String group, String edge, CommandPolicy policy, Applier applier,
+                           UdtDefinition conformanceDef, ConformancePolicy conformancePolicy, MasterSpec activeRecipe) {
         this.group = group;
         this.edge = edge;
         this.policy = policy;
         this.applier = applier;
+        this.conformanceDef = conformanceDef;
+        this.conformancePolicy = conformancePolicy;
+        this.activeRecipe = activeRecipe;
         this.ncmdTopic = "spBv1.0/" + group + "/NCMD/" + edge;
         this.queryTopic = "bifrost/" + group + "/QUERY/" + edge;
         this.ndataTopic = "spBv1.0/" + group + "/NDATA/" + edge;
@@ -101,6 +124,47 @@ public final class NcmdOpcUaBridge implements MqttCallback {
         if (!d.allowed()) {
             System.out.println("[BRIDGE] DENY cmd=" + name + " val=" + value + " reason=" + d.reason());
             return NcmdResponse.apply(cmdId, false, "denied: " + d.reason());
+        }
+
+        // ① authz already passed (d.allowed()). ② conformance (opt-in: only when a policy is loaded):
+        if (conformancePolicy != null && conformanceDef != null) {
+            NodeBinding binding = conformancePolicy.nodeBindings().stream()
+                    .filter(b -> name.equals(b.opcNodeId())).findFirst().orElse(null);
+            if (binding != null) {
+                try {
+                    List<Setpoint> state = new ArrayList<>();
+                    state.add(new Setpoint(binding.member(), dataType, ((Number) value).doubleValue()));
+                    Set<String> needed = new LinkedHashSet<>();
+                    for (CrossConstraint c : conformancePolicy.crossConstraints()) {
+                        needed.add(c.ifMember()); needed.add(c.thenMember());
+                    }
+                    needed.remove(binding.member());
+                    for (String sibMember : needed) {
+                        NodeBinding sb = conformancePolicy.nodeBindings().stream()
+                                .filter(b -> sibMember.equals(b.member()) && b.readNodeId() != null).findFirst().orElse(null);
+                        // Fail-closed: a needed cross-member with no numeric readNodeId cannot be verified,
+                        // so DON'T silently skip it (that would leave the antecedent absent => not-triggered => fail-open).
+                        if (sb == null) throw new IllegalStateException(
+                                "cross-constraint member '" + sibMember + "' has no readNodeId binding — cannot verify");
+                        // Derive the sibling's type from the governed model (not hardcoded "Double") so a
+                        // non-Double numeric sibling doesn't spuriously trip spec.type.mismatch.
+                        String sibType = conformanceDef.members().stream()
+                                .filter(dm -> dm.name().equals(sibMember)).map(Member::type)
+                                .findFirst().orElse("Double");
+                        state.add(new Setpoint(sibMember, sibType, applier.readDouble(sb.readNodeId())));
+                    }
+                    ConformanceVerdict cv = new ConformanceEvaluator()
+                            .evaluate(conformanceDef, conformancePolicy, activeRecipe, state);
+                    if (!cv.ok()) {
+                        String reason = cv.violations().get(0).rule() + ": " + cv.violations().get(0).detail();
+                        System.out.println("[BRIDGE] DENY cmd=" + name + " val=" + value + " reason=" + reason);
+                        return NcmdResponse.apply(cmdId, false, "denied: " + reason);
+                    }
+                } catch (Exception confEx) {   // fail-closed: any conformance/read error DENIES
+                    System.out.println("[BRIDGE] DENY cmd=" + name + " val=" + value + " reason=conformance-error: " + confEx.getMessage());
+                    return NcmdResponse.apply(cmdId, false, "denied: conformance-error");
+                }
+            }
         }
 
         try {

@@ -1,0 +1,10 @@
+{
+  "version": "1.0.0",
+  "rules": [
+    { "id": "rpm",  "principal": "recipe-writer", "target": { "group": "Bifrost:Line1", "edge": "recipe-edge" },
+      "command": "ns=2;s=Recipe/Rpm",  "constraint": { "type": "Double" } },
+    { "id": "temp", "principal": "recipe-writer", "target": { "group": "Bifrost:Line1", "edge": "recipe-edge" },
+      "command": "ns=2;s=Recipe/Temp", "constraint": { "type": "Double" } }
+  ],
+  "default": "deny"
+}

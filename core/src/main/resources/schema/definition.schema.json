@@ -2,11 +2,11 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://bifrost.krillin.dev/schema/definition.schema.json",
   "title": "Bifrost UDT Definition",
-  "description": "Protocol-independent UDT data contract (Sparkplug Template-shaped): the unit of source of truth in the Bifrost registry. Language-neutral — any consumer can validate a definition document against this schema without depending on Bifrost code.",
+  "description": "Protocol-independent UDT data contract (Sparkplug Template-shaped, AAS-vocabulary aligned): the unit of source of truth in the Bifrost registry. A definition ≈ AAS Submodel; its members ≈ AAS Property. Language-neutral — any consumer can validate a definition document against this schema without depending on Bifrost code.",
   "type": "object",
   "properties": {
     "templateRef": {
-      "description": "Reference to a parent template this UDT extends, or null if this is a root definition.",
+      "description": "This definition's own registry-key id (the UDT/template name it is filed under), or null.",
       "type": ["string", "null"]
     },
     "version": {
@@ -15,28 +15,68 @@
       "pattern": "^\\d+\\.\\d+\\.\\d+$"
     },
     "members": {
-      "description": "UDT members (Sparkplug Template metrics).",
+      "description": "UDT members (Sparkplug Template metrics); each member ≈ AAS Property.",
       "type": "array",
-      "items": { "$ref": "#/definitions/namedType" }
+      "items": { "$ref": "#/definitions/member" }
     },
     "params": {
       "description": "UDT template parameters.",
       "type": "array",
-      "items": { "$ref": "#/definitions/namedType" }
+      "items": { "$ref": "#/definitions/param" }
+    },
+    "conformsTo": {
+      "description": "Reserved pointer to an enterprise submodel-template this definition conforms to (AAS ConceptDescription intent); null on this track.",
+      "type": ["string", "null"]
     }
   },
   "required": ["version", "members", "params"],
   "additionalProperties": false,
   "definitions": {
-    "namedType": {
+    "member": {
+      "description": "A UDT member ≈ AAS Property: name + type + semanticId, with an optional numeric range.",
       "type": "object",
       "properties": {
         "name": {
-          "description": "Member/param name.",
+          "description": "Member name.",
           "type": "string"
         },
         "type": {
-          "description": "Type name, as returned by MetricDataType.toString() (members) or ParameterDataType.toString() (params), e.g. \"Double\", \"Boolean\", \"Int32\".",
+          "description": "Type name, as returned by MetricDataType.toString(), e.g. \"Double\", \"Boolean\", \"Int32\".",
+          "type": "string"
+        },
+        "semanticId": {
+          "description": "Optional concept-dictionary reference giving this member its meaning (AAS Property semanticId); populated by the northbound modeler, null for un-annotated/legacy members.",
+          "type": ["string", "null"]
+        },
+        "range": {
+          "description": "Numeric operating range (inclusive low/high), or null for non-numeric members.",
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "low": { "type": "number" },
+                "high": { "type": "number" }
+              },
+              "required": ["low", "high"],
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": ["name", "type"],
+      "additionalProperties": false
+    },
+    "param": {
+      "description": "A UDT template parameter: name + type.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Param name.",
+          "type": "string"
+        },
+        "type": {
+          "description": "Type name, as returned by ParameterDataType.toString(), e.g. \"String\", \"Int32\".",
           "type": "string"
         }
       },

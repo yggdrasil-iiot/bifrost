@@ -49,6 +49,25 @@ public final class OpcUaApplier implements Applier {
     }
 
     @Override
+    public double readDouble(String nodeId) throws UaException {
+        // Reuse the existing stringified read and parse — fail-closed on bad/uncertain quality or a
+        // null/non-numeric value. ② trusts this live antecedent read as authoritative, so a stale value
+        // carried by a bad StatusCode must be rejected (mirrors write's read-back good() guard), not trusted.
+        ReadBack rb = read(nodeId);
+        if (!rb.good()) {
+            throw new UaException(StatusCode.BAD, "readDouble from " + nodeId + " returned bad status");
+        }
+        if (rb.value() == null) {
+            throw new UaException(StatusCode.BAD, "readDouble from " + nodeId + " returned null value");
+        }
+        try {
+            return Double.parseDouble(rb.value().trim());
+        } catch (NumberFormatException e) {
+            throw new UaException(StatusCode.BAD, "readDouble from " + nodeId + " non-numeric: " + rb.value());
+        }
+    }
+
+    @Override
     public Result write(String nodeId, double value) throws UaException {
         StatusCode sc = client.writeValues(
                 List.of(NodeId.parse(nodeId)),

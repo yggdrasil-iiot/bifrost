@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import java.nio.file.Path;
 import java.util.Date;
+import java.util.List;
 
 import org.eclipse.tahu.message.model.Metric.MetricBuilder;
 import org.eclipse.tahu.message.model.MetricDataType;
@@ -17,6 +18,16 @@ import org.junit.jupiter.api.Test;
 
 import dev.krillin.bifrost.core.acl.AclMapperFactory;
 import dev.krillin.bifrost.core.acl.CommandPolicy;
+import dev.krillin.bifrost.core.acl.Constraint;
+import dev.krillin.bifrost.core.acl.Rule;
+import dev.krillin.bifrost.core.acl.Target;
+import dev.krillin.bifrost.core.conformance.ConformancePolicy;
+import dev.krillin.bifrost.core.conformance.CrossConstraint;
+import dev.krillin.bifrost.core.conformance.NodeBinding;
+import dev.krillin.bifrost.core.schema.Member;
+import dev.krillin.bifrost.core.schema.Range;
+import dev.krillin.bifrost.core.schema.SemVer;
+import dev.krillin.bifrost.core.schema.UdtDefinition;
 
 /**
  * The bridge core: decode ONE authorizable command metric, authorize deny-by-default at the edge,
@@ -36,7 +47,7 @@ class NcmdOpcUaBridgeTest {
     }
 
     private NcmdOpcUaBridge bridge(Applier applier) throws Exception {
-        return new NcmdOpcUaBridge(GROUP, EDGE, policy(), applier);
+        return new NcmdOpcUaBridge(GROUP, EDGE, policy(), applier, null, null, null);
     }
 
     /** Build a single-command-metric NCMD payload per the bridge's wire contract. */
@@ -65,13 +76,23 @@ class NcmdOpcUaBridgeTest {
         assertEquals("c-1", r.cmdId());
     }
 
-    @Test void denied_above_max_is_not_applied() throws Exception {
+    @Test void above_max_denied_by_conformance_not_applied() throws Exception {
+        // Post-migration: authz allows a type-ok Rpm=9999 (range left policy.json); ② envelope (governed
+        // Mixer model Rpm∈[0,3000]) denies it. The Mixer conformance policy has NO cross-constraints, so
+        // no sibling is read — Boolean Running/Secret are never readDouble'd.
+        UdtDefinition mixerDef = new UdtDefinition("Line1-Mixer", SemVer.parse("1.0.0"),
+                List.of(new Member("Rpm", "Double", null, new Range(0, 3000)),
+                        new Member("Temp", "Double", null, new Range(0, 450))),
+                List.of(), null);
+        ConformancePolicy mixerPolicy = new ConformancePolicy("Line1-Mixer-policy", "1.0.0",
+                "Line1-Mixer", "1.0.0", new ConformancePolicy.Dial("envelope", null, null, null),
+                List.of(), List.of(new NodeBinding("ns=2;s=Recipe/Rpm", null, "Rpm")));
         FakeApplier fake = new FakeApplier();
-        NcmdResponse r = bridge(fake).handle(NCMD_TOPIC,
-                cmd("c-2", "write", "ns=2;s=Recipe/Rpm", 9999.0, MetricDataType.Double, null, null));
-        assertFalse(fake.writeCalled, "an above-max write must NOT reach the applier");
+        NcmdResponse r = new NcmdOpcUaBridge(GROUP, EDGE, policy(), fake, mixerDef, mixerPolicy, null)
+                .handle(NCMD_TOPIC, cmd("c-2", "write", "ns=2;s=Recipe/Rpm", 9999.0, MetricDataType.Double, null, null));
+        assertFalse(fake.writeCalled, "an above-max write must NOT reach the applier (② envelope)");
         assertFalse(r.ok());
-        assertTrue(r.detail().contains("denied"), r.detail());
+        assertTrue(r.detail().contains("above-max"), r.detail());
     }
 
     @Test void deny_by_default_node_is_not_applied() throws Exception {
@@ -108,6 +129,108 @@ class NcmdOpcUaBridgeTest {
         assertTrue(r.ok());
     }
 
+    // ----- ② conformance: cross-member + envelope from the governed model (after ① authz) -----
+
+    private static final String WELD_NODE = "ns=2;s=Weld/WeldCurrent";
+    private static final String FORCE_READ_NODE = "ns=2;s=BodyShop/Weld1.ElectrodeForce";
+
+    /** ACL that AUTHORIZES the Weld setpoint generously (max 100) so ② conformance — not ① authz — is the gate. */
+    private CommandPolicy weldAclPolicy() {
+        Rule r = new Rule("weld", "recipe-writer", new Target(GROUP, EDGE, null),
+                WELD_NODE, new Constraint("Double", 0.0, 100.0));
+        return new CommandPolicy("1.0.0", List.of(r), "deny");
+    }
+
+    /** Governed equipment model: WeldCurrent[0,12], WeldTime[0,500], ElectrodeForce[0,6]. */
+    private UdtDefinition weldDef() {
+        return new UdtDefinition("Weld-Controller", SemVer.parse("1.0.0"),
+                List.of(new Member("WeldCurrent", "Double", null, new Range(0, 12)),
+                        new Member("WeldTime", "Double", null, new Range(0, 500)),
+                        new Member("ElectrodeForce", "Double", null, new Range(0, 6))),
+                List.of(), null);
+    }
+
+    /** Envelope-mode policy with the weld-lobe cross-constraint (ElectrodeForce lt 3.0 ⇒ WeldCurrent le 8.0). */
+    private ConformancePolicy weldPolicy() {
+        return new ConformancePolicy("weld-lobe-policy", "1.0.0", "Weld-Controller", "1.0.0",
+                new ConformancePolicy.Dial("envelope", null, null, null),
+                List.of(new CrossConstraint("weld-lobe", "ElectrodeForce", "lt", 3.0, "WeldCurrent", "le", 8.0)),
+                List.of(new NodeBinding(WELD_NODE, null, "WeldCurrent"),
+                        new NodeBinding(null, FORCE_READ_NODE, "ElectrodeForce")));
+    }
+
+    private NcmdOpcUaBridge weldBridge(Applier applier) {
+        return new NcmdOpcUaBridge(GROUP, EDGE, weldAclPolicy(), applier, weldDef(), weldPolicy(), null);
+    }
+
+    @Test void conformance_cross_member_violation_is_denied_and_not_applied() throws Exception {
+        // ElectrodeForce read = 2.5 (< 3.0) ⇒ require WeldCurrent le 8.0; 9 violates the weld-lobe.
+        FakeApplier fake = new FakeApplier();
+        fake.readDoubleResult = 2.5;
+        NcmdResponse r = weldBridge(fake).handle(NCMD_TOPIC,
+                cmd("w-1", "write", WELD_NODE, 9.0, MetricDataType.Double, null, null));
+        assertFalse(fake.writeCalled, "a cross-member-violating write must NOT reach the applier");
+        assertFalse(r.ok());
+        assertTrue(r.detail().contains("conformance.cross.weld-lobe"), r.detail());
+        assertEquals(FORCE_READ_NODE, fake.lastReadDoubleNode, "the bound ElectrodeForce sibling must be read");
+    }
+
+    @Test void conformant_write_is_applied() throws Exception {
+        // ElectrodeForce read = 2.5 (< 3.0) ⇒ require WeldCurrent le 8.0; 7 satisfies it and is in envelope.
+        FakeApplier fake = new FakeApplier();
+        fake.readDoubleResult = 2.5;
+        NcmdResponse r = weldBridge(fake).handle(NCMD_TOPIC,
+                cmd("w-2", "write", WELD_NODE, 7.0, MetricDataType.Double, null, null));
+        assertTrue(fake.writeCalled, "a conformant write must reach the applier");
+        assertEquals(WELD_NODE, fake.lastWriteNode);
+        assertEquals(7.0, fake.lastWriteValue);
+        assertTrue(r.ok());
+    }
+
+    @Test void bad_quality_sibling_read_is_denied_fail_closed() throws Exception {
+        // The antecedent (ElectrodeForce) live read fails/bad-quality => ② fail-closed => DENY, never applied.
+        FakeApplier fake = new FakeApplier();
+        fake.throwOnReadDoubleNode = FORCE_READ_NODE;   // Fix 1: bad-quality read must not be trusted
+        NcmdResponse r = weldBridge(fake).handle(NCMD_TOPIC,
+                cmd("w-4", "write", WELD_NODE, 7.0, MetricDataType.Double, null, null));
+        assertFalse(fake.writeCalled, "a write must NOT apply when the antecedent read failed");
+        assertFalse(r.ok());
+        assertTrue(r.detail().contains("conformance-error"), r.detail());
+    }
+
+    /** Policy whose ElectrodeForce binding has readNodeId=null — the antecedent can't be resolved. */
+    private ConformancePolicy weldPolicyUnresolvableSibling() {
+        return new ConformancePolicy("weld-lobe-policy", "1.0.0", "Weld-Controller", "1.0.0",
+                new ConformancePolicy.Dial("envelope", null, null, null),
+                List.of(new CrossConstraint("weld-lobe", "ElectrodeForce", "lt", 3.0, "WeldCurrent", "le", 8.0)),
+                List.of(new NodeBinding(WELD_NODE, null, "WeldCurrent"),
+                        new NodeBinding(null, null, "ElectrodeForce")));   // no readNodeId => unresolvable
+    }
+
+    @Test void unresolvable_antecedent_binding_is_denied_fail_closed() throws Exception {
+        // Fix 2: a needed cross-member with no numeric readNodeId cannot be verified => fail-closed DENY.
+        FakeApplier fake = new FakeApplier();
+        fake.readDoubleResult = 2.5;
+        NcmdOpcUaBridge bridge = new NcmdOpcUaBridge(GROUP, EDGE, weldAclPolicy(), fake,
+                weldDef(), weldPolicyUnresolvableSibling(), null);
+        NcmdResponse r = bridge.handle(NCMD_TOPIC,
+                cmd("w-5", "write", WELD_NODE, 7.0, MetricDataType.Double, null, null));
+        assertFalse(fake.writeCalled, "a write must NOT apply when a needed antecedent binding is unresolvable");
+        assertFalse(r.ok());
+        assertTrue(r.detail().contains("conformance-error"), r.detail());
+    }
+
+    @Test void above_envelope_max_is_denied_by_conformance() throws Exception {
+        // Authz allows 13 (max 100), but the governed envelope caps WeldCurrent at 12 ⇒ spec.range.above-max.
+        FakeApplier fake = new FakeApplier();
+        fake.readDoubleResult = 2.5;
+        NcmdResponse r = weldBridge(fake).handle(NCMD_TOPIC,
+                cmd("w-3", "write", WELD_NODE, 13.0, MetricDataType.Double, null, null));
+        assertFalse(fake.writeCalled, "an above-envelope write must NOT reach the applier");
+        assertFalse(r.ok());
+        assertTrue(r.detail().contains("above-max"), r.detail());
+    }
+
     /** Records interactions and returns programmed results. */
     static final class FakeApplier implements Applier {
         boolean writeCalled, callCalled, readCalled;
@@ -115,6 +238,9 @@ class NcmdOpcUaBridgeTest {
         double lastWriteValue;
         String lastCallTrigger, lastCallDone;
         long lastCallTimeout;
+        String lastReadDoubleNode;
+        double readDoubleResult = 0.0;
+        String throwOnReadDoubleNode;   // if set, readDouble(node) throws (simulates a bad-quality/failed read)
         Result writeResult = new Result(true, "written+confirmed");
         Result callResult = new Result(true, "rising-edge confirmed");
         ReadBack readResult = new ReadBack("1500.0", true);
@@ -122,6 +248,13 @@ class NcmdOpcUaBridgeTest {
         @Override public ReadBack read(String nodeId) {
             readCalled = true;
             return readResult;
+        }
+        @Override public double readDouble(String nodeId) throws Exception {
+            lastReadDoubleNode = nodeId;
+            if (nodeId.equals(throwOnReadDoubleNode)) {
+                throw new Exception("readDouble bad quality " + nodeId);
+            }
+            return readDoubleResult;
         }
         @Override public Result write(String nodeId, double value) {
             writeCalled = true;

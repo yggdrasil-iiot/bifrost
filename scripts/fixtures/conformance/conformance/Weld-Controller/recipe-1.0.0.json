@@ -1,0 +1,11 @@
+{
+  "policyRef": "Weld-Controller-policy",
+  "version": "1.0.0",
+  "equipmentRef": "Weld-Controller",
+  "equipmentVersion": "1.0.0",
+  "dial": { "mode": "recipe", "activeRecipeRef": "WeldSchedule", "activeRecipeVersion": "1.0.0", "recipeTolerance": 0.0 },
+  "crossConstraints": [],
+  "nodeBindings": [
+    { "opcNodeId": "ns=2;s=Weld/WeldCurrent", "readNodeId": null, "member": "WeldCurrent" }
+  ]
+}

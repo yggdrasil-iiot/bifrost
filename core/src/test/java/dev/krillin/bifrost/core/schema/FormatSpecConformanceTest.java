@@ -41,8 +41,10 @@ class FormatSpecConformanceTest {
         UdtDefinition def = new UdtDefinition(
                 "types/Pump",
                 new SemVer(1, 2, 0),
-                List.of(new Member("flow", "Double"), new Member("running", "Boolean")),
-                List.of(new Param("maxRpm", "Int32")));
+                List.of(new Member("flow", "Double", "urn:bifrost:sem:Pump/flow", new Range(0, 500)),
+                        new Member("running", "Boolean", "urn:bifrost:sem:Pump/running", null)),
+                List.of(new Param("maxRpm", "Int32")),
+                null);
 
         ObjectMapper mapper = JsonMapperFactory.create();
         String json = mapper.writeValueAsString(def);
@@ -52,6 +54,25 @@ class FormatSpecConformanceTest {
         JsonNode node = mapper.readTree(json);
         Set<com.networknt.schema.ValidationMessage> errors = schema.validate(node);
         assertTrue(errors.isEmpty(), "expected valid UdtDefinition to pass schema: " + errors);
+    }
+
+    @Test
+    void legacyMemberWithNullSemanticIdConformsToPublishedSchema() throws Exception {
+        UdtDefinition def = new UdtDefinition(
+                "types/Legacy",
+                new SemVer(1, 0, 0),
+                List.of(new Member("Legacy", "Double", null, null)),
+                List.of(),
+                null);
+
+        ObjectMapper mapper = JsonMapperFactory.create();
+        String json = mapper.writeValueAsString(def);
+        System.out.println("Legacy UdtDefinition JSON: " + json);
+
+        JsonSchema schema = loadSchema("/schema/definition.schema.json");
+        JsonNode node = mapper.readTree(json);
+        Set<com.networknt.schema.ValidationMessage> errors = schema.validate(node);
+        assertTrue(errors.isEmpty(), "legacy member with null semanticId must pass schema: " + errors);
     }
 
     @Test

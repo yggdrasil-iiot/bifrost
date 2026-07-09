@@ -1,0 +1,12 @@
+{
+  "templateRef": "Ulsan-Weld",
+  "version": "1.0.0",
+  "members": [
+    { "name": "WeldCurrent",    "type": "Double", "semanticId": "corp:weld/current", "range": { "low": 0.0, "high": 12.0 } },
+    { "name": "WeldTime",       "type": "Double", "semanticId": "corp:weld/time",    "range": { "low": 0.0, "high": 500.0 } },
+    { "name": "ElectrodeForce", "type": "Double", "semanticId": "corp:weld/force",   "range": { "low": 0.0, "high": 6.0 } },
+    { "name": "WeldVoltage",    "type": "Double", "semanticId": "ulsan:weld/voltage", "range": { "low": 0.0, "high": 20.0 } }
+  ],
+  "params": [],
+  "conformsTo": "WeldController-corp@1.0.0"
+}

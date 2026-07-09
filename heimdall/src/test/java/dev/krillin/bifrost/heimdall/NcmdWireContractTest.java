@@ -53,7 +53,7 @@ class NcmdWireContractTest {
     }
 
     private NcmdOpcUaBridge bridge(Applier applier) throws Exception {
-        return new NcmdOpcUaBridge(GROUP, EDGE, policy(), applier);
+        return new NcmdOpcUaBridge(GROUP, EDGE, policy(), applier, null, null, null);
     }
 
     /** Build a command payload INLINE, exactly matching the bridge's command wire-contract shape. */
@@ -213,6 +213,11 @@ class NcmdWireContractTest {
             readCalled = true;
             lastReadNode = nodeId;
             return readResult;
+        }
+
+        @Override public double readDouble(String nodeId) {
+            lastReadNode = nodeId;
+            return Double.parseDouble(readResult.value());
         }
 
         @Override public Result write(String nodeId, double value) {

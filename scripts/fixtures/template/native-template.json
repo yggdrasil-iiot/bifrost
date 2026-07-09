@@ -1,0 +1,11 @@
+{
+  "templateRef": "WeldController-corp",
+  "version": "1.0.0",
+  "members": [
+    { "name": "WeldCurrent",    "type": "Double", "semanticId": "corp:weld/current", "range": { "low": 0.0, "high": 15.0 } },
+    { "name": "WeldTime",       "type": "Double", "semanticId": "corp:weld/time",    "range": { "low": 0.0, "high": 600.0 } },
+    { "name": "ElectrodeForce", "type": "Double", "semanticId": "corp:weld/force",   "range": { "low": 0.0, "high": 8.0 } }
+  ],
+  "params": [],
+  "conformsTo": null
+}
