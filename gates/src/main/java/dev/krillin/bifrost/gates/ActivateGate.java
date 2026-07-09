@@ -8,7 +8,8 @@ import dev.krillin.bifrost.core.schema.Violation;
 /** Activation gate. Subcommands:
  *   activate <reg> <target> <kind> <ref> <version> --by <p> --approved-by <p> [--rollback]  (0 ok / 1 refused / 2 usage)
  *   active   <reg> <target> <kind> <ref>                                                    (prints active version+sha or none)
- *   activation-log <reg> <target>                                                           (prints the audit trail) */
+ *   activation-log <reg> <target>                                                           (prints the audit trail)
+ *   activation verify-chain <reg> <target>                                                  (0 intact / 1 tampered / 2 no such target) */
 public final class ActivateGate {
     public static void main(String[] args) { System.exit(run(args)); }
 
@@ -21,6 +22,7 @@ public final class ActivateGate {
                 case "activate": return activate(rest);
                 case "active": return active(rest);
                 case "activation-log": return log(rest);
+                case "activation": return activation(rest);
                 default: usage(); return 2;
             }
         } catch (Exception e) { System.err.println("[GATE] error: " + e.getMessage()); return 2; }
@@ -76,5 +78,25 @@ public final class ActivateGate {
         return 0;
     }
 
-    private static void usage() { System.err.println("Usage: <activate|active|activation-log> ..."); }
+    private static int activation(String[] a) throws Exception {
+        if (a.length < 3 || !"verify-chain".equals(a[0])) {
+            System.err.println("Usage: activation verify-chain <reg> <target>");
+            return 2;
+        }
+        Path reg = Path.of(a[1]);
+        String target = a[2];
+        ActivationLedger ledger = new ActivationLedger(reg);
+        java.util.List<LedgerEntry> hist = ledger.history(target);
+        if (hist.isEmpty()) { System.err.println("[GATE] verify-chain: no such target ledger: " + target); return 2; }
+        ChainVerdict v = ledger.verifyChain(target);
+        if (v.intact()) {
+            System.out.println("[GATE] verify-chain target=" + target + " entries=" + hist.size() + " => INTACT");
+            return 0;
+        }
+        System.out.println("[GATE] verify-chain target=" + target + " entries=" + hist.size()
+                + " => BROKEN at index=" + v.brokenIndex() + " rule=" + v.rule());
+        return 1;
+    }
+
+    private static void usage() { System.err.println("Usage: <activate|active|activation-log|activation> ..."); }
 }
