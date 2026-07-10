@@ -25,6 +25,11 @@ public final class ActivationPolicyStore {
         if (!"deny".equals(p.defaultEffect()))
             throw new IllegalStateException("activation.authz.policy.default-not-deny: " + f
                     + " (default must be \"deny\")");
+        for (ActivationRule r : p.rules())      // a rule missing action/id/principal would silently never match — refuse loudly
+            if (r.action() == null || r.id() == null || r.principal() == null)
+                throw new IllegalStateException("activation.authz.policy.malformed-rule: " + f
+                        + " (rule id/principal/action must all be present; got id=" + r.id()
+                        + " principal=" + r.principal() + " action=" + r.action() + ")");
         return p;
     }
 }

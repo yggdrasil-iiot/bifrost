@@ -38,4 +38,19 @@ class ActivationPolicyStoreTest {
         IllegalStateException ex = assertThrows(IllegalStateException.class, () -> ActivationPolicyStore.load(root));
         assertTrue(ex.getMessage().startsWith("activation.authz.policy.read-error"), ex.getMessage());
     }
+
+    @Test void policy_omitting_rules_key_loads_as_deny_all_not_npe(@TempDir Path root) throws Exception {
+        writePolicy(root, "{\"version\":\"1\",\"default\":\"deny\"}");   // no "rules" key
+        ActivationPolicy p = ActivationPolicyStore.load(root);
+        assertTrue(p.rules().isEmpty(), "absent rules normalizes to empty (deny everything), not null");
+        // and the authorizer denies cleanly rather than NPE-ing
+        assertFalse(new ActivationAuthorizer().authorize(p, "alice", ActivationAction.ACTIVATE, "L", "recipe", "mix").allowed());
+    }
+
+    @Test void rule_missing_action_is_a_coded_error(@TempDir Path root) throws Exception {
+        writePolicy(root, "{\"version\":\"1\",\"default\":\"deny\",\"rules\":["
+                + "{\"id\":\"r1\",\"principal\":\"alice\",\"target\":\"L\",\"kind\":\"recipe\",\"ref\":\"mix\"}]}");   // no action
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> ActivationPolicyStore.load(root));
+        assertTrue(ex.getMessage().startsWith("activation.authz.policy.malformed-rule"), ex.getMessage());
+    }
 }

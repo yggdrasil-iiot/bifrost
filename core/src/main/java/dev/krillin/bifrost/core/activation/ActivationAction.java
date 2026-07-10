@@ -10,6 +10,7 @@ public enum ActivationAction {
     @JsonValue public String json() { return name().toLowerCase(); }
 
     @JsonCreator public static ActivationAction from(String s) {
+        if (s == null) throw new IllegalArgumentException("action must not be null");
         return ActivationAction.valueOf(s.trim().toUpperCase());
     }
 }
