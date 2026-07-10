@@ -31,9 +31,15 @@ import dev.krillin.bifrost.core.schema.UdtDefinition;
  */
 public final class NcmdOpcUaBridgeMain {
 
-    /** Resolved runtime configuration — a testable seam around the env lookups below. */
+    /**
+     * Resolved runtime configuration — a testable seam around the env lookups below.
+     * {@code requireSignedActivation} (env {@code REQUIRE_SIGNED_ACTIVATION}, default OFF) selects the
+     * edge's ledger-trust check: off → T4 structural chain (verifyChain); on → full
+     * {@link dev.krillin.bifrost.core.identity.SignedLedgerVerifier} (structural + dual-sig + signed head).
+     */
     record Config(String broker, String opcua, String group, String edge, String policyPath,
-                  String registryPath, String conformancePath, String activationPath, String activationTarget) {}
+                  String registryPath, String conformancePath, String activationPath, String activationTarget,
+                  boolean requireSignedActivation) {}
 
     static Config resolve(Function<String, String> getenv) {
         String broker = env(getenv, "MQTT_URL", "tcp://localhost:1883");
@@ -45,7 +51,11 @@ public final class NcmdOpcUaBridgeMain {
         String conformancePath = env(getenv, "CONFORMANCE_PATH", null);
         String activationPath = env(getenv, "ACTIVATION_PATH", null);
         String activationTarget = env(getenv, "ACTIVATION_TARGET", null);
-        return new Config(broker, opcua, group, edge, policyPath, registryPath, conformancePath, activationPath, activationTarget);
+        // NB: Boolean.parseBoolean("on") is FALSE — accept on/1/true so the gate's =on and =true both work.
+        String rsa = env(getenv, "REQUIRE_SIGNED_ACTIVATION", "false");
+        boolean requireSigned = "true".equalsIgnoreCase(rsa) || "on".equalsIgnoreCase(rsa) || "1".equals(rsa);
+        return new Config(broker, opcua, group, edge, policyPath, registryPath, conformancePath, activationPath,
+                activationTarget, requireSigned);
     }
 
     /**
@@ -81,10 +91,7 @@ public final class NcmdOpcUaBridgeMain {
                         ? java.nio.file.Path.of(config.activationPath()) : registryDir;
                 dev.krillin.bifrost.core.activation.ActivationLedger ledger =
                         new dev.krillin.bifrost.core.activation.ActivationLedger(ledgerDir);
-                dev.krillin.bifrost.core.activation.ChainVerdict chain = ledger.verifyChain(config.activationTarget());
-                if (!chain.intact())
-                    throw new IllegalStateException("activation.edge.ledger-chain-broken: target "
-                            + config.activationTarget() + " index " + chain.brokenIndex() + " rule " + chain.rule());
+                assertLedgerTrustworthy(ledgerDir, config.activationTarget(), config.requireSignedActivation());
                 var active = ledger
                         .active(config.activationTarget(), "recipe", ref)
                         .orElseThrow(() -> new IllegalStateException("activation.edge.no-active-pointer: no active recipe for target "
@@ -110,6 +117,28 @@ public final class NcmdOpcUaBridgeMain {
         System.out.println("[BRIDGE] conformance loaded " + cp.equipmentRef() + "@" + cp.equipmentVersion()
                 + " dial=" + (cp.dial() == null ? "none" : cp.dial().mode()));
         return new Conformance(cdef, cp, recipe);
+    }
+
+    /**
+     * Fail-closed ledger trust check before binding the active version. {@code requireSigned=false} →
+     * T4 structural chain ({@code verifyChain}); {@code true} → full {@link
+     * dev.krillin.bifrost.core.identity.SignedLedgerVerifier} (structural + dual-sig + signed head).
+     * {@code SignedLedgerVerifier} runs {@code LedgerChain.verify} first, so structural breaks are still
+     * caught when the flag is on. Throws {@link IllegalStateException} with the reason-coded message on a break.
+     */
+    static void assertLedgerTrustworthy(java.nio.file.Path ledgerDir, String target, boolean requireSigned)
+            throws java.io.IOException {
+        if (requireSigned) {
+            var v = dev.krillin.bifrost.core.identity.SignedLedgerVerifier.forRegistry(ledgerDir).verify(target);
+            if (!v.intact())
+                throw new IllegalStateException("activation.edge.signed-ledger-broken: target " + target
+                        + " index " + v.brokenIndex() + " rule " + v.rule());
+        } else {
+            var chain = new dev.krillin.bifrost.core.activation.ActivationLedger(ledgerDir).verifyChain(target);
+            if (!chain.intact())
+                throw new IllegalStateException("activation.edge.ledger-chain-broken: target " + target
+                        + " index " + chain.brokenIndex() + " rule " + chain.rule());
+        }
     }
 
     public static void main(String[] args) throws Exception {
