@@ -48,6 +48,8 @@ public final class ActivationLedger {
     }
 
     private void advanceHead(String target, String tailEntryHash, LedgerSigner signer) throws IOException {
+        // seq source of truth is the HEAD file, not history length: deleting the head then appending once
+        // wedges the target into head.seq-mismatch at verify time (fail-closed, by design — spec §7).
         long seq = heads.read(target).map(h -> h.seq() + 1).orElse(0L);
         String preimage = dev.krillin.bifrost.core.identity.SignedHeadStore.preimage(target, seq, tailEntryHash);
         heads.write(new dev.krillin.bifrost.core.identity.SignedHead(

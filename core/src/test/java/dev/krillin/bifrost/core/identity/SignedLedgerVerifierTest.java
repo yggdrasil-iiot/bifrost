@@ -153,6 +153,14 @@ class SignedLedgerVerifierTest {
         assertEquals("identity.four-eyes.same-key", v.rule());
     }
 
+    @Test void empty_ledger_with_orphan_head_is_a_fault_not_intact(@TempDir Path root, @TempDir Path keys) throws Exception {
+        SignedLedgerVerifier ver = seed(root, keys, Ed25519Keys.generate(), Ed25519Keys.generate());
+        Files.write(ledgerFile(root), List.of());   // full truncation: zero entries, but the signed head remains
+        SignedVerdict v = ver.verify("Line1");
+        assertFalse(v.intact(), "an orphan signed head over an empty ledger must not read as intact");
+        assertEquals("identity.head.tail-mismatch", v.rule());
+    }
+
     @Test void missing_head_is_detected(@TempDir Path root, @TempDir Path keys) throws Exception {
         SignedLedgerVerifier ver = seed(root, keys, Ed25519Keys.generate(), Ed25519Keys.generate());
         Files.delete(headFile(root));   // ledger intact + signed, but the anchor is gone

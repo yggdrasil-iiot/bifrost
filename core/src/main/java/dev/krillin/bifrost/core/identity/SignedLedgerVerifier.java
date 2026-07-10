@@ -55,8 +55,11 @@ public final class SignedLedgerVerifier {
                 return SignedVerdict.broken(i, "identity.four-eyes.same-key");
         }
 
-        // 3. head (only meaningful for a non-empty ledger)
-        if (!hist.isEmpty()) {
+        // 3. head. An empty ledger with an ORPHAN signed head is itself a fault (the head anchors entries
+        //    that no longer exist — a full-truncation trace), not a vacuously-intact ledger.
+        if (hist.isEmpty()) {
+            if (heads.read(target).isPresent()) return SignedVerdict.broken(-1, "identity.head.tail-mismatch");
+        } else {
             Optional<SignedHead> maybe = heads.read(target);
             if (maybe.isEmpty()) return SignedVerdict.broken(-1, "identity.head.missing");
             SignedHead head = maybe.get();
