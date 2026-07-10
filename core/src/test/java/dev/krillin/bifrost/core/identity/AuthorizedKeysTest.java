@@ -51,4 +51,16 @@ class AuthorizedKeysTest {
         writeKeys(root, line("alice", alice), "", "  ");
         assertTrue(AuthorizedKeys.load(root).forPrincipal("alice").isPresent());
     }
+
+    @Test void malformed_public_key_value_is_a_coded_load_error(@TempDir Path root) throws Exception {
+        writeKeys(root, "{\"principal\":\"alice\",\"publicKey\":\"not-a-valid-key!!!\"}");
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> AuthorizedKeys.load(root));
+        assertTrue(ex.getMessage().startsWith("identity.authorized-keys.bad-public-key"), ex.getMessage());
+    }
+
+    @Test void unparseable_json_line_is_a_coded_load_error(@TempDir Path root) throws Exception {
+        writeKeys(root, "this is not json");
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> AuthorizedKeys.load(root));
+        assertTrue(ex.getMessage().startsWith("identity.authorized-keys.read-error"), ex.getMessage());
+    }
 }

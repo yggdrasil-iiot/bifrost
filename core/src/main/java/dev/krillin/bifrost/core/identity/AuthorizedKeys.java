@@ -35,7 +35,11 @@ public final class AuthorizedKeys {
                 if (prev != null && !prev.equals(ak.publicKey()))
                     throw new IllegalStateException("identity.authorized-keys.duplicate-principal-different-key: "
                             + ak.principal());
-                keys.putIfAbsent(ak.principal(), Ed25519Keys.publicKey(ak.publicKey()));
+                try {
+                    keys.putIfAbsent(ak.principal(), Ed25519Keys.publicKey(ak.publicKey()));
+                } catch (IllegalArgumentException bad) {   // undecodable/malformed key value: coded, fail-closed
+                    throw new IllegalStateException("identity.authorized-keys.bad-public-key: " + ak.principal(), bad);
+                }
             }
         } catch (IOException e) {
             throw new IllegalStateException("identity.authorized-keys.read-error: " + f, e);
