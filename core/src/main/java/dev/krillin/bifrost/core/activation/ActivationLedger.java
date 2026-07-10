@@ -22,7 +22,7 @@ public final class ActivationLedger {
         Path f = file(e.target());
         Files.createDirectories(f.getParent());
         String prevHash = tailEntryHash(f);
-        LedgerEntry entry = new LedgerEntry(e, prevHash, LedgerChain.entryHash(e, prevHash));
+        LedgerEntry entry = LedgerEntry.unsigned(e, prevHash, LedgerChain.entryHash(e, prevHash));
         Files.writeString(f, mapper.writeValueAsString(entry) + "\n",
                 StandardOpenOption.CREATE, StandardOpenOption.APPEND);
     }
