@@ -54,9 +54,11 @@ public final class ActivateGate {
                     dev.krillin.bifrost.core.identity.KeyFileLedgerSigner.create(
                             by, Path.of(byKey), approvedBy, Path.of(approvedByKey),
                             dev.krillin.bifrost.core.identity.AuthorizedKeys.load(reg));
-            v = svc.activate(req, signer);
+            dev.krillin.bifrost.core.activation.ActivationPolicy policy =
+                    dev.krillin.bifrost.core.activation.ActivationPolicyStore.load(reg);
+            v = svc.activate(req, signer, policy);
         } else {
-            v = svc.activate(req);
+            v = svc.activate(req);   // unsigned: no authZ
         }
         if (v.ok()) {
             ActivationEvent e = v.event();
