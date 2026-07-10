@@ -34,6 +34,7 @@ One `gates` jar, deny-by-default, exit `0` admit / `1` governance-refuse / `2` u
 | `activate` · `active` · `activation-log` | the governed **activation** lifecycle (below) |
 | `activation verify-chain` | T4 — tamper-evidence of the activation ledger |
 | `identity keygen` · `identity verify-signed` | T5 — cryptographic identity over activations |
+| `identity authorize` | T6 — deny-by-default authorization: who may activate/approve a resource |
 
 ## The governed activation lifecycle
 
@@ -42,8 +43,9 @@ One `gates` jar, deny-by-default, exit `0` admit / `1` governance-refuse / `2` u
 - **Governed activation (T3)** — activation requires **four-eyes SoD** (a distinct approver), seals the **exact runtime bytes** by SHA-256, appends to an audit ledger, and supports guarded rollback. Heimdall **binds the ledger's active version** at startup and re-checks the content hash at the edge (verify-then-trust).
 - **Lineage / record-of-record (T4)** — the ledger is **hash-chained** (`LedgerChain`, one canonical-preimage SHA-256 per entry), so any retroactive edit / delete / reorder / mid-truncation is detectable from the ledger alone. Heimdall **fail-closes on a broken chain** before binding.
 - **Identity / signed activation (T5)** — each activation is **dual-signed** (activator + approver Ed25519, JDK built-in) and the ledger tail is anchored by a **signed head**, closing the full-re-chain and tail-truncation gaps a bare hash chain leaves open. Signatures cover T4's `entryHash`, so structural verification is untouched and unsigned ledgers stay valid. Heimdall's `REQUIRE_SIGNED_ACTIVATION` (default off) fail-closes on a broken *signed* ledger.
+- **Authorization (T6)** — a **deny-by-default** policy (`registry/identity/activation-policy.json`) decides *whether the authenticated principal is permitted*: **maker-checker**, where the activator needs an `activate` grant and the approver an `approve` grant on the same `(target, kind, ref)` — pairing 1:1 with T5's dual signature. Enforced at the gate and re-verified at the edge (revocation takes effect at the next bind). This is authN (T5) → authZ (T6): the IAM story.
 
-Each step is additive and backward-compatible — a T3/T4 ledger still verifies, and turning on signing does not rewrite history.
+Each step is additive and backward-compatible — a T3/T4 ledger still verifies, turning on signing does not rewrite history, and authZ is enforced only over an authenticated (signed) subject.
 
 ## Heimdall — the runtime edge
 
@@ -80,6 +82,7 @@ scripts/run-ncmd-runtime-gate.sh           # Heimdall edge authz over a live bro
 scripts/run-activation-gate.sh             # T3 — four-eyes SoD, content seal, rollback, edge bind
 scripts/run-lineage-gate.sh                # T4 — tamper-evident hash chain, edge fail-close
 scripts/run-identity-gate.sh               # T5 — dual-signed activation, signed head, edge fail-close
+scripts/run-activation-authz-gate.sh       # T6 — deny-by-default authZ, maker-checker, edge revocation
 scripts/run-yggdrasil-spine-gate.sh        # Mímir → Bifrost → Muninn northbound spine
 scripts/run-yggdrasil-full-loop-gate.sh    # closed loop: observe → command → observe
 ```
@@ -88,7 +91,7 @@ scripts/run-yggdrasil-full-loop-gate.sh    # closed loop: observe → command �
 
 This is a systems-architecture reference implementation; it records its limits rather than hiding them.
 
-- **Authenticity, not authorization (T5).** Signing proves *who* attested an activation (non-repudiation), not that they were *permitted* to — role/scope authorization is a future thread.
+- **Authorization is direct principal grants, not roles/attributes (T6).** The policy names each principal explicitly (deny-by-default, maker-checker); RBAC roles and ABAC attributes are future threads, and the policy file is plaintext (bootstrap/change-control out-of-band, no policy-signing yet). authZ presupposes authN — with signing off there is no authorization, because there is no authenticated subject to authorize. Revocation is bind-fresh (a running edge re-checks at the next startup).
 - **The signed head is singly-signed.** It closes tail-truncation against an outsider, but a lone registered insider can re-anchor a truncated ledger; a dual-signed or externally-anchored head (git / notary / TPM counter) is future work.
 - **The trust anchor is a plaintext registry file** (`authorized-keys.jsonl`); key bootstrap / distribution / revocation are out-of-band (no PKI/OIDC/CRL yet).
 - **Conformance egress is structural + range**, and the activation seal binds the runtime `MasterSpec`, not the git-anchored recipe manifest (that unification is future work).

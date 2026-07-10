@@ -100,6 +100,9 @@ public final class NcmdOpcUaBridgeMain {
                         .active(config.activationTarget(), "recipe", ref)
                         .orElseThrow(() -> new IllegalStateException("activation.edge.no-active-pointer: no active recipe for target "
                                 + config.activationTarget() + " ref " + ref));
+                // kind is "recipe" here because this bind path is recipe-only; the gate authorizes the same
+                // (target, "recipe", ref) tuple, so a legitimate activation admitted at the gate is not spuriously
+                // denied at the edge. (A non-recipe activation never reaches this bind — it fails at no-active-pointer.)
                 assertActivationAuthorized(ledgerDir, config.activationTarget(), "recipe", ref,
                         active.activatedBy(), active.approvedBy(), config.requireSignedActivation());
                 java.nio.file.Path specFile = new MasterSpecStore().file(registryDir, ref, active.version());
