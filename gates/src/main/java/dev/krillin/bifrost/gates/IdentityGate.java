@@ -1,6 +1,9 @@
 package dev.krillin.bifrost.gates;
 
+import dev.krillin.bifrost.core.activation.ActivationLedger;
 import dev.krillin.bifrost.core.identity.Ed25519Keys;
+import dev.krillin.bifrost.core.identity.SignedLedgerVerifier;
+import dev.krillin.bifrost.core.identity.SignedVerdict;
 import java.nio.file.*;
 import java.security.KeyPair;
 import java.util.*;
@@ -18,6 +21,7 @@ public final class IdentityGate {
         try {
             switch (args[0]) {
                 case "keygen": return keygen(Arrays.copyOfRange(args, 1, args.length));
+                case "verify-signed": return verifySigned(Arrays.copyOfRange(args, 1, args.length));
                 default: usage(); return 2;
             }
         } catch (Exception e) { System.err.println("[GATE] error: " + e.getMessage()); return 2; }
@@ -42,6 +46,24 @@ public final class IdentityGate {
         System.err.println("[GATE] keygen principal=" + principal + " -> " + dir.resolve(principal + ".key")
                 + " , " + dir.resolve(principal + ".pub"));
         return 0;
+    }
+
+    private static int verifySigned(String[] a) throws Exception {
+        if (a.length < 2) { System.err.println("Usage: identity verify-signed <reg> <target>"); return 2; }
+        Path reg = Path.of(a[0]);
+        String target = a[1];
+        ActivationLedger ledger = new ActivationLedger(reg);
+        if (ledger.history(target).isEmpty()) {
+            System.err.println("[GATE] verify-signed: no such target ledger: " + target); return 2;
+        }
+        SignedVerdict v = SignedLedgerVerifier.forRegistry(reg).verify(target);
+        if (v.intact()) {
+            System.out.println("[GATE] verify-signed target=" + target + " => INTACT (signed)");
+            return 0;
+        }
+        System.out.println("[GATE] verify-signed target=" + target + " => BROKEN at index="
+                + v.brokenIndex() + " rule=" + v.rule());
+        return 1;
     }
 
     private static void usage() { System.err.println("Usage: identity <keygen|verify-signed> ..."); }
