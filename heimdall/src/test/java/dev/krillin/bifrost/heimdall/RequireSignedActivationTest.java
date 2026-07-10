@@ -57,4 +57,29 @@ class RequireSignedActivationTest {
             new ActivationEvent("Line1","recipe","mix","1.0.0","sha","alice","bob",1000L,null,"ACTIVATE"));
         assertDoesNotThrow(() -> NcmdOpcUaBridgeMain.assertLedgerTrustworthy(root, "Line1", false));
     }
+
+    private void writePolicy(Path root, boolean grantAlice) throws Exception {
+        Path f = root.resolve("identity").resolve("activation-policy.json");
+        Files.createDirectories(f.getParent());
+        String rules = "{\"id\":\"r-app\",\"principal\":\"bob\",\"action\":\"approve\",\"target\":\"Line1\",\"kind\":\"recipe\",\"ref\":\"mix\"}"
+                + (grantAlice ? ",{\"id\":\"r-act\",\"principal\":\"alice\",\"action\":\"activate\",\"target\":\"Line1\",\"kind\":\"recipe\",\"ref\":\"mix\"}" : "");
+        Files.writeString(f, "{\"version\":\"1\",\"default\":\"deny\",\"rules\":[" + rules + "]}");
+    }
+
+    @Test void edge_authz_allows_when_both_permitted(@TempDir Path root) throws Exception {
+        writePolicy(root, true);
+        assertDoesNotThrow(() -> NcmdOpcUaBridgeMain.assertActivationAuthorized(root, "Line1","recipe","mix","alice","bob", true));
+    }
+
+    @Test void edge_authz_denies_when_activator_revoked(@TempDir Path root) throws Exception {
+        writePolicy(root, false);   // alice's ACTIVATE removed
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> NcmdOpcUaBridgeMain.assertActivationAuthorized(root, "Line1","recipe","mix","alice","bob", true));
+        assertTrue(ex.getMessage().contains("activation.edge.authz-denied"), ex.getMessage());
+    }
+
+    @Test void edge_authz_is_noop_when_require_signed_off(@TempDir Path root) throws Exception {
+        // no policy at all; require-signed off => skip (authZ presupposes authN)
+        assertDoesNotThrow(() -> NcmdOpcUaBridgeMain.assertActivationAuthorized(root, "Line1","recipe","mix","alice","bob", false));
+    }
 }
