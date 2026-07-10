@@ -13,7 +13,9 @@ public final class ActivationService {
         this.resolver = resolver; this.ledger = ledger; this.clock = clock;
     }
 
-    public ActivationVerdict activate(ActivationRequest r) {
+    public ActivationVerdict activate(ActivationRequest r) { return activate(r, null); }
+
+    public ActivationVerdict activate(ActivationRequest r, LedgerSigner signer) {
         try {
             var resolved = resolver.resolve(r.kind(), r.ref(), r.version());
             if (resolved.isEmpty()) return refuse("activation.artifact.unresolved",
@@ -25,11 +27,15 @@ public final class ActivationService {
             if (r.rollback() && !versionInHistory(r))
                 return refuse("activation.rollback.unknown-version",
                         "cannot rollback to " + r.version() + " — never activated on target " + r.target());
+            if (signer != null) {                                   // T5: fail-closed identity checks
+                var idv = signer.preflight();
+                if (!idv.isEmpty()) return new ActivationVerdict(false, null, idv);
+            }
             String prior = ledger.active(r.target(), r.kind(), r.ref()).map(ActivationEvent::version).orElse(null);
             ActivationEvent e = new ActivationEvent(r.target(), r.kind(), r.ref(), r.version(),
                     resolved.get().sha256(), r.by(), r.approvedBy(), clock.millis(), prior,
                     r.rollback() ? "ROLLBACK" : "ACTIVATE");
-            ledger.append(e);
+            ledger.append(e, signer);
             return new ActivationVerdict(true, e, List.of());
         } catch (Exception ex) {
             return refuse("activation.error", ex.getMessage());
