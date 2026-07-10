@@ -27,4 +27,21 @@ class IdentityGateTest {
         assertEquals(2, IdentityGate.run(new String[]{"keygen"}));
         assertEquals(2, IdentityGate.run(new String[]{"keygen", "alice"})); // no --out
     }
+
+    @Test void keygen_rejects_path_traversal_principal(@TempDir Path out) {
+        int code = IdentityGate.run(new String[]{"keygen", "../../evil", "--out", out.toString()});
+        assertEquals(2, code, "a principal that escapes the out dir must be refused");
+        assertTrue(Files.notExists(out.getParent().getParent().resolve("evil.key")), "no key written outside out dir");
+    }
+
+    @Test void keygen_private_key_not_world_readable(@TempDir Path out) throws Exception {
+        IdentityGate.run(new String[]{"keygen", "alice", "--out", out.toString()});
+        Path key = out.resolve("alice.key");
+        var view = Files.getFileAttributeView(key, java.nio.file.attribute.PosixFileAttributeView.class);
+        if (view != null) {   // POSIX only; on Windows this check is skipped (best-effort setReadable applied)
+            var perms = view.readAttributes().permissions();
+            assertFalse(perms.contains(java.nio.file.attribute.PosixFilePermission.OTHERS_READ), "world-readable key");
+            assertFalse(perms.contains(java.nio.file.attribute.PosixFilePermission.GROUP_READ), "group-readable key");
+        }
+    }
 }

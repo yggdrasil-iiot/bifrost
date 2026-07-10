@@ -4,7 +4,9 @@ import dev.krillin.bifrost.core.activation.ActivationLedger;
 import dev.krillin.bifrost.core.identity.Ed25519Keys;
 import dev.krillin.bifrost.core.identity.SignedLedgerVerifier;
 import dev.krillin.bifrost.core.identity.SignedVerdict;
+import java.io.File;
 import java.nio.file.*;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.security.KeyPair;
 import java.util.*;
 
@@ -36,16 +38,38 @@ public final class IdentityGate {
         if (principal == null || out == null) {
             System.err.println("Usage: identity keygen <principal> --out <dir>"); return 2;
         }
+        if (!principal.matches("[A-Za-z0-9_.-]{1,64}")) {   // principal names a file — deny path escape / odd chars
+            System.err.println("[GATE] keygen: invalid principal (allowed [A-Za-z0-9_.-], 1-64): " + principal);
+            return 2;
+        }
         KeyPair kp = Ed25519Keys.generate();
         Path dir = Path.of(out);
         Files.createDirectories(dir);
-        Files.writeString(dir.resolve(principal + ".key"), Ed25519Keys.privateKeyB64(kp.getPrivate()));
+        Path keyFile = dir.resolve(principal + ".key");
+        Files.deleteIfExists(keyFile);                      // avoid inheriting a pre-existing file's permissions
+        createOwnerOnly(keyFile);                           // 0600-intent BEFORE any secret bytes land
+        Files.writeString(keyFile, Ed25519Keys.privateKeyB64(kp.getPrivate()));
         Files.writeString(dir.resolve(principal + ".pub"), Ed25519Keys.publicKeyB64(kp.getPublic()));
         System.out.println("{\"principal\":\"" + principal + "\",\"publicKey\":\""
                 + Ed25519Keys.publicKeyB64(kp.getPublic()) + "\"}");
-        System.err.println("[GATE] keygen principal=" + principal + " -> " + dir.resolve(principal + ".key")
+        System.err.println("[GATE] keygen principal=" + principal + " -> " + keyFile
                 + " , " + dir.resolve(principal + ".pub"));
         return 0;
+    }
+
+    /** Create an empty file readable/writable by the owner only. POSIX: rw-------; non-POSIX (Windows):
+     *  best-effort strip other/group read via File.setReadable. The private key bytes are written AFTER. */
+    private static void createOwnerOnly(Path f) throws Exception {
+        try {
+            Files.createFile(f, PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")));
+        } catch (UnsupportedOperationException nonPosix) {  // Windows / non-POSIX filesystem
+            Files.createFile(f);
+            File jf = f.toFile();
+            jf.setReadable(false, false);                   // strip all read
+            jf.setReadable(true, true);                     // owner read
+            jf.setWritable(false, false);
+            jf.setWritable(true, true);                     // owner write
+        }
     }
 
     private static int verifySigned(String[] a) throws Exception {
