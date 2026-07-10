@@ -52,8 +52,12 @@ public final class NcmdOpcUaBridgeMain {
         String activationPath = env(getenv, "ACTIVATION_PATH", null);
         String activationTarget = env(getenv, "ACTIVATION_TARGET", null);
         // NB: Boolean.parseBoolean("on") is FALSE — accept on/1/true so the gate's =on and =true both work.
-        String rsa = env(getenv, "REQUIRE_SIGNED_ACTIVATION", "false");
+        String rsa = env(getenv, "REQUIRE_SIGNED_ACTIVATION", "false").strip();
         boolean requireSigned = "true".equalsIgnoreCase(rsa) || "on".equalsIgnoreCase(rsa) || "1".equals(rsa);
+        boolean rsaOff = "false".equalsIgnoreCase(rsa) || "off".equalsIgnoreCase(rsa) || "0".equals(rsa) || rsa.isEmpty();
+        if (!requireSigned && !rsaOff)   // an unrecognized non-empty value fails to OFF — say so loudly, don't silently downgrade
+            System.err.println("[BRIDGE] WARN: REQUIRE_SIGNED_ACTIVATION='" + rsa
+                    + "' not recognized — treating as OFF (structural-only). Use true/on/1 or false/off/0.");
         return new Config(broker, opcua, group, edge, policyPath, registryPath, conformancePath, activationPath,
                 activationTarget, requireSigned);
     }
@@ -128,6 +132,10 @@ public final class NcmdOpcUaBridgeMain {
      */
     static void assertLedgerTrustworthy(java.nio.file.Path ledgerDir, String target, boolean requireSigned)
             throws java.io.IOException {
+        // Audit line: prove from the log which trust check actually ran before binding (a security toggle
+        // must be observable — otherwise a mis-set flag silently downgrades enforcement with no signal).
+        System.out.println("[BRIDGE] activation trust = " + (requireSigned ? "signed" : "structural")
+                + " (target " + target + ")");
         if (requireSigned) {
             var v = dev.krillin.bifrost.core.identity.SignedLedgerVerifier.forRegistry(ledgerDir).verify(target);
             if (!v.intact())
