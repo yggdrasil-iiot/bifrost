@@ -29,25 +29,41 @@ public final class ActivateGate {
     }
 
     private static int activate(String[] a) throws Exception {
-        String by = null, approvedBy = null; boolean rollback = false;
+        String by = null, approvedBy = null, byKey = null, approvedByKey = null; boolean rollback = false;
         List<String> pos = new ArrayList<>();
         for (int i = 0; i < a.length; i++) {
             switch (a[i]) {
                 case "--by" -> by = (++i < a.length) ? a[i] : null;
                 case "--approved-by" -> approvedBy = (++i < a.length) ? a[i] : null;
+                case "--by-key" -> byKey = (++i < a.length) ? a[i] : null;
+                case "--approved-by-key" -> approvedByKey = (++i < a.length) ? a[i] : null;
                 case "--rollback" -> rollback = true;
                 default -> pos.add(a[i]);
             }
         }
-        if (pos.size() < 5) { System.err.println("Usage: activate <reg> <target> <kind> <ref> <version> --by <p> --approved-by <p> [--rollback]"); return 2; }
+        if (pos.size() < 5) { System.err.println("Usage: activate <reg> <target> <kind> <ref> <version> --by <p> --approved-by <p> [--by-key <f> --approved-by-key <f>] [--rollback]"); return 2; }
+        if ((byKey == null) != (approvedByKey == null)) {
+            System.err.println("Usage: --by-key and --approved-by-key must be supplied together"); return 2;
+        }
         Path reg = Path.of(pos.get(0));
         ActivationService svc = new ActivationService(new RecipeArtifactResolver(reg), new ActivationLedger(reg), Clock.systemUTC());
-        ActivationVerdict v = svc.activate(new ActivationRequest(pos.get(1), pos.get(2), pos.get(3), pos.get(4), by, approvedBy, rollback));
+        ActivationRequest req = new ActivationRequest(pos.get(1), pos.get(2), pos.get(3), pos.get(4), by, approvedBy, rollback);
+        ActivationVerdict v;
+        if (byKey != null) {
+            dev.krillin.bifrost.core.activation.LedgerSigner signer =
+                    dev.krillin.bifrost.core.identity.KeyFileLedgerSigner.create(
+                            by, Path.of(byKey), approvedBy, Path.of(approvedByKey),
+                            dev.krillin.bifrost.core.identity.AuthorizedKeys.load(reg));
+            v = svc.activate(req, signer);
+        } else {
+            v = svc.activate(req);
+        }
         if (v.ok()) {
             ActivationEvent e = v.event();
             System.out.println("[GATE] activated target=" + e.target() + " kind=" + e.kind() + " ref=" + e.ref()
                 + " version=" + e.version() + " action=" + e.action() + " by=" + e.activatedBy()
-                + " approvedBy=" + e.approvedBy() + " sha256=" + e.contentSha256());
+                + " approvedBy=" + e.approvedBy() + " sha256=" + e.contentSha256()
+                + (byKey != null ? " signed=true" : ""));
             return 0;
         }
         System.out.println("[GATE] REFUSED:");

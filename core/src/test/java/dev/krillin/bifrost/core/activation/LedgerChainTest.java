@@ -18,7 +18,7 @@ class LedgerChainTest {
         String prev = LedgerChain.GENESIS;
         for (ActivationEvent e : events) {
             String h = LedgerChain.entryHash(e, prev);
-            out.add(new LedgerEntry(e, prev, h));
+            out.add(LedgerEntry.unsigned(e, prev, h));
             prev = h;
         }
         return out;
@@ -53,7 +53,7 @@ class LedgerChainTest {
     @Test void verify_detects_edited_event_content() {
         List<LedgerEntry> c = new ArrayList<>(chain(ev("1.0.0","bob",null), ev("1.1.0","bob","1.0.0")));
         LedgerEntry orig = c.get(0);
-        c.set(0, new LedgerEntry(ev("1.0.0","mallory",null), orig.prevHash(), orig.entryHash()));
+        c.set(0, LedgerEntry.unsigned(ev("1.0.0","mallory",null), orig.prevHash(), orig.entryHash()));
         ChainVerdict v = LedgerChain.verify(c);
         assertFalse(v.intact());
         assertEquals(0, v.brokenIndex());
@@ -63,7 +63,7 @@ class LedgerChainTest {
     @Test void verify_detects_edited_prevHash_in_place() {
         List<LedgerEntry> c = new ArrayList<>(chain(ev("1.0.0","bob",null), ev("1.1.0","bob","1.0.0")));
         LedgerEntry e1 = c.get(1);
-        c.set(1, new LedgerEntry(e1.event(), "deadbeef", e1.entryHash()));
+        c.set(1, LedgerEntry.unsigned(e1.event(), "deadbeef", e1.entryHash()));
         ChainVerdict v = LedgerChain.verify(c);
         assertFalse(v.intact());
         assertEquals("ledger.chain.entry-hash-mismatch", v.rule());
@@ -92,7 +92,7 @@ class LedgerChainTest {
         List<LedgerEntry> c = new ArrayList<>(chain(ev("1.0.0","bob",null)));
         LedgerEntry g = c.get(0);
         String badPrev = "1".repeat(64);
-        c.set(0, new LedgerEntry(g.event(), badPrev, LedgerChain.entryHash(g.event(), badPrev)));
+        c.set(0, LedgerEntry.unsigned(g.event(), badPrev, LedgerChain.entryHash(g.event(), badPrev)));
         ChainVerdict v = LedgerChain.verify(c);
         assertFalse(v.intact());
         assertEquals(0, v.brokenIndex());

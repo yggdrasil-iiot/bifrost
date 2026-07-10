@@ -14,17 +14,46 @@ import java.util.*;
 public final class ActivationLedger {
     private final Path root;
     private final ObjectMapper mapper = JsonMapperFactory.create();
-    public ActivationLedger(Path registryRoot) { this.root = registryRoot; }
+    private final dev.krillin.bifrost.core.identity.SignedHeadStore heads;
+    public ActivationLedger(Path registryRoot) {
+        this.root = registryRoot;
+        this.heads = new dev.krillin.bifrost.core.identity.SignedHeadStore(registryRoot);
+    }
 
     private Path file(String target) { return root.resolve("activation").resolve(target + ".jsonl"); }
 
-    public void append(ActivationEvent e) throws IOException {
+    /** T4-compatible unsigned append. */
+    public void append(ActivationEvent e) throws IOException { append(e, null); }
+
+    /** T5: when signer != null, dual-sign the entry over entryHash and advance the signed head; when null,
+     *  exact T4 behavior (unsigned line, no head). The ledger line is written BEFORE the head — a crash
+     *  between them leaves head.seq one behind, caught fail-closed by SignedLedgerVerifier (spec §7). */
+    public void append(ActivationEvent e, LedgerSigner signer) throws IOException {
         Path f = file(e.target());
         Files.createDirectories(f.getParent());
         String prevHash = tailEntryHash(f);
-        LedgerEntry entry = new LedgerEntry(e, prevHash, LedgerChain.entryHash(e, prevHash));
+        String entryHash = LedgerChain.entryHash(e, prevHash);
+        LedgerEntry entry = (signer == null)
+                ? LedgerEntry.unsigned(e, prevHash, entryHash)
+                : signedEntry(e, prevHash, entryHash, signer);
         Files.writeString(f, mapper.writeValueAsString(entry) + "\n",
                 StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+        if (signer != null) advanceHead(e.target(), entryHash, signer);
+    }
+
+    private LedgerEntry signedEntry(ActivationEvent e, String prevHash, String entryHash,
+                                    LedgerSigner signer) {
+        Signatures sig = signer.sign(entryHash);
+        return new LedgerEntry(e, prevHash, entryHash, sig.activatorSig(), sig.approverSig());
+    }
+
+    private void advanceHead(String target, String tailEntryHash, LedgerSigner signer) throws IOException {
+        // seq source of truth is the HEAD file, not history length: deleting the head then appending once
+        // wedges the target into head.seq-mismatch at verify time (fail-closed, by design — spec §7).
+        long seq = heads.read(target).map(h -> h.seq() + 1).orElse(0L);
+        String preimage = dev.krillin.bifrost.core.identity.SignedHeadStore.preimage(target, seq, tailEntryHash);
+        heads.write(new dev.krillin.bifrost.core.identity.SignedHead(
+                target, seq, tailEntryHash, signer.approverPrincipal(), signer.signHead(preimage)));
     }
 
     /** The prevHash for the next append = the last entry's entryHash (GENESIS if the ledger is empty).
