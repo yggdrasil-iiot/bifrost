@@ -71,5 +71,6 @@ public final class KeyFileLedgerSigner implements LedgerSigner {
         return Ed25519Keys.sign(headPreimage.getBytes(StandardCharsets.UTF_8), approverKey);
     }
 
+    @Override public String activatorPrincipal() { return activatorPrincipal; }
     @Override public String approverPrincipal() { return approverPrincipal; }
 }

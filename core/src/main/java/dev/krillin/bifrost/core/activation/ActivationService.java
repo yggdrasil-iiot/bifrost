@@ -30,6 +30,12 @@ public final class ActivationService {
             if (signer != null) {                                   // T5: fail-closed identity checks
                 var idv = signer.preflight();
                 if (!idv.isEmpty()) return new ActivationVerdict(false, null, idv);
+                // Bind the signing identity to the event's NAMED principals, so the record's integrity holds
+                // at the point of record — not only when a later verifier rejects a signed-but-unverifiable line.
+                if (!signer.activatorPrincipal().equals(r.by()) || !signer.approverPrincipal().equals(r.approvedBy()))
+                    return refuse("identity.signer.principal-mismatch",
+                            "signing keys (" + signer.activatorPrincipal() + "/" + signer.approverPrincipal()
+                            + ") must match the named activator/approver (" + r.by() + "/" + r.approvedBy() + ")");
             }
             String prior = ledger.active(r.target(), r.kind(), r.ref()).map(ActivationEvent::version).orElse(null);
             ActivationEvent e = new ActivationEvent(r.target(), r.kind(), r.ref(), r.version(),

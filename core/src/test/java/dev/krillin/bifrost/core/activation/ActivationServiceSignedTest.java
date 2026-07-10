@@ -61,6 +61,29 @@ class ActivationServiceSignedTest {
         assertTrue(ledger.history("Line1").isEmpty(), "refused => ledger untouched");
     }
 
+    @Test void signer_identity_must_match_named_principals(@TempDir Path root, @TempDir Path keys) throws Exception {
+        // signer legitimately holds carol+bob keys, but the request NAMES alice as activator -> refuse at write time
+        KeyPair alice = Ed25519Keys.generate(), bob = Ed25519Keys.generate(), carol = Ed25519Keys.generate();
+        Path akf = root.resolve("identity").resolve("authorized-keys.jsonl");
+        Files.createDirectories(akf.getParent());
+        Files.writeString(akf,
+            "{\"principal\":\"alice\",\"publicKey\":\""+Ed25519Keys.publicKeyB64(alice.getPublic())+"\"}\n"
+          + "{\"principal\":\"bob\",\"publicKey\":\""+Ed25519Keys.publicKeyB64(bob.getPublic())+"\"}\n"
+          + "{\"principal\":\"carol\",\"publicKey\":\""+Ed25519Keys.publicKeyB64(carol.getPublic())+"\"}\n");
+        Path cf = keys.resolve("c"), bf = keys.resolve("b");
+        Files.writeString(cf, Ed25519Keys.privateKeyB64(carol.getPrivate()));
+        Files.writeString(bf, Ed25519Keys.privateKeyB64(bob.getPrivate()));
+        LedgerSigner carolSigner = KeyFileLedgerSigner.create("carol", cf, "bob", bf, AuthorizedKeys.load(root));
+
+        ActivationLedger ledger = new ActivationLedger(root);
+        ActivationVerdict v = new ActivationService(okResolver(), ledger, Clock.systemUTC())
+                .activate(new ActivationRequest("Line1","recipe","mix","1.0.0","alice","bob",false), carolSigner);
+        assertFalse(v.ok());
+        assertTrue(v.violations().stream().anyMatch(x -> x.rule().equals("identity.signer.principal-mismatch")),
+                v.violations().toString());
+        assertTrue(ledger.history("Line1").isEmpty(), "refused => ledger untouched (no signed-but-unverifiable record)");
+    }
+
     @Test void null_signer_is_unchanged_t3_behavior(@TempDir Path root) throws Exception {
         ActivationLedger ledger = new ActivationLedger(root);
         ActivationVerdict v = new ActivationService(okResolver(), ledger, Clock.systemUTC())
