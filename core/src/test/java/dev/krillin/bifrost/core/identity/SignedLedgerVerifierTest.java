@@ -3,6 +3,7 @@ package dev.krillin.bifrost.core.identity;
 import dev.krillin.bifrost.core.activation.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.security.KeyPair;
 import java.util.*;
@@ -42,6 +43,10 @@ class SignedLedgerVerifierTest {
     }
 
     private Path ledgerFile(Path root) { return root.resolve("activation").resolve("Line1.jsonl"); }
+    private Path headFile(Path root)   { return root.resolve("identity").resolve("Line1.head"); }
+    private static com.fasterxml.jackson.databind.ObjectMapper mapper() {
+        return dev.krillin.bifrost.core.schema.JsonMapperFactory.create();
+    }
 
     @Test void intact_signed_ledger_verifies(@TempDir Path root, @TempDir Path keys) throws Exception {
         SignedVerdict v = seed(root, keys, Ed25519Keys.generate(), Ed25519Keys.generate()).verify("Line1");
@@ -96,5 +101,76 @@ class SignedLedgerVerifierTest {
         SignedVerdict v = ver.verify("Line1");
         assertFalse(v.intact());
         assertEquals("identity.sig.invalid", v.rule(), "structural chain re-validates but the sig over the new hash fails");
+    }
+
+    // --- the security-defining property: a cryptographically VALID signature by the WRONG named principal ---
+    @Test void valid_signature_by_wrong_principal_is_rejected(@TempDir Path root, @TempDir Path keys) throws Exception {
+        KeyPair alice = Ed25519Keys.generate(), bob = Ed25519Keys.generate();
+        SignedLedgerVerifier ver = seed(root, keys, alice, bob);   // valid 2-entry signed ledger
+        // Swap entry#0's activatorSig for a VALID sig over the SAME entryHash made by a DIFFERENT key (charlie);
+        // event.activatedBy stays "alice", so the verifier checks charlie's sig against alice's registered key.
+        KeyPair charlie = Ed25519Keys.generate();
+        LedgerEntry e0 = new ActivationLedger(root).history("Line1").get(0);
+        String charlieSig = Ed25519Keys.sign(e0.entryHash().getBytes(StandardCharsets.UTF_8), charlie.getPrivate());
+        LedgerEntry forged = new LedgerEntry(e0.event(), e0.prevHash(), e0.entryHash(), charlieSig, e0.approverSig());
+        List<String> lines = Files.readAllLines(ledgerFile(root));
+        lines.set(0, mapper().writeValueAsString(forged));
+        Files.write(ledgerFile(root), lines);
+        SignedVerdict v = ver.verify("Line1");
+        assertFalse(v.intact());
+        assertEquals("identity.sig.invalid", v.rule(), "a valid sig by the wrong named principal must be rejected");
+    }
+
+    @Test void missing_signature_on_an_entry_is_detected(@TempDir Path root, @TempDir Path keys) throws Exception {
+        SignedLedgerVerifier ver = seed(root, keys, Ed25519Keys.generate(), Ed25519Keys.generate());
+        LedgerEntry e0 = new ActivationLedger(root).history("Line1").get(0);
+        List<String> lines = Files.readAllLines(ledgerFile(root));
+        lines.set(0, mapper().writeValueAsString(LedgerEntry.unsigned(e0.event(), e0.prevHash(), e0.entryHash())));
+        Files.write(ledgerFile(root), lines);
+        SignedVerdict v = ver.verify("Line1");
+        assertFalse(v.intact());
+        assertEquals("identity.sig.missing", v.rule());
+    }
+
+    @Test void two_principals_sharing_one_key_fail_four_eyes_at_verify(@TempDir Path root) throws Exception {
+        // alice and alice2 are distinct principals registered to the SAME pubkey (allowed by AuthorizedKeys);
+        // an entry naming both, dual-signed by that shared key, has valid sigs but fails cryptographic four-eyes.
+        KeyPair shared = Ed25519Keys.generate();
+        Path akf = root.resolve("identity").resolve("authorized-keys.jsonl");
+        Files.createDirectories(akf.getParent());
+        String pub = Ed25519Keys.publicKeyB64(shared.getPublic());
+        Files.writeString(akf,
+            "{\"principal\":\"alice\",\"publicKey\":\""+pub+"\"}\n"
+          + "{\"principal\":\"alice2\",\"publicKey\":\""+pub+"\"}\n");
+        ActivationEvent e = new ActivationEvent("Line1","recipe","mix","1.0.0","sha","alice","alice2",1000L,null,"ACTIVATE");
+        String hash = LedgerChain.entryHash(e, LedgerChain.GENESIS);
+        String sig = Ed25519Keys.sign(hash.getBytes(StandardCharsets.UTF_8), shared.getPrivate());
+        LedgerEntry entry = new LedgerEntry(e, LedgerChain.GENESIS, hash, sig, sig);
+        Files.createDirectories(ledgerFile(root).getParent());
+        Files.writeString(ledgerFile(root), mapper().writeValueAsString(entry) + "\n");
+        SignedVerdict v = SignedLedgerVerifier.forRegistry(root).verify("Line1");
+        assertFalse(v.intact());
+        assertEquals("identity.four-eyes.same-key", v.rule());
+    }
+
+    @Test void missing_head_is_detected(@TempDir Path root, @TempDir Path keys) throws Exception {
+        SignedLedgerVerifier ver = seed(root, keys, Ed25519Keys.generate(), Ed25519Keys.generate());
+        Files.delete(headFile(root));   // ledger intact + signed, but the anchor is gone
+        SignedVerdict v = ver.verify("Line1");
+        assertFalse(v.intact());
+        assertEquals("identity.head.missing", v.rule());
+    }
+
+    @Test void tampered_head_signature_is_invalid(@TempDir Path root, @TempDir Path keys) throws Exception {
+        SignedLedgerVerifier ver = seed(root, keys, Ed25519Keys.generate(), Ed25519Keys.generate());
+        String head = Files.readString(headFile(root));
+        String marker = "\"sig\":\"";
+        int start = head.indexOf(marker) + marker.length();
+        char c0 = head.charAt(start);
+        head = head.substring(0, start) + (c0 == 'A' ? 'B' : 'A') + head.substring(start + 1);
+        Files.writeString(headFile(root), head);
+        SignedVerdict v = ver.verify("Line1");
+        assertFalse(v.intact());
+        assertEquals("identity.head.sig-invalid", v.rule());
     }
 }
