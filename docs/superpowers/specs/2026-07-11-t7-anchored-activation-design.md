@@ -111,7 +111,11 @@ head-one-behind. `ActivationLedger` gains a **nullable** `AnchorStore` (null = e
 ### 4.2 Verify (`SignedLedgerVerifier`, `anchored` level)
 
 A `TrustLevel { STRUCTURAL, SIGNED, ANCHORED }` parameter (minimal-churn wiring) selects depth.
-`ANCHORED` runs all T5 checks, then:
+**Implementation note:** `ANCHORED` must be a *reordered* verify path, **not** a literal
+`signedVerify()` call followed by extra checks — T5's step 3 returns `whole()` for an empty ledger
+with no head, so a naive "T5 then anchor" composition would short-circuit to pass before the anchor
+check runs. The anchor cross-check must be reachable independently of the head-existence branch.
+`ANCHORED` runs all T5 checks (structure, per-entry sigs), then:
 
 **Head four-eyes:** the check requires **two distinct registered keys** signed the head — it does
 **not** bind `signedBy`/`coSignedBy` to the tail event's `activatedBy`/`approvedBy` (consistent with
