@@ -40,14 +40,14 @@ class RequireSignedActivationTest {
 
     @Test void require_signed_on_passes_for_intact_signed_ledger(@TempDir Path root, @TempDir Path keys) throws Exception {
         seedSigned(root, keys);
-        assertDoesNotThrow(() -> NcmdOpcUaBridgeMain.assertLedgerTrustworthy(root, "Line1", true));
+        assertDoesNotThrow(() -> NcmdOpcUaBridgeMain.assertLedgerTrustworthy(root, "Line1", true, false, "file", null));
     }
 
     @Test void require_signed_on_throws_signed_code_on_broken(@TempDir Path root, @TempDir Path keys) throws Exception {
         seedSigned(root, keys);
         tamperFirstSigByte(root.resolve("activation").resolve("Line1.jsonl"));
         IllegalStateException ex = assertThrows(IllegalStateException.class,
-                () -> NcmdOpcUaBridgeMain.assertLedgerTrustworthy(root, "Line1", true));
+                () -> NcmdOpcUaBridgeMain.assertLedgerTrustworthy(root, "Line1", true, false, "file", null));
         assertTrue(ex.getMessage().contains("activation.edge.signed-ledger-broken"), ex.getMessage());
     }
 
@@ -55,7 +55,7 @@ class RequireSignedActivationTest {
         // an UNSIGNED T4 ledger: intact structurally, no sigs -> must PASS when flag is off
         new ActivationLedger(root).append(
             new ActivationEvent("Line1","recipe","mix","1.0.0","sha","alice","bob",1000L,null,"ACTIVATE"));
-        assertDoesNotThrow(() -> NcmdOpcUaBridgeMain.assertLedgerTrustworthy(root, "Line1", false));
+        assertDoesNotThrow(() -> NcmdOpcUaBridgeMain.assertLedgerTrustworthy(root, "Line1", false, false, "file", null));
     }
 
     private void writePolicy(Path root, boolean grantAlice) throws Exception {

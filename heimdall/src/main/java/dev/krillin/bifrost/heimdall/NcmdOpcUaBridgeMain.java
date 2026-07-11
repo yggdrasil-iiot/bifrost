@@ -36,10 +36,15 @@ public final class NcmdOpcUaBridgeMain {
      * {@code requireSignedActivation} (env {@code REQUIRE_SIGNED_ACTIVATION}, default OFF) selects the
      * edge's ledger-trust check: off → T4 structural chain (verifyChain); on → full
      * {@link dev.krillin.bifrost.core.identity.SignedLedgerVerifier} (structural + dual-sig + signed head).
+     * {@code requireAnchoredActivation} (env {@code REQUIRE_ANCHORED_ACTIVATION}, default OFF) raises the bar
+     * one tier further to {@link dev.krillin.bifrost.core.identity.TrustLevel#ANCHORED} (adds the external
+     * anchor cross-check + four-eyes head); it IMPLIES signed (anchored presupposes authN). {@code anchorStore}
+     * ({@code ANCHOR_STORE}, file|git) and {@code anchorDir} ({@code ANCHOR_DIR}) pick the anchor witness.
      */
     record Config(String broker, String opcua, String group, String edge, String policyPath,
                   String registryPath, String conformancePath, String activationPath, String activationTarget,
-                  boolean requireSignedActivation) {}
+                  boolean requireSignedActivation, boolean requireAnchoredActivation, String anchorStore,
+                  String anchorDir) {}
 
     static Config resolve(Function<String, String> getenv) {
         String broker = env(getenv, "MQTT_URL", "tcp://localhost:1883");
@@ -58,8 +63,17 @@ public final class NcmdOpcUaBridgeMain {
         if (!requireSigned && !rsaOff)   // an unrecognized non-empty value fails to OFF — say so loudly, don't silently downgrade
             System.err.println("[BRIDGE] WARN: REQUIRE_SIGNED_ACTIVATION='" + rsa
                     + "' not recognized — treating as OFF (structural-only). Use true/on/1 or false/off/0.");
+        String raa = env(getenv, "REQUIRE_ANCHORED_ACTIVATION", "false").strip();
+        boolean requireAnchored = "true".equalsIgnoreCase(raa) || "on".equalsIgnoreCase(raa) || "1".equals(raa);
+        boolean raaOff = "false".equalsIgnoreCase(raa) || "off".equalsIgnoreCase(raa) || "0".equals(raa) || raa.isEmpty();
+        if (!requireAnchored && !raaOff)
+            System.err.println("[BRIDGE] WARN: REQUIRE_ANCHORED_ACTIVATION='" + raa
+                    + "' not recognized — treating as OFF. Use true/on/1 or false/off/0.");
+        boolean requireSignedEffective = requireSigned || requireAnchored;   // anchored presupposes authN
+        String anchorStore = env(getenv, "ANCHOR_STORE", "file");
+        String anchorDir = env(getenv, "ANCHOR_DIR", null);
         return new Config(broker, opcua, group, edge, policyPath, registryPath, conformancePath, activationPath,
-                activationTarget, requireSigned);
+                activationTarget, requireSignedEffective, requireAnchored, anchorStore, anchorDir);
     }
 
     /**
@@ -95,7 +109,8 @@ public final class NcmdOpcUaBridgeMain {
                         ? java.nio.file.Path.of(config.activationPath()) : registryDir;
                 dev.krillin.bifrost.core.activation.ActivationLedger ledger =
                         new dev.krillin.bifrost.core.activation.ActivationLedger(ledgerDir);
-                assertLedgerTrustworthy(ledgerDir, config.activationTarget(), config.requireSignedActivation());
+                assertLedgerTrustworthy(ledgerDir, config.activationTarget(), config.requireSignedActivation(),
+                        config.requireAnchoredActivation(), config.anchorStore(), config.anchorDir());
                 var active = ledger
                         .active(config.activationTarget(), "recipe", ref)
                         .orElseThrow(() -> new IllegalStateException("activation.edge.no-active-pointer: no active recipe for target "
@@ -129,29 +144,47 @@ public final class NcmdOpcUaBridgeMain {
     }
 
     /**
-     * Fail-closed ledger trust check before binding the active version. {@code requireSigned=false} →
-     * T4 structural chain ({@code verifyChain}); {@code true} → full {@link
-     * dev.krillin.bifrost.core.identity.SignedLedgerVerifier} (structural + dual-sig + signed head).
-     * {@code SignedLedgerVerifier} runs {@code LedgerChain.verify} first, so structural breaks are still
-     * caught when the flag is on. Throws {@link IllegalStateException} with the reason-coded message on a break.
+     * Fail-closed ledger trust check before binding the active version. Three opt-in tiers, highest first:
+     * {@code requireAnchored=true} → full {@link dev.krillin.bifrost.core.identity.SignedLedgerVerifier} at
+     * {@link dev.krillin.bifrost.core.identity.TrustLevel#ANCHORED} (structural + dual-sig + external anchor
+     * cross-check + four-eyes head), fail-closing {@code activation.edge.anchor-denied} on a rollback/behind
+     * anchor fault; else {@code requireSigned=true} → {@code SignedLedgerVerifier.verify} (structural +
+     * dual-sig + signed head); else T4 structural chain ({@code verifyChain}). {@code SignedLedgerVerifier}
+     * runs {@code LedgerChain.verify} first, so structural breaks are still caught in the higher tiers.
+     * Throws {@link IllegalStateException} with the reason-coded message on a break.
      */
-    static void assertLedgerTrustworthy(java.nio.file.Path ledgerDir, String target, boolean requireSigned)
+    static void assertLedgerTrustworthy(java.nio.file.Path ledgerDir, String target, boolean requireSigned,
+                                        boolean requireAnchored, String anchorStoreKind, String anchorDir)
             throws java.io.IOException {
         // Audit line: prove from the log which trust check actually ran before binding (a security toggle
         // must be observable — otherwise a mis-set flag silently downgrades enforcement with no signal).
-        System.out.println("[BRIDGE] activation trust = " + (requireSigned ? "signed" : "structural")
+        System.out.println("[BRIDGE] activation trust = "
+                + (requireAnchored ? "anchored" : requireSigned ? "signed" : "structural")
                 + " (target " + target + ")");
+        if (requireAnchored) {
+            java.nio.file.Path anchorRepo = (anchorDir != null && !anchorDir.isBlank())
+                    ? java.nio.file.Path.of(anchorDir) : ledgerDir;
+            dev.krillin.bifrost.core.activation.AnchorStore anchors = "git".equals(anchorStoreKind)
+                    ? new dev.krillin.bifrost.core.identity.GitAnchorStore(anchorRepo)
+                    : new dev.krillin.bifrost.core.activation.FileAnchorStore(anchorRepo);
+            var v = dev.krillin.bifrost.core.identity.SignedLedgerVerifier.forRegistry(ledgerDir)
+                    .verify(target, dev.krillin.bifrost.core.identity.TrustLevel.ANCHORED, anchors);
+            if (!v.intact())
+                throw new IllegalStateException("activation.edge.anchor-denied reason=" + v.rule()
+                        + " (target " + target + " index " + v.brokenIndex() + ")");
+            return;
+        }
         if (requireSigned) {
             var v = dev.krillin.bifrost.core.identity.SignedLedgerVerifier.forRegistry(ledgerDir).verify(target);
             if (!v.intact())
                 throw new IllegalStateException("activation.edge.signed-ledger-broken: target " + target
                         + " index " + v.brokenIndex() + " rule " + v.rule());
-        } else {
-            var chain = new dev.krillin.bifrost.core.activation.ActivationLedger(ledgerDir).verifyChain(target);
-            if (!chain.intact())
-                throw new IllegalStateException("activation.edge.ledger-chain-broken: target " + target
-                        + " index " + chain.brokenIndex() + " rule " + chain.rule());
+            return;
         }
+        var chain = new dev.krillin.bifrost.core.activation.ActivationLedger(ledgerDir).verifyChain(target);
+        if (!chain.intact())
+            throw new IllegalStateException("activation.edge.ledger-chain-broken: target " + target
+                    + " index " + chain.brokenIndex() + " rule " + chain.rule());
     }
 
     /**
