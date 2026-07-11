@@ -116,6 +116,13 @@ stage_reg() {  # $1 = registry dir (bash path); echoes nothing, sets $reg / $reg
   cp "$FIX/spec-mix-recipe-1.0.0.json" "$reg/spec/mix-recipe/1.0.0.json"
   cp "$FIX/spec-mix-recipe-1.1.0.json" "$reg/spec/mix-recipe/1.1.0.json"
   cp "$AKF"                            "$reg/identity/authorized-keys.jsonl"
+  # T6: seed the activation-policy so legitimate alice/bob signed activations pass deny-by-default authZ.
+  cat > "$reg/identity/activation-policy.json" <<'JSON'
+{"version":"1","default":"deny","rules":[
+  {"id":"r-activate","principal":"alice","action":"activate","target":"Line1","kind":"recipe","ref":"mix-recipe"},
+  {"id":"r-approve","principal":"bob","action":"approve","target":"Line1","kind":"recipe","ref":"mix-recipe"}
+]}
+JSON
   reg_win="$(cygpath -m "$(pwd)/$reg")"
 }
 
@@ -304,6 +311,13 @@ else
   cp "$FIX/spec-mix-recipe-1.1.0.json" "$I7REG/spec/mix-recipe/1.1.0.json"
   cp "$FIX/policy.json"                "$I7REG/policy.json"
   cp "$AKF"                            "$I7REG/identity/authorized-keys.jsonl"
+  # T6: seed the activation-policy so the signed activation below passes deny-by-default authZ.
+  cat > "$I7REG/identity/activation-policy.json" <<'JSON'
+{"version":"1","default":"deny","rules":[
+  {"id":"r-activate","principal":"alice","action":"activate","target":"Line1","kind":"recipe","ref":"mix-recipe"},
+  {"id":"r-approve","principal":"bob","action":"approve","target":"Line1","kind":"recipe","ref":"mix-recipe"}
+]}
+JSON
   reg="$I7REG"; reg_win="$(cygpath -m "$(pwd)/$I7REG")"
   I7LEDGER="$I7REG/activation/Line1.jsonl"
   CONF_RECIPE_WIN="$(cygpath -m "$(pwd)/$I7REG/conformance/Line1-Mixer/recipe.json")"

@@ -13,9 +13,9 @@ public final class ActivationService {
         this.resolver = resolver; this.ledger = ledger; this.clock = clock;
     }
 
-    public ActivationVerdict activate(ActivationRequest r) { return activate(r, null); }
+    public ActivationVerdict activate(ActivationRequest r) { return activate(r, null, null); }
 
-    public ActivationVerdict activate(ActivationRequest r, LedgerSigner signer) {
+    public ActivationVerdict activate(ActivationRequest r, LedgerSigner signer, ActivationPolicy policy) {
         try {
             var resolved = resolver.resolve(r.kind(), r.ref(), r.version());
             if (resolved.isEmpty()) return refuse("activation.artifact.unresolved",
@@ -36,6 +36,17 @@ public final class ActivationService {
                     return refuse("identity.signer.principal-mismatch",
                             "signing keys (" + signer.activatorPrincipal() + "/" + signer.approverPrincipal()
                             + ") must match the named activator/approver (" + r.by() + "/" + r.approvedBy() + ")");
+                // T6 authZ (deny-by-default) — only on the signed path (authZ presupposes authN).
+                ActivationPolicy p = (policy != null) ? policy : ActivationPolicy.denyAll();
+                ActivationAuthorizer authz = new ActivationAuthorizer();
+                AuthzDecision act = authz.authorize(p, r.by(), ActivationAction.ACTIVATE, r.target(), r.kind(), r.ref());
+                if (!act.allowed())
+                    return refuse("activation.authz.denied", "activator '" + r.by() + "' not permitted to ACTIVATE "
+                            + r.target() + "/" + r.kind() + "/" + r.ref() + " [" + act.reason() + "]");
+                AuthzDecision app = authz.authorize(p, r.approvedBy(), ActivationAction.APPROVE, r.target(), r.kind(), r.ref());
+                if (!app.allowed())
+                    return refuse("activation.authz.denied", "approver '" + r.approvedBy() + "' not permitted to APPROVE "
+                            + r.target() + "/" + r.kind() + "/" + r.ref() + " [" + app.reason() + "]");
             }
             String prior = ledger.active(r.target(), r.kind(), r.ref()).map(ActivationEvent::version).orElse(null);
             ActivationEvent e = new ActivationEvent(r.target(), r.kind(), r.ref(), r.version(),

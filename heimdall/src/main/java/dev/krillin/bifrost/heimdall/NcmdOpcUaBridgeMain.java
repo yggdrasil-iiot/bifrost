@@ -100,6 +100,11 @@ public final class NcmdOpcUaBridgeMain {
                         .active(config.activationTarget(), "recipe", ref)
                         .orElseThrow(() -> new IllegalStateException("activation.edge.no-active-pointer: no active recipe for target "
                                 + config.activationTarget() + " ref " + ref));
+                // kind is "recipe" here because this bind path is recipe-only; the gate authorizes the same
+                // (target, "recipe", ref) tuple, so a legitimate activation admitted at the gate is not spuriously
+                // denied at the edge. (A non-recipe activation never reaches this bind — it fails at no-active-pointer.)
+                assertActivationAuthorized(ledgerDir, config.activationTarget(), "recipe", ref,
+                        active.activatedBy(), active.approvedBy(), config.requireSignedActivation());
                 java.nio.file.Path specFile = new MasterSpecStore().file(registryDir, ref, active.version());
                 if (!java.nio.file.Files.isRegularFile(specFile))
                     throw new IllegalStateException("activation.edge.artifact-missing: " + specFile);
@@ -147,6 +152,25 @@ public final class NcmdOpcUaBridgeMain {
                 throw new IllegalStateException("activation.edge.ledger-chain-broken: target " + target
                         + " index " + chain.brokenIndex() + " rule " + chain.rule());
         }
+    }
+
+    /**
+     * Fail-closed activation authZ re-check at the edge (only meaningful with an authenticated subject, i.e.
+     * requireSigned). Throws activation.edge.authz-denied on a deny; prints an audit line on pass. No-op when
+     * requireSigned is false (authZ presupposes authN).
+     */
+    static void assertActivationAuthorized(java.nio.file.Path ledgerDir, String target, String kind, String ref,
+                                           String activatedBy, String approvedBy, boolean requireSigned) {
+        if (!requireSigned) return;
+        var policy = dev.krillin.bifrost.core.activation.ActivationPolicyStore.load(ledgerDir);
+        var authz = new dev.krillin.bifrost.core.activation.ActivationAuthorizer();
+        var a = authz.authorize(policy, activatedBy, dev.krillin.bifrost.core.activation.ActivationAction.ACTIVATE, target, kind, ref);
+        if (!a.allowed())
+            throw new IllegalStateException("activation.edge.authz-denied: " + activatedBy + " activate [" + a.reason() + "]");
+        var p = authz.authorize(policy, approvedBy, dev.krillin.bifrost.core.activation.ActivationAction.APPROVE, target, kind, ref);
+        if (!p.allowed())
+            throw new IllegalStateException("activation.edge.authz-denied: " + approvedBy + " approve [" + p.reason() + "]");
+        System.out.println("[BRIDGE] activation authz = ok (by " + activatedBy + "/" + approvedBy + ")");
     }
 
     public static void main(String[] args) throws Exception {

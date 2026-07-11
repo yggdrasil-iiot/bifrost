@@ -24,6 +24,7 @@ public final class IdentityGate {
             switch (args[0]) {
                 case "keygen": return keygen(Arrays.copyOfRange(args, 1, args.length));
                 case "verify-signed": return verifySigned(Arrays.copyOfRange(args, 1, args.length));
+                case "authorize": return authorize(Arrays.copyOfRange(args, 1, args.length));
                 default: usage(); return 2;
             }
         } catch (Exception e) { System.err.println("[GATE] error: " + e.getMessage()); return 2; }
@@ -90,5 +91,23 @@ public final class IdentityGate {
         return 1;
     }
 
-    private static void usage() { System.err.println("Usage: identity <keygen|verify-signed> ..."); }
+    private static int authorize(String[] a) throws Exception {
+        if (a.length < 6) { System.err.println("Usage: identity authorize <reg> <principal> <activate|approve> <target> <kind> <ref>"); return 2; }
+        dev.krillin.bifrost.core.activation.ActivationAction action;
+        try { action = dev.krillin.bifrost.core.activation.ActivationAction.from(a[2]); }
+        catch (Exception e) { System.err.println("[GATE] authorize: action must be activate|approve, got: " + a[2]); return 2; }
+        var policy = dev.krillin.bifrost.core.activation.ActivationPolicyStore.load(Path.of(a[0]));
+        var d = new dev.krillin.bifrost.core.activation.ActivationAuthorizer()
+                .authorize(policy, a[1], action, a[3], a[4], a[5]);
+        if (d.allowed()) {
+            System.out.println("[GATE] authorize " + a[1] + " " + action.json() + " " + a[3] + "/" + a[4] + "/" + a[5]
+                    + " => ALLOW rule=" + d.ruleId());
+            return 0;
+        }
+        System.out.println("[GATE] authorize " + a[1] + " " + action.json() + " " + a[3] + "/" + a[4] + "/" + a[5]
+                + " => DENY (" + d.reason() + ")");
+        return 1;
+    }
+
+    private static void usage() { System.err.println("Usage: identity <keygen|verify-signed|authorize> ..."); }
 }
