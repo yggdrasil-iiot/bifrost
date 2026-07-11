@@ -35,13 +35,22 @@ class PolicyGateTest {
         assertEquals(1, PolicyGate.run(new String[]{ write(d,"p.json",bad).toString() }));
     }
 
-    @Test void constraintWithoutBounds_returnsOne(@TempDir Path d) throws Exception {  // lint rule: constraint with no min or max
+    @Test void emptyConstraint_returnsOne(@TempDir Path d) throws Exception {  // lint-3: a constraint with no type AND no bounds is meaningless
         String bad = """
+            {"version":"1.0.0","rules":[
+              {"id":"x","principal":"e","target":{"group":"G","edge":"E"},
+               "command":"Setpoint/Rpm","constraint":{}}
+            ],"default":"deny"}""";
+        assertEquals(1, PolicyGate.run(new String[]{ write(d,"p.json",bad).toString() }));
+    }
+
+    @Test void typeOnlyConstraint_returnsZero(@TempDir Path d) throws Exception {  // ranges migrated to the conformance model (a98e3cf): a type-only constraint is valid
+        String ok = """
             {"version":"1.0.0","rules":[
               {"id":"x","principal":"e","target":{"group":"G","edge":"E"},
                "command":"Setpoint/Rpm","constraint":{"type":"Double"}}
             ],"default":"deny"}""";
-        assertEquals(1, PolicyGate.run(new String[]{ write(d,"p.json",bad).toString() }));
+        assertEquals(0, PolicyGate.run(new String[]{ write(d,"p.json",ok).toString() }));
     }
 
     @Test void overGrantWildcard_returnsOne(@TempDir Path d) throws Exception {  // lint rule: over-grant (group=* edge=* with no constraint)

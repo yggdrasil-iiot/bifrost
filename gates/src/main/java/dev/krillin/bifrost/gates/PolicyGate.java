@@ -53,9 +53,12 @@ public final class PolicyGate {
         }
         for (Rule r : p.rules()) {
             Constraint c = r.constraint();
-            // a constraint with neither min nor max is meaningless and likely a mistake
-            if (c != null && c.min() == null && c.max() == null) {
-                v.add("[lint-3] constraint without min/max: rule " + r.id());
+            // an ENTIRELY empty constraint (no type, no bounds) is meaningless and likely a mistake.
+            // Value RANGES now live in the governed conformance model (migrated out of policy.json in
+            // a98e3cf), so a type-only constraint is VALID — it type-checks the value while conformance
+            // enforces the range. Only flag when there is neither a type nor bounds.
+            if (c != null && c.type() == null && c.min() == null && c.max() == null) {
+                v.add("[lint-3] empty constraint (no type / min / max): rule " + r.id());
             }
             // over-grant: group=* and edge=* with no value constraint allows any payload value
             if (c == null && "*".equals(r.target().group()) && "*".equals(r.target().edge())) {
