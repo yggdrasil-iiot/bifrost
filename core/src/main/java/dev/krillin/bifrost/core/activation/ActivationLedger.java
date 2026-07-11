@@ -15,9 +15,12 @@ public final class ActivationLedger {
     private final Path root;
     private final ObjectMapper mapper = JsonMapperFactory.create();
     private final dev.krillin.bifrost.core.identity.SignedHeadStore heads;
-    public ActivationLedger(Path registryRoot) {
+    private final AnchorStore anchors;
+    public ActivationLedger(Path registryRoot) { this(registryRoot, null); }
+    public ActivationLedger(Path registryRoot, AnchorStore anchors) {
         this.root = registryRoot;
         this.heads = new dev.krillin.bifrost.core.identity.SignedHeadStore(registryRoot);
+        this.anchors = anchors;
     }
 
     private Path file(String target) { return root.resolve("activation").resolve(target + ".jsonl"); }
@@ -26,8 +29,9 @@ public final class ActivationLedger {
     public void append(ActivationEvent e) throws IOException { append(e, null); }
 
     /** T5: when signer != null, dual-sign the entry over entryHash and advance the signed head; when null,
-     *  exact T4 behavior (unsigned line, no head). The ledger line is written BEFORE the head — a crash
-     *  between them leaves head.seq one behind, caught fail-closed by SignedLedgerVerifier (spec §7). */
+     *  exact T4 behavior (unsigned line, no head). Write order is ledger line → dual head → anchor — a
+     *  crash between line and head leaves head.seq one behind, caught fail-closed by SignedLedgerVerifier
+     *  (spec §7); the anchor is recorded LAST so it never witnesses a seq the head hasn't reached. */
     public void append(ActivationEvent e, LedgerSigner signer) throws IOException {
         Path f = file(e.target());
         Files.createDirectories(f.getParent());
@@ -52,8 +56,11 @@ public final class ActivationLedger {
         // wedges the target into head.seq-mismatch at verify time (fail-closed, by design — spec §7).
         long seq = heads.read(target).map(h -> h.seq() + 1).orElse(0L);
         String preimage = dev.krillin.bifrost.core.identity.SignedHeadStore.preimage(target, seq, tailEntryHash);
+        HeadSignatures hs = signer.signHead(preimage);
         heads.write(new dev.krillin.bifrost.core.identity.SignedHead(
-                target, seq, tailEntryHash, signer.approverPrincipal(), signer.signHead(preimage)));
+                target, seq, tailEntryHash, signer.approverPrincipal(), hs.approverSig(),
+                signer.activatorPrincipal(), hs.activatorSig()));
+        if (anchors != null) anchors.record(new AnchorRecord(target, seq, tailEntryHash));  // last = the catch-up witness
     }
 
     /** The prevHash for the next append = the last entry's entryHash (GENESIS if the ledger is empty).

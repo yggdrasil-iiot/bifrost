@@ -77,6 +77,24 @@ class ActivationLedgerSignedTest {
                 "the head sig append() wrote must verify under the approver's registered key");
     }
 
+    @Test void signed_append_writes_dual_head(@TempDir Path root, @TempDir Path keys) throws Exception {
+        LedgerSigner s = signer(root, keys);
+        new ActivationLedger(root).append(ev("1.0.0", null), s);
+        SignedHead h = new SignedHeadStore(root).read("Line1").orElseThrow();
+        assertNotNull(h.sig());
+        assertNotNull(h.coSig());
+        assertNotEquals(h.signedBy(), h.coSignedBy());
+    }
+
+    @Test void signed_append_with_anchor_store_records_anchor(@TempDir Path root, @TempDir Path keys) throws Exception {
+        LedgerSigner s = signer(root, keys);
+        FileAnchorStore anchor = new FileAnchorStore(root);
+        new ActivationLedger(root, anchor).append(ev("1.0.0", null), s);
+        AnchorRecord a = anchor.latest("Line1").orElseThrow();
+        assertEquals(0, a.seq());
+        assertEquals(new SignedHeadStore(root).read("Line1").orElseThrow().tailEntryHash(), a.tailEntryHash());
+    }
+
     @Test void unsigned_line_omits_sig_fields_byte_identical_to_t4(@TempDir Path root) throws Exception {
         new ActivationLedger(root).append(ev("1.0.0", null));   // unsigned path
         String line = Files.readAllLines(root.resolve("activation").resolve("Line1.jsonl")).get(0);
