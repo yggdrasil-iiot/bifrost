@@ -1,5 +1,6 @@
 package dev.krillin.bifrost.core.identity;
 
+import dev.krillin.bifrost.core.activation.HeadSignatures;
 import dev.krillin.bifrost.core.activation.LedgerSigner;
 import dev.krillin.bifrost.core.activation.Signatures;
 import dev.krillin.bifrost.core.schema.Violation;
@@ -75,6 +76,17 @@ class KeyFileLedgerSignerTest {
                 "bob", writeKey(keys,"b",bob.getPrivate()), AuthorizedKeys.load(root));
         String preimage = "Line1\u001F0\u001Fhash1";
         assertEquals("bob", s.approverPrincipal());
-        assertTrue(Ed25519Keys.verify(preimage.getBytes(StandardCharsets.UTF_8), s.signHead(preimage), bob.getPublic()));
+        assertTrue(Ed25519Keys.verify(preimage.getBytes(StandardCharsets.UTF_8), s.signHead(preimage).approverSig(), bob.getPublic()));
+    }
+
+    @Test void signHead_produces_both_signatures_over_preimage(@TempDir Path root, @TempDir Path keys) throws Exception {
+        KeyPair alice = Ed25519Keys.generate(), bob = Ed25519Keys.generate();
+        authorize(root, "alice", alice); authorize(root, "bob", bob);
+        LedgerSigner s = KeyFileLedgerSigner.create("alice", writeKey(keys,"a",alice.getPrivate()),
+                "bob", writeKey(keys,"b",bob.getPrivate()), AuthorizedKeys.load(root));
+        HeadSignatures hs = s.signHead("Line10hash1");
+        assertNotNull(hs.approverSig());
+        assertNotNull(hs.activatorSig());
+        assertNotEquals(hs.approverSig(), hs.activatorSig());
     }
 }

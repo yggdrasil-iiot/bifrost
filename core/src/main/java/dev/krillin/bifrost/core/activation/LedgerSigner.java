@@ -12,7 +12,8 @@ import java.util.List;
 public interface LedgerSigner {
     List<Violation> preflight();
     Signatures sign(String entryHash);
-    String signHead(String headPreimage);
+    /** Both head signatures over the head preimage: approverSig (signedBy) + activatorSig (coSignedBy). */
+    HeadSignatures signHead(String headPreimage);
     /** The principal whose key signs the activator slot — must equal the event's activatedBy at write time. */
     String activatorPrincipal();
     /** The principal whose key signs the approver slot AND the head — must equal the event's approvedBy. */
