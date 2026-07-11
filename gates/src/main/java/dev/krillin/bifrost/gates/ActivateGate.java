@@ -53,9 +53,16 @@ public final class ActivateGate {
         // The ledger carries an AnchorStore ONLY on the signed path; unsigned stays exact T5 (anchorStore == null).
         dev.krillin.bifrost.core.activation.AnchorStore anchorStore = null;
         if (byKey != null) {
-            anchorStore = "git".equals(anchorStoreKind)
-                    ? new dev.krillin.bifrost.core.identity.GitAnchorStore(Path.of(anchorDir != null ? anchorDir : reg.toString()))
-                    : new dev.krillin.bifrost.core.activation.FileAnchorStore(anchorDir != null ? Path.of(anchorDir) : reg);
+            if ("git".equals(anchorStoreKind)) {
+                Path anchorRepo = Path.of(anchorDir != null ? anchorDir : reg.toString());
+                if (dev.krillin.bifrost.core.identity.GitAnchorStore.isColocatedWith(anchorRepo, reg))
+                    System.err.println("[GATE] WARN: git anchor repo " + anchorRepo + " is inside the registry "
+                            + reg + " — an insider who rolls back the registry rolls back this witness too."
+                            + " Point --anchor-dir at a separate, off-box, protected repo to actually close co-rollback.");
+                anchorStore = new dev.krillin.bifrost.core.identity.GitAnchorStore(anchorRepo);
+            } else {
+                anchorStore = new dev.krillin.bifrost.core.activation.FileAnchorStore(anchorDir != null ? Path.of(anchorDir) : reg);
+            }
         }
         ActivationService svc = new ActivationService(new RecipeArtifactResolver(reg),
                 new ActivationLedger(reg, anchorStore), Clock.systemUTC());

@@ -237,3 +237,23 @@ projection of that off-box witness; `GitAnchorStore` stands in for it in the lab
 | #2 ledger+head co-rollback               | ❌             | ✅ (git witness) | ✅ |
 | both keys stolen + rollback              | ❌             | ✅ (seq lowered) | ✅ |
 | anchor protected-history rewritten       | ❌             | ❌              | ❌ (residual §8.2) |
+
+---
+
+## Post-implementation hardening (final holistic review, round 1)
+
+Two follow-ups from the final holistic code review, applied on the branch:
+
+- **I1 — git-anchor co-location guard.** The strongest guarantee (closing co-rollback #2) requires the
+  git anchor repo to be **off-box**, outside the registry the insider can rewrite. If `--anchor-dir` /
+  `ANCHOR_DIR` is omitted for the git store, the repo would default *inside* the registry and be rolled
+  back with it. `GitAnchorStore.isColocatedWith(anchorRepo, registry)` now detects this, and both the gate
+  (`ActivateGate`) and Heimdall (`NcmdOpcUaBridgeMain`) **WARN loudly** (the codebase's "say so loudly,
+  don't silently downgrade" idiom) when the git anchor dir resolves at or inside the registry. Operators
+  must set a separate off-box `ANCHOR_DIR` for the git witness to actually close #2.
+
+- **M1 — fault-code count.** The verifier defines **8** `identity.*` fault codes, not 7: the 7 attack-
+  detection codes (3 `head.four-eyes.*` + 4 `anchor.*`) plus a defensive wiring guard
+  `identity.anchor.store-required` (returned when `ANCHORED` is invoked with a null `AnchorStore` — a
+  mis-wiring fails closed with a code instead of an NPE). §4.2's "7 fault codes" refers to the attack-
+  detection set; the store-required guard is additional.

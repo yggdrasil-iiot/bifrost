@@ -164,6 +164,11 @@ public final class NcmdOpcUaBridgeMain {
         if (requireAnchored) {
             java.nio.file.Path anchorRepo = (anchorDir != null && !anchorDir.isBlank())
                     ? java.nio.file.Path.of(anchorDir) : ledgerDir;
+            if ("git".equals(anchorStoreKind)
+                    && dev.krillin.bifrost.core.identity.GitAnchorStore.isColocatedWith(anchorRepo, ledgerDir))
+                System.err.println("[BRIDGE] WARN: git anchor repo " + anchorRepo + " is inside the registry "
+                        + ledgerDir + " — a registry rollback rolls back this witness too; the co-rollback (#2)"
+                        + " guarantee is NOT in force. Set ANCHOR_DIR to a separate off-box protected repo.");
             dev.krillin.bifrost.core.activation.AnchorStore anchors = "git".equals(anchorStoreKind)
                     ? new dev.krillin.bifrost.core.identity.GitAnchorStore(anchorRepo)
                     : new dev.krillin.bifrost.core.activation.FileAnchorStore(anchorRepo);

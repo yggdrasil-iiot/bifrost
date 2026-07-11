@@ -44,4 +44,10 @@ class GitAnchorStoreTest {
         s.record(new AnchorRecord("mixer-01", 5, "h5"));
         assertThrows(IllegalStateException.class, () -> s.record(new AnchorRecord("mixer-01", 4, "h4")));
     }
+
+    @Test void colocationDetectedWhenRepoInsideRegistry() {
+        assertTrue(GitAnchorStore.isColocatedWith(repo.resolve("anchor"), repo));   // inside
+        assertTrue(GitAnchorStore.isColocatedWith(repo, repo));                      // exactly the registry
+        assertFalse(GitAnchorStore.isColocatedWith(repo.getParent().resolve("separate-anchor-repo"), repo));
+    }
 }

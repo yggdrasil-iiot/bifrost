@@ -39,6 +39,15 @@ public final class GitAnchorStore implements AnchorStore {
         }
     }
 
+    /** True when the git anchor repo sits AT or INSIDE {@code registry} — which defeats the off-box witness
+     *  property this store exists to provide: an insider who owns the registry working tree then also owns
+     *  the co-located git history and can rewrite it, collapsing the git witness back to file-witness level
+     *  (attack #2 becomes undetectable). Callers select the git store by config; they should WARN loudly
+     *  (or refuse) when this returns true, so the strongest guarantee is never silently downgraded. */
+    public static boolean isColocatedWith(Path anchorRepo, Path registry) {
+        return anchorRepo.toAbsolutePath().normalize().startsWith(registry.toAbsolutePath().normalize());
+    }
+
     private String anchorFile(String target) { return target + ".anchor.jsonl"; }
 
     /** Reads the anchor from the COMMITTED HEAD ({@code git show HEAD:<file>}), never the working tree.
