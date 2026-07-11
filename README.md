@@ -35,6 +35,7 @@ One `gates` jar, deny-by-default, exit `0` admit / `1` governance-refuse / `2` u
 | `activation verify-chain` | T4 — tamper-evidence of the activation ledger |
 | `identity keygen` · `identity verify-signed` | T5 — cryptographic identity over activations |
 | `identity authorize` | T6 — deny-by-default authorization: who may activate/approve a resource |
+| `identity verify-anchored` | T7 — external-anchor cross-check + four-eyes head (rollback-evident) |
 
 ## The governed activation lifecycle
 
@@ -44,8 +45,9 @@ One `gates` jar, deny-by-default, exit `0` admit / `1` governance-refuse / `2` u
 - **Lineage / record-of-record (T4)** — the ledger is **hash-chained** (`LedgerChain`, one canonical-preimage SHA-256 per entry), so any retroactive edit / delete / reorder / mid-truncation is detectable from the ledger alone. Heimdall **fail-closes on a broken chain** before binding.
 - **Identity / signed activation (T5)** — each activation is **dual-signed** (activator + approver Ed25519, JDK built-in) and the ledger tail is anchored by a **signed head**, closing the full-re-chain and tail-truncation gaps a bare hash chain leaves open. Signatures cover T4's `entryHash`, so structural verification is untouched and unsigned ledgers stay valid. Heimdall's `REQUIRE_SIGNED_ACTIVATION` (default off) fail-closes on a broken *signed* ledger.
 - **Authorization (T6)** — a **deny-by-default** policy (`registry/identity/activation-policy.json`) decides *whether the authenticated principal is permitted*: **maker-checker**, where the activator needs an `activate` grant and the approver an `approve` grant on the same `(target, kind, ref)` — pairing 1:1 with T5's dual signature. Enforced at the gate and re-verified at the edge (revocation takes effect at the next bind). This is authN (T5) → authZ (T6): the IAM story.
+- **Anchored activation (T7)** — the last gap T5's *singly-signed* head leaves open is **rollback by a registered insider**: truncate the ledger, re-sign a shorter head, and signed-verification passes. T7 closes it with two additions. The head becomes **four-eyes** (a second distinct registered co-signer over the same preimage), and the tail is cross-checked against an **external anchor witness** — the highest `(seq, tailEntryHash)` the ledger ever reached — through a pluggable `AnchorStore` seam. The default `FileAnchorStore` is an append-only on-box projection (it catches a *lone* re-anchor: the witness still records the higher `seq`); the opt-in `GitAnchorStore` reads the anchor from **committed git history** (`git show HEAD:<file>`, never the working tree), so a witness committed to a protected remote survives even a **co-rollback** that also rewrites the on-box anchor. Heimdall's `REQUIRE_ANCHORED_ACTIVATION` (default off, with `ANCHOR_STORE`/`ANCHOR_DIR`) raises the edge bar to this tier and fail-closes `activation.edge.anchor-denied` on a rollback / behind / four-eyes-missing fault before binding.
 
-Each step is additive and backward-compatible — a T3/T4 ledger still verifies, turning on signing does not rewrite history, and authZ is enforced only over an authenticated (signed) subject.
+Each step is additive and backward-compatible — a T3/T4 ledger still verifies, turning on signing does not rewrite history, authZ is enforced only over an authenticated (signed) subject, and anchoring layers strictly above the signed check (`ANCHORED` ⊃ `SIGNED`).
 
 ## Heimdall — the runtime edge
 
@@ -55,7 +57,7 @@ Each step is additive and backward-compatible — a T3/T4 ledger still verifies,
 
 ```
 core/      the governed model + evaluators — schema, spec/conformance, acl (+OPA-in-wasm),
-           template, provenance, activation (T3/T4/T5 identity). Pure logic, no broker.
+           template, provenance, activation (T3/T4/T5 identity, T7 anchor). Pure logic, no broker.
 gates/     the pre-deploy CLI over core (the `gates` jar).
 heimdall/  the runtime edge — NCMD authorization + activation binding, fail-closed.
 sim/       an embedded Eclipse Milo OPC-UA server the gates drive end-to-end.
@@ -83,6 +85,7 @@ scripts/run-activation-gate.sh             # T3 — four-eyes SoD, content seal,
 scripts/run-lineage-gate.sh                # T4 — tamper-evident hash chain, edge fail-close
 scripts/run-identity-gate.sh               # T5 — dual-signed activation, signed head, edge fail-close
 scripts/run-activation-authz-gate.sh       # T6 — deny-by-default authZ, maker-checker, edge revocation
+scripts/run-anchored-activation-gate.sh    # T7 — four-eyes head + external anchor, rollback/co-rollback caught
 scripts/run-yggdrasil-spine-gate.sh        # Mímir → Bifrost → Muninn northbound spine
 scripts/run-yggdrasil-full-loop-gate.sh    # closed loop: observe → command → observe
 ```
@@ -92,7 +95,7 @@ scripts/run-yggdrasil-full-loop-gate.sh    # closed loop: observe → command �
 This is a systems-architecture reference implementation; it records its limits rather than hiding them.
 
 - **Authorization is direct principal grants, not roles/attributes (T6).** The policy names each principal explicitly (deny-by-default, maker-checker); RBAC roles and ABAC attributes are future threads, and the policy file is plaintext (bootstrap/change-control out-of-band, no policy-signing yet). authZ presupposes authN — with signing off there is no authorization, because there is no authenticated subject to authorize. Revocation is bind-fresh (a running edge re-checks at the next startup).
-- **The signed head is singly-signed.** It closes tail-truncation against an outsider, but a lone registered insider can re-anchor a truncated ledger; a dual-signed or externally-anchored head (git / notary / TPM counter) is future work.
+- **Anchoring is only as strong as the anchor's off-box protection (T7).** The four-eyes head plus external witness make rollback *evident*, but a `FileAnchorStore` is a local projection that a co-rollback can rewrite in place — it defends the lone re-anchor, not the co-rollback. Real rollback-resistance rests on the witness being genuinely tamper-resistant off-box (a protected git remote / signed tag / TPM monotonic counter); the `GitAnchorStore` demonstrates the seam but a locally-committed anchor repo is still on-box. Anchoring presupposes signing (`ANCHORED` ⊃ `SIGNED`), so it does nothing with signing off.
 - **The trust anchor is a plaintext registry file** (`authorized-keys.jsonl`); key bootstrap / distribution / revocation are out-of-band (no PKI/OIDC/CRL yet).
 - **Conformance egress is structural + range**, and the activation seal binds the runtime `MasterSpec`, not the git-anchored recipe manifest (that unification is future work).
 - **Demo scale** — single broker, single edge, single instance, localhost; the sim's transfer is instant setpoint = PV (a governance loop, not process physics).
