@@ -58,14 +58,23 @@ All new core types are pure JDK (no new Maven dependency), in `core.identity` / 
 - **`AnchorStore`** interface:
   - `Optional<AnchorRecord> latest(String target) throws IOException`
   - `void record(AnchorRecord r) throws IOException`
-  - Contract: append-only, **strictly seq-increasing** — `record` throws if `r.seq() <= latest.seq()`.
+  - Contract: append-only, **monotonic non-decreasing** — `record` throws on `r.seq() < latest.seq()`
+    (regression) and on same-seq-different-tail; a byte-identical same-`(seq, tailEntryHash)` record
+    is an idempotent no-op (see idempotency note below).
 - **`FileAnchorStore`** — append-only JSONL at `registry/anchor/<target>.anchor.jsonl`, `latest` =
   last line. Pure JDK, offline-testable. **Explicitly a test/offline convenience, not a real
   witness on its own** (Section 5) — it is the *local projection* of the off-box witness.
-- **`GitAnchorStore`** — decorator (or standalone) that also `git add`/`git commit`s each record
-  into a **dedicated anchor repo** and reads `latest` from the committed HEAD. Opt-in via
-  `ProcessBuilder` (JDK only, no new Maven dep); instantiated **only** at the gate/Heimdall wiring
-  layer, never on core's default path.
+- **`GitAnchorStore`** — `git add`/`git commit`s each record into a **dedicated anchor repo**.
+  **`latest(target)` MUST read the committed git history** (e.g. the anchor file at the anchor
+  repo's committed HEAD), **never** a wrapped/working-tree `FileAnchorStore` line — the entire
+  git-witness security property (AN4) depends on this. Opt-in via `ProcessBuilder` (JDK only, no new
+  Maven dep); instantiated **only** at the gate/Heimdall wiring layer, never on core's default path.
+  (It may reuse `FileAnchorStore`'s serde to write the committed file, but its `latest` reads the
+  committed copy, not the mutable one.)
+- **`record` idempotency:** `record(r)` throws on seq regression (`r.seq() < latest.seq()`) and on a
+  same-seq / different-tail conflict; a byte-identical same-`(seq, tailEntryHash)` re-record is an
+  idempotent no-op (so a crash-retry re-anchor is safe). Operator re-anchoring after a real advance
+  always increases seq.
 
 ### 3.2 Four-eyes head
 
@@ -104,18 +113,28 @@ head-one-behind. `ActivationLedger` gains a **nullable** `AnchorStore` (null = e
 A `TrustLevel { STRUCTURAL, SIGNED, ANCHORED }` parameter (minimal-churn wiring) selects depth.
 `ANCHORED` runs all T5 checks, then:
 
-**Head four-eyes:**
+**Head four-eyes:** the check requires **two distinct registered keys** signed the head — it does
+**not** bind `signedBy`/`coSignedBy` to the tail event's `activatedBy`/`approvedBy` (consistent with
+T5's existing "head.signedBy need not equal the tail approver", `SignedLedgerVerifier` §4.7). The
+security property is "no lone key could have produced the head", which two-distinct-registered-keys
+delivers; the anchor layer catches seq rollback independently.
 - co-sig absent → `identity.head.four-eyes.missing`
-- co-sig invalid vs `coSignedBy`'s registered key → `identity.head.four-eyes.invalid`
+- co-sig invalid vs `coSignedBy`'s registered key (or `coSignedBy` unregistered) → `identity.head.four-eyes.invalid`
 - the two head keys are the same → `identity.head.four-eyes.same-key`
 
-**Anchor cross-check** against `AnchorStore.latest(target)`:
-- absent while ledger non-empty → `identity.anchor.missing`
+**Anchor cross-check** against `AnchorStore.latest(target)`. Evaluated **before** the head-existence
+branch so a fully-emptied ledger is still caught:
+- `latest` **present** while the ledger is **empty or the head is absent** → **`identity.anchor.rollback`**
+  — the witness attests seq ≥ 0 but the tail it anchored is gone (the strongest form of #2: rollback
+  to empty + head deletion). This closes the gap where an empty `hist` with no head would otherwise
+  fall through to `whole()`.
+- `latest` absent while ledger non-empty → `identity.anchor.missing`
 - `head.seq <  latest.seq` → **`identity.anchor.rollback`** — catches truncation-reanchor #1 and co-rollback #2
 - `head.seq == latest.seq` but `tailEntryHash != latest.tailEntryHash` → `identity.anchor.tail-mismatch` (forked history at same seq)
 - `head.seq >  latest.seq` → `identity.anchor.behind` (crash window; fail-closed until an operator re-anchors)
 
 All fail-closed; every fault is a distinct coded string in the existing `identity.*` vocabulary.
+**Anchored mode defines 7 fault codes:** 3 head-four-eyes + 4 anchor.
 
 ## 5. The git-witness trust model (the honest core)
 
@@ -125,7 +144,9 @@ memory of "seq was already 10" against a rollback that includes it. **The anchor
 from a store outside the insider's unilateral write control.**
 
 **How GitAnchorStore realizes the witness.** Each record is committed to a separate anchor repo;
-`latest` reads the highest seq from **committed git history**. The threat model is stated plainly:
+`latest` reads the anchor from the anchor repo's **committed HEAD** (which, being append-only and
+monotonic, is the highest seq the witness has recorded) — never the mutable working-tree copy. The
+threat model is stated plainly:
 
 > **Assumption:** the attacker can write the registry working tree (ledger, head, FileAnchorStore
 > files) but **cannot rewrite the anchor repo's protected history.**
@@ -149,8 +170,11 @@ projection of that off-box witness; `GitAnchorStore` stands in for it in the lab
   four-eyes head + anchor cross-check. Log line `[BRIDGE] activation trust=structural|signed|anchored`.
   Anchor store wired from config: `ANCHOR_STORE=file|git`, `ANCHOR_DIR=...`.
 - **Edge re-check (extends T6).** T6's edge authZ re-check is already fail-closed; `anchored` mode
-  adds the anchor cross-check before binding — a rolled-back registry is denied at bind with audit
-  line `activation.edge.anchor-rollback`.
+  adds the four-eyes-head + anchor cross-check before binding. Any anchored-mode fault denies the
+  bind and emits a single audit line **`activation.edge.anchor-denied reason=<code>`**, carrying the
+  specific `identity.*` fault code (a rolled-back registry that presents a single-key head reports
+  `head.four-eyes.*`; a dual-head rollback reports `anchor.rollback`) — one line, one reason code,
+  regardless of which check fired first.
 - **No regression.** Default-OFF ⇒ the 4 no-regression gates + all tests pass unchanged. Even though
   new writes are always dual-head, `signed` mode ignores the co-pair so T5 `verify-signed` still
   passes.
@@ -168,7 +192,10 @@ projection of that off-box witness; `GitAnchorStore` stands in for it in the lab
   GitAnchorStore reads committed history → still caught (git-witness property)
 - **AN5** four-eyes head same key: both head sigs the same principal → `identity.head.four-eyes.same-key`
 - **AN6** crash window: anchor behind head → `identity.anchor.behind` fail-closed
-- **AN7** Heimdall edge: `REQUIRE_ANCHORED` ON + rolled-back registry → bind denied `activation.edge.anchor-rollback`
+- **AN7** rollback-to-empty: ledger truncated to empty + head deleted, anchor witnesses seq ≥ 0 →
+  `identity.anchor.rollback` (strongest form of #2)
+- **AN8** Heimdall edge: `REQUIRE_ANCHORED` ON + rolled-back registry → bind denied,
+  audit `activation.edge.anchor-denied reason=<code>`
 - **No-regression:** `run-activation-gate` (A1–A5), `run-lineage-gate` (LN1–LN4),
   `run-identity-gate` (I1–I7), `run-activation-authz-gate` (AZ1–AZ7), `run-template-conformance`,
   `run-yggdrasil-full-loop` all green.
@@ -177,7 +204,8 @@ projection of that off-box witness; `GitAnchorStore` stands in for it in the lab
 
 - `AnchorStore` / `FileAnchorStore` — monotonicity, append-only, reject seq regression
 - `GitAnchorStore` — commit on record, `latest` reads committed HEAD, survives a working-tree revert
-- `SignedLedgerVerifier` (anchored) — each of the 6 fault codes + the whole-ledger pass
+- `SignedLedgerVerifier` (anchored) — each of the **7** fault codes (3 head-four-eyes + 4 anchor,
+  including the empty-ledger/head-absent rollback) + the whole-ledger pass
 - `SignedHead` dual-pair serde round-trip; single-sig legacy head still parses
 
 ## 8. Honest residuals (spec §)
