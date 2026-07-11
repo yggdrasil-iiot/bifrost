@@ -860,3 +860,138 @@ git commit -m "feat(core): GitAnchorStore — latest() reads committed HEAD (sur
 - **Final holistic review** (superpowers:requesting-code-review + a security-focused pass on the anchor/verifier logic) before surfacing to Eisen.
 - **Branch disposition is Eisen-gated** — do NOT merge or push. Leave on `feat/t7-anchored-activation`.
 - Update memory (`activation-authorization-t6.md` follow-on / new `anchored-activation-t7.md`) once controller-verified.
+
+---
+
+## Plan-review corrections (round 1) — these OVERRIDE the tasks above where they conflict
+
+The plan-document-reviewer verified the code against the real fixtures. Apply these corrections;
+they replace the corresponding snippets/steps above. Root cause of most: the plan's test snippets
+assumed field-based fixtures, but the existing tests use METHOD-PARAM `@TempDir` and helper methods.
+
+### C1 (BLOCKING) — Task 2.3: fix the existing KeyFileLedgerSignerTest line 78 + build the new signer inline
+
+The interface change (`signHead` returns `HeadSignatures`) breaks an EXISTING line the original plan missed.
+
+- **New Step 3a (insert before Step 5):** update `KeyFileLedgerSignerTest.java:78` from
+  `... s.signHead(preimage), bob.getPublic())` to `... s.signHead(preimage).approverSig(), bob.getPublic())`.
+  This is the ONLY other `signHead` call site besides `ActivationLedger:56` (handled in 2.4) — confirmed by grep.
+- **Task 2.3 Step 1 test** — `KeyFileLedgerSignerTest` has NO shared `signer` field; build inline
+  (method-param `@TempDir`, helpers `authorize(root,name,kp)` / `writeKey(keys,name,priv)`):
+
+```java
+    @Test void signHead_produces_both_signatures_over_preimage(@TempDir Path root, @TempDir Path keys) throws Exception {
+        KeyPair alice = Ed25519Keys.generate(), bob = Ed25519Keys.generate();
+        authorize(root, "alice", alice); authorize(root, "bob", bob);
+        LedgerSigner s = KeyFileLedgerSigner.create("alice", writeKey(keys,"a",alice.getPrivate()),
+                "bob", writeKey(keys,"b",bob.getPrivate()), AuthorizedKeys.load(root));
+        HeadSignatures hs = s.signHead("Line10hash1");
+        assertNotNull(hs.approverSig());
+        assertNotNull(hs.activatorSig());
+        assertNotEquals(hs.approverSig(), hs.activatorSig());
+    }
+```
+- **Task 2.3 Step 5** expected result stays PASS *for `KeyFileLedgerSignerTest`* only after Step 3a is applied.
+
+### C2 — Task 2.4: use the real ActivationLedgerSignedTest fixtures
+
+`ActivationLedgerSignedTest` uses: helper `ev(String v, String prior)` (target hardcoded `"Line1"`),
+instance helper `signer(Path root, Path keys)`, and per-test method-param `@TempDir Path root, Path keys`
+(NO `reg`/`signer`/`event` fields). Rewrite the two new tests to match:
+
+```java
+    @Test void signed_append_writes_dual_head(@TempDir Path root, @TempDir Path keys) throws Exception {
+        LedgerSigner s = signer(root, keys);
+        new ActivationLedger(root).append(ev("1.0.0", null), s);
+        SignedHead h = new SignedHeadStore(root).read("Line1").orElseThrow();
+        assertNotNull(h.sig());
+        assertNotNull(h.coSig());
+        assertNotEquals(h.signedBy(), h.coSignedBy());
+    }
+
+    @Test void signed_append_with_anchor_store_records_anchor(@TempDir Path root, @TempDir Path keys) throws Exception {
+        LedgerSigner s = signer(root, keys);
+        FileAnchorStore anchor = new FileAnchorStore(root);
+        new ActivationLedger(root, anchor).append(ev("1.0.0", null), s);
+        AnchorRecord a = anchor.latest("Line1").orElseThrow();
+        assertEquals(0, a.seq());
+        assertEquals(new SignedHeadStore(root).read("Line1").orElseThrow().tailEntryHash(), a.tailEntryHash());
+    }
+```
+Imports: `FileAnchorStore`, `AnchorRecord`, `SignedHeadStore`, `SignedHead`.
+
+### C3 (LOGIC FIX) — Task 3.2: ANCHORED must never be weaker than SIGNED
+
+The original `verify(...)` returned `whole()` in the empty-ledger / head-absent + anchor-absent corner.
+But SIGNED catches an emptied-ledger-with-ORPHAN-head as `identity.head.tail-mismatch` (verifier line 61).
+To keep ANCHORED a strict superset of SIGNED, run `verifySignedHead` on that corner instead of `whole()`.
+Replace the ANCHORED tail of `verify(...)` and the two helpers with:
+
+```java
+        // ANCHORED
+        SignedVerdict anchorV = verifyAnchor(target, hist, anchors);   // strongest #2 catch (present witness, gone tail)
+        if (!anchorV.intact()) return anchorV;
+        // ANCHORED >= SIGNED: always run the signed-head check (catches orphan-head tail-mismatch),
+        // then the four-eyes co-pair on top when a real head exists.
+        SignedVerdict headV = verifySignedHead(target, hist);
+        if (!headV.intact()) return headV;
+        if (hist.isEmpty()) return SignedVerdict.whole();
+        return verifyFourEyesCoPair(target);
+    }
+
+    /** Anchor faults only. Returns whole() when the anchor is simply not applicable (empty ledger AND no
+     *  witness) — the signed-head check that follows handles the orphan-head corner. */
+    private SignedVerdict verifyAnchor(String target, List<LedgerEntry> hist, AnchorStore anchors)
+            throws IOException {
+        Optional<AnchorRecord> latest = anchors.latest(target);
+        Optional<SignedHead> head = heads.read(target);
+        if (hist.isEmpty() || head.isEmpty())
+            return latest.isPresent()
+                    ? SignedVerdict.broken(-1, "identity.anchor.rollback")   // witness attests a tail now gone
+                    : SignedVerdict.whole();                                 // fall through to verifySignedHead
+        if (latest.isEmpty()) return SignedVerdict.broken(-1, "identity.anchor.missing");
+        long headSeq = head.get().seq();
+        AnchorRecord a = latest.get();
+        if (headSeq < a.seq()) return SignedVerdict.broken(-1, "identity.anchor.rollback");
+        if (headSeq > a.seq()) return SignedVerdict.broken(-1, "identity.anchor.behind");
+        if (!head.get().tailEntryHash().equals(a.tailEntryHash()))
+            return SignedVerdict.broken(-1, "identity.anchor.tail-mismatch");
+        return SignedVerdict.whole();
+    }
+
+    /** ONLY the four-eyes co-pair (verifySignedHead already validated tail/seq/approver-sig). */
+    private SignedVerdict verifyFourEyesCoPair(String target) throws IOException {
+        SignedHead head = heads.read(target).orElseThrow();
+        if (head.coSignedBy() == null || head.coSig() == null)
+            return SignedVerdict.broken(-1, "identity.head.four-eyes.missing");
+        Optional<PublicKey> coKey = authorized.forPrincipal(head.coSignedBy());
+        byte[] hp = SignedHeadStore.preimage(head.target(), head.seq(), head.tailEntryHash())
+                .getBytes(StandardCharsets.UTF_8);
+        if (coKey.isEmpty() || !Ed25519Keys.verify(hp, head.coSig(), coKey.get()))
+            return SignedVerdict.broken(-1, "identity.head.four-eyes.invalid");
+        Optional<PublicKey> primary = authorized.forPrincipal(head.signedBy());
+        if (primary.isPresent() && java.util.Arrays.equals(primary.get().getEncoded(), coKey.get().getEncoded()))
+            return SignedVerdict.broken(-1, "identity.head.four-eyes.same-key");
+        return SignedVerdict.whole();
+    }
+```
+(`verifyFourEyesHead` from the original Task 3.2 is REPLACED by `verifySignedHead` + `verifyFourEyesCoPair`.)
+Imports to confirm present in the file: `java.security.PublicKey` (already imported), `java.nio.charset.StandardCharsets`
+(already imported), plus add `dev.krillin.bifrost.core.activation.AnchorStore` and `AnchorRecord`.
+
+- **Task 3.2 tests** — use target `"Line1"` throughout (append and verify on the SAME target), method-param
+  `@TempDir Path root`, and construct the signer via the same inline pattern as C1/C2 (there is no `signer`
+  field). The `verify()` helper builds `new SignedLedgerVerifier(new ActivationLedger(root), AuthorizedKeys.load(root),
+  new SignedHeadStore(root)).verify("Line1", TrustLevel.ANCHORED, anchor)`. Add a test
+  `emptied_ledger_with_orphan_head_and_no_anchor_is_tail_mismatch` asserting `identity.head.tail-mismatch`
+  (proves ANCHORED >= SIGNED). This makes the anchored suite 10 tests (happy + 7 fault codes + behind + the
+  orphan-head regression guard).
+
+### C4 — Task 5.2: where the anchor store is wired in ActivateGate
+
+In `ActivateGate` the `ActivationLedger` is built unconditionally (~line 49) and injected into
+`ActivationService`; the append + `anchors.record(...)` happen inside `svc.activate(req, signer, policy)`.
+So the correction is: make that line-49 construction carry the `AnchorStore` on the SIGNED path
+(`new ActivationLedger(reg, anchorStore)` where `anchorStore` = `FileAnchorStore(reg)` by default, or
+`GitAnchorStore(anchorDir)` when `--anchor-store git`), and pass `null` (bare `new ActivationLedger(reg)`)
+on the unsigned path. `byKey` is already parsed before line 49, so the signed/unsigned branch is available there.
