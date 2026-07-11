@@ -48,7 +48,9 @@ public final class SignedLedgerVerifier {
 
         if (level == TrustLevel.SIGNED) return verifySignedHead(target, hist);
 
-        // ANCHORED
+        // ANCHORED. A null store here is a wiring error, not a ledger property — fail closed with a coded
+        // verdict (never an opaque NPE) so a mis-wired caller gets the same disciplined failure as a tamper.
+        if (anchors == null) return SignedVerdict.broken(-1, "identity.anchor.store-required");
         SignedVerdict anchorV = verifyAnchor(target, hist, anchors);
         if (!anchorV.intact()) return anchorV;
         SignedVerdict headV = verifySignedHead(target, hist);
@@ -126,6 +128,7 @@ public final class SignedLedgerVerifier {
 
     /** ONLY the four-eyes co-pair (verifySignedHead already validated tail/seq/approver-sig). */
     private SignedVerdict verifyFourEyesCoPair(String target) throws IOException {
+        // head presence is guaranteed here: reached only for a non-empty ledger after verifySignedHead passed.
         SignedHead head = heads.read(target).orElseThrow();
         if (head.coSignedBy() == null || head.coSig() == null)
             return SignedVerdict.broken(-1, "identity.head.four-eyes.missing");

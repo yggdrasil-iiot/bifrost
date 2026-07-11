@@ -58,6 +58,14 @@ class SignedLedgerVerifierAnchoredTest {
         assertEquals("identity.anchor.missing", v.rule());
     }
 
+    @Test void anchored_with_null_store_is_coded_not_npe(@TempDir Path root, @TempDir Path keys) throws Exception {
+        LedgerSigner s = signer(root, keys);
+        new ActivationLedger(root, new FileAnchorStore(root)).append(ev("1.0.0", null), s);
+        SignedVerdict v = verifyAnchored(root, null);   // wiring error, must fail closed with a code
+        assertFalse(v.intact());
+        assertEquals("identity.anchor.store-required", v.rule());
+    }
+
     @Test void anchor_rollback_head_seq_below_latest(@TempDir Path root, @TempDir Path keys) throws Exception {
         LedgerSigner s = signer(root, keys);
         AnchorStore anchor = new FileAnchorStore(root);
