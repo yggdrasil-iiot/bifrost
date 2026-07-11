@@ -1,5 +1,6 @@
 package dev.krillin.bifrost.core.identity;
 
+import dev.krillin.bifrost.core.activation.HeadSignatures;
 import dev.krillin.bifrost.core.activation.LedgerSigner;
 import dev.krillin.bifrost.core.activation.Signatures;
 import dev.krillin.bifrost.core.schema.Violation;
@@ -67,8 +68,9 @@ public final class KeyFileLedgerSigner implements LedgerSigner {
         return new Signatures(Ed25519Keys.sign(msg, activatorKey), Ed25519Keys.sign(msg, approverKey));
     }
 
-    @Override public String signHead(String headPreimage) {
-        return Ed25519Keys.sign(headPreimage.getBytes(StandardCharsets.UTF_8), approverKey);
+    @Override public HeadSignatures signHead(String headPreimage) {
+        byte[] msg = headPreimage.getBytes(StandardCharsets.UTF_8);
+        return new HeadSignatures(Ed25519Keys.sign(msg, approverKey), Ed25519Keys.sign(msg, activatorKey));
     }
 
     @Override public String activatorPrincipal() { return activatorPrincipal; }

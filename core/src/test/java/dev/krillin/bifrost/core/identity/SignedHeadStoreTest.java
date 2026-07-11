@@ -2,6 +2,7 @@ package dev.krillin.bifrost.core.identity;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
@@ -32,5 +33,22 @@ class SignedHeadStoreTest {
         store.write(new SignedHead("Line1", 1L, "h1", "bob", "s1"));
         assertEquals(1L, store.read("Line1").get().seq());
         assertEquals("h1", store.read("Line1").get().tailEntryHash());
+    }
+
+    @Test void dualHeadRoundTrips(@TempDir Path root) throws Exception {
+        SignedHeadStore s = new SignedHeadStore(root);
+        s.write(new SignedHead("mixer-01", 3, "hTail", "boss", "sigA", "eng", "sigB"));
+        SignedHead h = s.read("mixer-01").orElseThrow();
+        assertEquals("eng", h.coSignedBy());
+        assertEquals("sigB", h.coSig());
+    }
+
+    @Test void legacySingleSigHeadStillParses(@TempDir Path root) throws Exception {
+        Path f = root.resolve("identity").resolve("mixer-legacy.head");
+        Files.createDirectories(f.getParent());
+        Files.writeString(f, "{\"target\":\"mixer-legacy\",\"seq\":0,\"tailEntryHash\":\"h\",\"signedBy\":\"boss\",\"sig\":\"s\"}\n");
+        SignedHead h = new SignedHeadStore(root).read("mixer-legacy").orElseThrow();
+        assertNull(h.coSignedBy());
+        assertNull(h.coSig());
     }
 }

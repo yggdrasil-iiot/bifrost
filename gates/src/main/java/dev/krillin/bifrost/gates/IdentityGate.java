@@ -1,9 +1,13 @@
 package dev.krillin.bifrost.gates;
 
 import dev.krillin.bifrost.core.activation.ActivationLedger;
+import dev.krillin.bifrost.core.activation.AnchorStore;
+import dev.krillin.bifrost.core.activation.FileAnchorStore;
 import dev.krillin.bifrost.core.identity.Ed25519Keys;
+import dev.krillin.bifrost.core.identity.GitAnchorStore;
 import dev.krillin.bifrost.core.identity.SignedLedgerVerifier;
 import dev.krillin.bifrost.core.identity.SignedVerdict;
+import dev.krillin.bifrost.core.identity.TrustLevel;
 import java.io.File;
 import java.nio.file.*;
 import java.nio.file.attribute.PosixFilePermissions;
@@ -14,6 +18,9 @@ import java.util.*;
  *   keygen <principal> --out <dir>   generate an Ed25519 keypair; write <principal>.key (PKCS8 b64) and
  *                                    <principal>.pub (X.509 b64); print the authorized-keys.jsonl line.
  *   verify-signed <reg> <target>     full authenticated verification (0 intact / 1 broken / 2 usage).  (Task 11)
+ *   verify-anchored <reg> <target> [--anchor-store file|git] [--anchor-dir <dir>]
+ *                                    TrustLevel.ANCHORED: verify-signed + external-anchor cross-check
+ *                                    (0 intact / 1 broken / 2 usage).  (T7)
  */
 public final class IdentityGate {
     public static void main(String[] args) { System.exit(run(args)); }
@@ -24,6 +31,7 @@ public final class IdentityGate {
             switch (args[0]) {
                 case "keygen": return keygen(Arrays.copyOfRange(args, 1, args.length));
                 case "verify-signed": return verifySigned(Arrays.copyOfRange(args, 1, args.length));
+                case "verify-anchored": return verifyAnchored(Arrays.copyOfRange(args, 1, args.length));
                 case "authorize": return authorize(Arrays.copyOfRange(args, 1, args.length));
                 default: usage(); return 2;
             }
@@ -91,6 +99,37 @@ public final class IdentityGate {
         return 1;
     }
 
+    private static int verifyAnchored(String[] a) throws Exception {
+        if (a.length < 2) {
+            System.err.println("Usage: identity verify-anchored <reg> <target> [--anchor-store file|git] [--anchor-dir <dir>]");
+            return 2;
+        }
+        Path reg = Path.of(a[0]);
+        String target = a[1];
+        String storeKind = "file"; String anchorDir = null;
+        for (int i = 2; i < a.length; i++) {
+            if ("--anchor-store".equals(a[i])) storeKind = (++i < a.length) ? a[i] : storeKind;
+            else if ("--anchor-dir".equals(a[i])) anchorDir = (++i < a.length) ? a[i] : null;
+        }
+        AnchorStore anchors = "git".equals(storeKind)
+                ? new GitAnchorStore(Path.of(anchorDir != null ? anchorDir : reg.toString()))
+                : new FileAnchorStore(anchorDir != null ? Path.of(anchorDir) : reg);
+        // IMPORTANT: do NOT short-circuit on an empty ledger the way verify-signed does — an emptied ledger
+        // with a present anchor IS a detectable rollback (AN7). Only "no such target" when BOTH are absent.
+        boolean ledgerEmpty = new ActivationLedger(reg).history(target).isEmpty();
+        if (ledgerEmpty && anchors.latest(target).isEmpty()) {
+            System.err.println("[GATE] verify-anchored: no such target ledger: " + target); return 2;
+        }
+        SignedVerdict v = SignedLedgerVerifier.forRegistry(reg).verify(target, TrustLevel.ANCHORED, anchors);
+        if (v.intact()) {
+            System.out.println("[GATE] verify-anchored target=" + target + " => INTACT (anchored)");
+            return 0;
+        }
+        System.out.println("[GATE] verify-anchored target=" + target + " => BROKEN at index="
+                + v.brokenIndex() + " rule=" + v.rule());
+        return 1;
+    }
+
     private static int authorize(String[] a) throws Exception {
         if (a.length < 6) { System.err.println("Usage: identity authorize <reg> <principal> <activate|approve> <target> <kind> <ref>"); return 2; }
         dev.krillin.bifrost.core.activation.ActivationAction action;
@@ -109,5 +148,5 @@ public final class IdentityGate {
         return 1;
     }
 
-    private static void usage() { System.err.println("Usage: identity <keygen|verify-signed|authorize> ..."); }
+    private static void usage() { System.err.println("Usage: identity <keygen|verify-signed|verify-anchored|authorize> ..."); }
 }

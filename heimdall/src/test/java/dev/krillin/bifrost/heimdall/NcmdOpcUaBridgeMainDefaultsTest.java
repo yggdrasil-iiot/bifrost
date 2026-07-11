@@ -66,7 +66,7 @@ class NcmdOpcUaBridgeMainDefaultsTest {
     void loadConformance_nullPath_returnsOff() throws Exception {
         NcmdOpcUaBridgeMain.Config config = new NcmdOpcUaBridgeMain.Config(
                 "tcp://localhost:1883", "opc.tcp://localhost:48400", "Bifrost:Line1", "recipe-edge",
-                "registry/policy.json", "registry", null, null, null, false);
+                "registry/policy.json", "registry", null, null, null, false, false, "file", null);
 
         NcmdOpcUaBridgeMain.Conformance c = NcmdOpcUaBridgeMain.loadConformance(config);
 
@@ -103,7 +103,7 @@ class NcmdOpcUaBridgeMainDefaultsTest {
 
         NcmdOpcUaBridgeMain.Config config = new NcmdOpcUaBridgeMain.Config(
                 "tcp://localhost:1883", "opc.tcp://localhost:48400", "Bifrost:Line1", "recipe-edge",
-                "registry/policy.json", registryDir.toString(), cpFile.toString(), null, null, false);
+                "registry/policy.json", registryDir.toString(), cpFile.toString(), null, null, false, false, "file", null);
 
         NcmdOpcUaBridgeMain.Conformance c = NcmdOpcUaBridgeMain.loadConformance(config);
 
