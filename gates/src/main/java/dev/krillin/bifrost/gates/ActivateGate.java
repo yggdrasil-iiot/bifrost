@@ -6,7 +6,8 @@ import dev.krillin.bifrost.core.activation.*;
 import dev.krillin.bifrost.core.schema.Violation;
 
 /** Activation gate. Subcommands:
- *   activate <reg> <target> <kind> <ref> <version> --by <p> --approved-by <p> [--rollback]  (0 ok / 1 refused / 2 usage)
+ *   activate <reg> <target> <kind> <ref> <version> --by <p> --approved-by <p> [--by-key <f> --approved-by-key <f>]
+ *            [--anchor-store file|git] [--anchor-dir <dir>] [--rollback]                    (0 ok / 1 refused / 2 usage)
  *   active   <reg> <target> <kind> <ref>                                                    (prints active version+sha or none)
  *   activation-log <reg> <target>                                                           (prints the audit trail)
  *   activation verify-chain <reg> <target>                                                  (0 intact / 1 tampered / 2 no such target) */
@@ -30,6 +31,7 @@ public final class ActivateGate {
 
     private static int activate(String[] a) throws Exception {
         String by = null, approvedBy = null, byKey = null, approvedByKey = null; boolean rollback = false;
+        String anchorStoreKind = "file", anchorDir = null;
         List<String> pos = new ArrayList<>();
         for (int i = 0; i < a.length; i++) {
             switch (a[i]) {
@@ -37,16 +39,26 @@ public final class ActivateGate {
                 case "--approved-by" -> approvedBy = (++i < a.length) ? a[i] : null;
                 case "--by-key" -> byKey = (++i < a.length) ? a[i] : null;
                 case "--approved-by-key" -> approvedByKey = (++i < a.length) ? a[i] : null;
+                case "--anchor-store" -> anchorStoreKind = (++i < a.length) ? a[i] : anchorStoreKind;
+                case "--anchor-dir" -> anchorDir = (++i < a.length) ? a[i] : null;
                 case "--rollback" -> rollback = true;
                 default -> pos.add(a[i]);
             }
         }
-        if (pos.size() < 5) { System.err.println("Usage: activate <reg> <target> <kind> <ref> <version> --by <p> --approved-by <p> [--by-key <f> --approved-by-key <f>] [--rollback]"); return 2; }
+        if (pos.size() < 5) { System.err.println("Usage: activate <reg> <target> <kind> <ref> <version> --by <p> --approved-by <p> [--by-key <f> --approved-by-key <f>] [--anchor-store file|git] [--anchor-dir <dir>] [--rollback]"); return 2; }
         if ((byKey == null) != (approvedByKey == null)) {
             System.err.println("Usage: --by-key and --approved-by-key must be supplied together"); return 2;
         }
         Path reg = Path.of(pos.get(0));
-        ActivationService svc = new ActivationService(new RecipeArtifactResolver(reg), new ActivationLedger(reg), Clock.systemUTC());
+        // The ledger carries an AnchorStore ONLY on the signed path; unsigned stays exact T5 (anchorStore == null).
+        dev.krillin.bifrost.core.activation.AnchorStore anchorStore = null;
+        if (byKey != null) {
+            anchorStore = "git".equals(anchorStoreKind)
+                    ? new dev.krillin.bifrost.core.identity.GitAnchorStore(Path.of(anchorDir != null ? anchorDir : reg.toString()))
+                    : new dev.krillin.bifrost.core.activation.FileAnchorStore(anchorDir != null ? Path.of(anchorDir) : reg);
+        }
+        ActivationService svc = new ActivationService(new RecipeArtifactResolver(reg),
+                new ActivationLedger(reg, anchorStore), Clock.systemUTC());
         ActivationRequest req = new ActivationRequest(pos.get(1), pos.get(2), pos.get(3), pos.get(4), by, approvedBy, rollback);
         ActivationVerdict v;
         if (byKey != null) {
