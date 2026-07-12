@@ -46,7 +46,7 @@ import org.eclipse.milo.opcua.stack.transport.server.tcp.OpcTcpServerTransportCo
  * layout, mandatory {@code OpcServerTransportFactory}, no bare {@code addUri} — a substantial
  * departure from the 0.6.12 server API), verified against the actual 1.0.0 jars.
  *
- * <p>Endpoint {@code opc.tcp://localhost:48400}, anonymous identity, {@code SecurityPolicy.None} —
+ * <p>Endpoint is configurable (default {@code opc.tcp://localhost:48400}), anonymous identity, {@code SecurityPolicy.None} —
  * matching exactly what {@code OpcUaApplier.connect()} (a bare {@code OpcUaClient.create(endpoint)}
  * + {@code connect()}) expects. Bind address/hostname are both {@code localhost} to avoid Milo's
  * endpoint-discovery hostname mismatch (the client re-resolves the advertised endpoint after
@@ -55,17 +55,30 @@ import org.eclipse.milo.opcua.stack.transport.server.tcp.OpcTcpServerTransportCo
 final class EmbeddedMiloSim implements AutoCloseable {
 
     static final String NAMESPACE_URI = "urn:bifrost:opcua:sim";
-    static final int BIND_PORT = 48400;
+    static final int BIND_PORT = 48400;              // RETAINED default (existing tests reference this)
+    static final String DEFAULT_BIND_HOST = "localhost";
 
+    private final int bindPort;
+    private final String bindHost;
     private OpcUaServer server;
     private SimNamespace namespace;
+
+    EmbeddedMiloSim() { this(BIND_PORT, DEFAULT_BIND_HOST); }
+
+    EmbeddedMiloSim(int bindPort, String bindHost) {
+        this.bindPort = bindPort;
+        this.bindHost = bindHost;
+    }
+
+    int bindPort() { return bindPort; }
+    String bindHost() { return bindHost; }
 
     EmbeddedMiloSim start() throws Exception {
         EndpointConfig endpointConfig = EndpointConfig.newBuilder()
                 .setTransportProfile(TransportProfile.TCP_UASC_UABINARY)
-                .setBindAddress("localhost")
-                .setBindPort(BIND_PORT)
-                .setHostname("localhost")
+                .setBindAddress(bindHost)
+                .setBindPort(bindPort)
+                .setHostname(bindHost)
                 .setPath("")
                 .setSecurityPolicy(SecurityPolicy.None)
                 .setSecurityMode(MessageSecurityMode.None)
