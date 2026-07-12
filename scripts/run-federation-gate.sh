@@ -265,7 +265,9 @@ set -e
 [ "$rc" -eq 0 ] || { cat "$WORK/f6.txt"; fail "F6 federation audit expected exit 0"; }
 grep -q "sites=2" "$WORK/f6.txt" || { cat "$WORK/f6.txt"; fail "F6 audit did not report 2 sites"; }
 grep -q "site=busan" "$WORK/f6.txt" && grep -q "site=ulsan" "$WORK/f6.txt" || { cat "$WORK/f6.txt"; fail "F6 audit missing a site"; }
-grep -q "site=ulsan active=1.1.0" "$WORK/f6.txt" || { cat "$WORK/f6.txt"; fail "F6 ulsan not active=1.1.0"; }
+# the sites are visibly independent: busan rolled back to 1.0.0 (1 event), ulsan advanced to 1.1.0 (2 events).
+grep -q "site=busan active=1.0.0 events=1" "$WORK/f6.txt" || { cat "$WORK/f6.txt"; fail "F6 busan not active=1.0.0/1-event"; }
+grep -q "site=ulsan active=1.1.0 events=2" "$WORK/f6.txt" || { cat "$WORK/f6.txt"; fail "F6 ulsan not active=1.1.0/2-events"; }
 echo "[FED] F6 => PASS (cross-site audit view):"
 sed 's/^/[FED]   /' "$WORK/f6.txt"
 

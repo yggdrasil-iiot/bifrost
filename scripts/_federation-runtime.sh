@@ -185,7 +185,7 @@ echo "[FED] F4: enterprise unreachable — ulsan git fetch fails (as expected)"
 # ulsan's Heimdall + broker + sim keep serving from the local clone: a rogue is still denied.
 pub "tcp://localhost:1884" "Bifrost:ulsan" "$SECRET" 2.0 Double
 wait_grep "$BLOG_B" "\[BRIDGE\] DENY cmd=$SECRET" 15 || fail "F4 ulsan stopped enforcing while offline"
-DENY_COUNT=$(grep -c "\[BRIDGE\] DENY cmd=$SECRET" "$BLOG_B" 2>/dev/null || echo 0)
+DENY_COUNT=$(grep -c "\[BRIDGE\] DENY cmd=$SECRET" "$BLOG_B" 2>/dev/null || true)
 [ "$DENY_COUNT" -ge 2 ] || fail "F4 ulsan did not process a NEW command offline (deny count=$DENY_COUNT)"
 echo "[FED] F4: ulsan still enforces locally while offline"
 # reconnect: restore the enterprise repo and fetch succeeds (reconcile).
