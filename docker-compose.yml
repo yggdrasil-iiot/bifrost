@@ -1,5 +1,6 @@
-# Local bifrost runtime-gate broker.
-#   docker compose up -d hivemq-ce   → MQTT on tcp://localhost:1883
+# Local bifrost runtime-gate brokers.
+#   docker compose up -d hivemq-ce     → site A MQTT on tcp://localhost:1883
+#   docker compose up -d hivemq-ce-b   → site B MQTT on tcp://localhost:1884  (multi-site federation gate)
 #
 # ⚠️ HiveMQ CE 2026.x is secure-by-default: without a security extension it refuses ALL MQTT
 #    connections ("No security extension present, MQTT clients can not connect"). For local
@@ -9,7 +10,16 @@ services:
     image: hivemq/hivemq-ce:latest
     container_name: bifrost-hivemq-ce
     ports:
-      - "1883:1883"     # MQTT
+      - "1883:1883"     # MQTT — site A
+    environment:
+      HIVEMQ_ALLOW_ALL_CLIENTS: "true"
+    restart: unless-stopped
+
+  hivemq-ce-b:
+    image: hivemq/hivemq-ce:latest
+    container_name: bifrost-hivemq-ce-b
+    ports:
+      - "1884:1883"     # MQTT — site B (container listens on 1883, published to host 1884)
     environment:
       HIVEMQ_ALLOW_ALL_CLIENTS: "true"
     restart: unless-stopped
