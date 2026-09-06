@@ -24,7 +24,7 @@ the suites measured 352 tests in Bifrost and 242 in Huginn.
 | 4 | Tamper-evidence, insider rollback | **built** | LN1–LN4 · I1–I7 · AN1–AN8 · F5 (cross-domain anchor) |
 | 5 | **Conduit inventory (IEC 62443 SR 6.2)** | **partial** | Huginn produces the *observed* list and reconciles it; frequency, ownership and non-TCP conduits are missing ([detail](#5-conduit-inventory)) |
 | 6 | **Identity lifecycle** | **deferred, with a path** | Trigger: the second site on real hardware, or the first certificate expiry ([detail](#6-identity-lifecycle)) |
-| 7 | **Supply chain / EU CRA** | **partial, with a named gap** | Ledger and provenance manifest exist; **no SBOM, no vulnerability-handling process** ([detail](#7-supply-chain-and-the-cra)) |
+| 7 | **Supply chain / EU CRA** | **partial** | Ledger, provenance manifest and a CycloneDX SBOM exist; **no vulnerability-handling process, and the ledger does not reach the build** ([detail](#7-supply-chain-and-the-cra)) |
 | 8 | Brownfield vendor heterogeneity | **partial** | 3 `TemplateAdapter` implementations; the vendor-front gateway posture is designed, not built |
 | 9 | AAS alignment → conformance | **deferred** | Trigger: a customer asking for an IDTA submodel template by number |
 | 10 | Certificate expiry, key rotation | **open** | No mechanism. Trigger: any deployment that outlives its first certificate |
@@ -32,6 +32,26 @@ the suites measured 352 tests in Bifrost and 242 in Huginn.
 
 Rows 5, 6 and 7 carry this document. Rows 1–4 are the easy ones to write because they are done;
 on their own they would be a feature list.
+
+---
+
+## 2. Propagation is restart-scoped on purpose
+
+A site pulls governance changes with `git pull`, and they take effect at that site's **next
+Heimdall restart** — not on the next command. F2 asserts exactly this, including the revocation
+case: a principal removed at the enterprise stays able to act until the site's edge restarts.
+
+That is a real limit and it is worth stating rather than burying, because it is the first thing
+an operator asks. It is also the deliberate choice. Heimdall reads policy, conformance bounds,
+the activation ledger and the anchor **once, at startup**, and then authorizes every command
+against that fixed picture. Re-reading them per command would mean a write-boundary authorizer
+whose verdict can change underneath a running batch because someone merged a pull request, and
+whose availability now depends on the registry being reachable at command time.
+
+The cost is bounded and known: revocation latency equals the time to the next edge restart. The
+alternative's cost is unbounded and only shows up during an incident. If revocation needs to be
+faster than a restart, the fix is a short-lived credential rather than a hot-reloading gate, and
+that lands in §6.
 
 ---
 
@@ -123,14 +143,20 @@ SBOM, which is described as becoming a standard artefact in 2026.
   four-eyes separation of duties, a hash chain, dual Ed25519 signatures and an external anchor.
   That is a non-repudiable lifecycle record, which is the shape the CRA asks for.
 
+- **An SBOM is generated.** `mvn package` emits `target/bifrost-sbom.{json,xml}` — one
+  CycloneDX 1.6 document for the whole reactor, 40 components with licences resolved. It is a
+  build artefact, so it is not committed; it belongs attached to a release.
+
 **What is missing, plainly:**
-- **No SBOM.** No CycloneDX or SPDX generation anywhere in the build. This is the clearest
-  single gap on this page and the cheapest to close.
 - **No vulnerability-handling process.** No security policy, no disclosure contact, no advisory
-  channel. The reporting obligation above is a process obligation, and processes are not code.
+  channel. The reporting obligation above is a *process* obligation, and processes are not code.
+  Producing an SBOM is the input to that process, not the process.
 - **The ledger covers the governed model, not the software.** It records which *spec* was
   activated, not which *build* is running. Connecting the two is the real work, and it is exactly
-  where SLSA-style build provenance would slot in.
+  where SLSA-style build provenance would slot in. Today the SBOM and the activation ledger are
+  two records with no link between them.
+- **Nothing consumes the SBOM.** No dependency scanning, no advisory matching. A component
+  inventory that nobody diffs against a vulnerability feed changes an audit answer, not a risk.
 
 **Trigger:** already live. The reporting date is not conditional on adoption.
 

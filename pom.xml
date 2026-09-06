@@ -36,6 +36,7 @@
 
     <maven-surefire-plugin.version>3.2.5</maven-surefire-plugin.version>
     <maven-shade-plugin.version>3.6.0</maven-shade-plugin.version>
+    <cyclonedx-maven-plugin.version>2.9.3</cyclonedx-maven-plugin.version>
   </properties>
 
   <dependencyManagement>
@@ -140,6 +141,31 @@
         </plugin>
       </plugins>
     </pluginManagement>
+
+    <plugins>
+      <!--
+        CycloneDX SBOM. The EU CRA's vulnerability-handling obligations make a machine-readable
+        component inventory a required artefact, not a nicety; makeAggregateBom emits ONE bom for
+        the whole reactor rather than four per-module ones. Output: target/bifrost-sbom.{json,xml}.
+      -->
+      <plugin>
+        <groupId>org.cyclonedx</groupId>
+        <artifactId>cyclonedx-maven-plugin</artifactId>
+        <version>${cyclonedx-maven-plugin.version}</version>
+        <executions>
+          <execution>
+            <id>sbom</id>
+            <phase>package</phase>
+            <goals><goal>makeAggregateBom</goal></goals>
+          </execution>
+        </executions>
+        <configuration>
+          <projectType>application</projectType>
+          <outputName>bifrost-sbom</outputName>
+          <outputFormat>all</outputFormat>
+        </configuration>
+      </plugin>
+    </plugins>
   </build>
 
 </project>

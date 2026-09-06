@@ -93,6 +93,8 @@ sim/       an embedded Eclipse Milo OPC-UA server the gates drive end-to-end.
 
 ```bash
 mvn install     # Java 17 · 352 tests (core 223 · heimdall 42 · gates 76 · sim 11)
+                # also writes target/bifrost-sbom.{json,xml} — one CycloneDX 1.6 SBOM
+                # for the whole reactor (40 components, licences resolved)
 ```
 
 ## Executable gates — the proof
