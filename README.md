@@ -43,7 +43,10 @@ One `gates` jar, deny-by-default, exit `0` admit / `1` governance-refuse / `2` u
 
 "Which version is live at an edge" is itself a **governed event** — and the record of those events is progressively hardened from an audit trail into an authenticated, non-repudiable history:
 
-![The activation ladder, T3 to T7: what each tier adds on the left, what it still leaves open on the right](docs/diagrams/activation-ladder.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/activation-ladder.dark.svg">
+  <img alt="The activation ladder, T3 to T7: what each tier adds on the left, what it still leaves open on the right" src="docs/diagrams/activation-ladder.svg">
+</picture>
 
 Each rung closes the hole the rung below left open, and names the hole it leaves. The top rung's hole is stated rather than hidden, and T6 is marked as what it is — a second axis, not a rung.
 
