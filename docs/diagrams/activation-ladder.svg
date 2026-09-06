@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="828" viewBox="0 0 1240 828" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif">
+  <defs>
+    <marker id="aCtrl" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#0969da"/></marker>
+    <marker id="aWarn" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#9a6700"/></marker>
+    <marker id="aDang" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#cf222e"/></marker>
+  </defs>
+
+  <rect x="8" y="8" width="1224" height="812" rx="14" fill="#ffffff" stroke="#d0d7de"/>
+
+  <text x="40" y="40" font-size="15" font-weight="700" fill="#1f2328">The activation ladder — T3 to T7</text>
+  <text x="40" y="58" font-size="11" fill="#57606a">Each rung closes the hole the rung below left open, and names the hole it leaves. The top rung's hole is stated, not hidden.</text>
+
+  <rect x="40" y="76" width="692" height="712" rx="10" fill="#fbfcfd" stroke="#e6e9ee"/>
+  <text x="56" y="96" font-size="11" font-weight="700" fill="#8b95a1" letter-spacing="1">WHAT EACH TIER ADDS</text>
+
+  <rect x="748" y="76" width="444" height="712" rx="10" fill="#fbfcfd" stroke="#e6e9ee"/>
+  <text x="764" y="96" font-size="11" font-weight="700" fill="#8b95a1" letter-spacing="1">WHAT IT STILL LEAVES OPEN</text>
+
+  <rect x="56" y="112" width="660" height="104" rx="6" fill="#eaf3ea" stroke="#1a7f37"/>
+  <text x="72" y="136" font-size="12.5" font-weight="600" fill="#1f2328">T7 · anchored activation</text>
+  <text x="72" y="156" font-size="11" fill="#57606a">adds a four-eyes head plus an external anchor witness — the highest (seq, tailEntryHash) ever reached</text>
+  <text x="72" y="174" font-size="11" fill="#0969da">closes T5's hole: a registered insider truncating and re-signing a shorter head</text>
+  <text x="72" y="196" font-size="11" fill="#57606a">run-anchored-activation-gate.sh (AN1–AN8) · edge activation.edge.anchor-denied</text>
+
+  <rect x="56" y="252" width="660" height="104" rx="6" fill="#ddf4ff" stroke="#0969da"/>
+  <text x="72" y="276" font-size="12.5" font-weight="600" fill="#1f2328">T6 · authorization</text>
+  <text x="72" y="296" font-size="11" fill="#57606a">adds deny-by-default maker-checker on (target, kind, ref) — activate and approve are separate grants</text>
+  <text x="72" y="314" font-size="11" fill="#9a6700">a second axis, not a rung: it authorizes an authenticated subject, it does not close T5's hole</text>
+  <text x="72" y="336" font-size="11" fill="#57606a">run-activation-authz-gate.sh (AZ1–AZ7) · edge activation.edge.authz-denied</text>
+
+  <rect x="56" y="392" width="660" height="104" rx="6" fill="#ddf4ff" stroke="#0969da"/>
+  <text x="72" y="416" font-size="12.5" font-weight="600" fill="#1f2328">T5 · signed activation</text>
+  <text x="72" y="436" font-size="11" fill="#57606a">adds dual Ed25519 signatures (activator + approver) and a signed ledger head</text>
+  <text x="72" y="454" font-size="11" fill="#0969da">closes T4's hole: re-chaining the whole ledger, or truncating its tail</text>
+  <text x="72" y="476" font-size="11" fill="#57606a">run-identity-gate.sh (I1–I7) · edge activation.edge.signed-ledger-broken</text>
+
+  <rect x="56" y="532" width="660" height="104" rx="6" fill="#ddf4ff" stroke="#0969da"/>
+  <text x="72" y="556" font-size="12.5" font-weight="600" fill="#1f2328">T4 · lineage</text>
+  <text x="72" y="576" font-size="11" fill="#57606a">adds a hash-chained ledger — one canonical-preimage SHA-256 per entry</text>
+  <text x="72" y="594" font-size="11" fill="#0969da">closes T3's hole: editing, deleting or reordering an entry after the fact</text>
+  <text x="72" y="616" font-size="11" fill="#57606a">run-lineage-gate.sh (LN1–LN4) · edge activation.edge.ledger-chain-broken</text>
+
+  <rect x="56" y="672" width="660" height="104" rx="6" fill="#ddf4ff" stroke="#0969da"/>
+  <text x="72" y="696" font-size="12.5" font-weight="600" fill="#1f2328">T3 · governed activation</text>
+  <text x="72" y="716" font-size="11" fill="#57606a">four-eyes separation of duties, the runtime bytes sealed by SHA-256, an append-only ledger</text>
+  <text x="72" y="734" font-size="11" fill="#57606a">the base rung — it makes activation an event before it makes it trustworthy</text>
+  <text x="72" y="756" font-size="11" fill="#57606a">run-activation-gate.sh · edge activation.edge.content-mismatch</text>
+
+  <rect x="764" y="126" width="412" height="76" rx="6" fill="#ffebe9" stroke="#cf222e" stroke-dasharray="4 3"/>
+  <text x="780" y="148" font-size="11" font-weight="600" fill="#cf222e">still open — and out of scope here</text>
+  <text x="780" y="168" font-size="11" fill="#1f2328">the resistance is topological, not cryptographic: a</text>
+  <text x="780" y="186" font-size="11" fill="#1f2328">co-rollback rewrites an on-box anchor. Needs an off-box witness.</text>
+
+  <rect x="764" y="266" width="412" height="76" rx="6" fill="#f6f8fa" stroke="#9a6700"/>
+  <text x="780" y="288" font-size="11" font-weight="600" fill="#9a6700">still open</text>
+  <text x="780" y="308" font-size="11" fill="#1f2328">authZ presupposes authN. With signing off there is</text>
+  <text x="780" y="326" font-size="11" fill="#1f2328">no authenticated subject to authorize at all.</text>
+
+  <rect x="764" y="406" width="412" height="76" rx="6" fill="#f6f8fa" stroke="#9a6700"/>
+  <text x="780" y="428" font-size="11" font-weight="600" fill="#9a6700">still open</text>
+  <text x="780" y="448" font-size="11" fill="#1f2328">a registered insider can truncate the ledger and</text>
+  <text x="780" y="466" font-size="11" fill="#1f2328">re-sign a shorter head — signed verification passes.</text>
+
+  <rect x="764" y="546" width="412" height="76" rx="6" fill="#f6f8fa" stroke="#9a6700"/>
+  <text x="780" y="568" font-size="11" font-weight="600" fill="#9a6700">still open</text>
+  <text x="780" y="588" font-size="11" fill="#1f2328">re-chain every entry, or cut the tail off, and the</text>
+  <text x="780" y="606" font-size="11" fill="#1f2328">chain still verifies. Structure alone cannot see it.</text>
+
+  <rect x="764" y="686" width="412" height="76" rx="6" fill="#f6f8fa" stroke="#9a6700"/>
+  <text x="780" y="708" font-size="11" font-weight="600" fill="#9a6700">still open</text>
+  <text x="780" y="728" font-size="11" fill="#1f2328">the ledger is append-only by convention, not by</text>
+  <text x="780" y="746" font-size="11" fill="#1f2328">construction. Any past entry can be edited.</text>
+
+  <polyline points="716,724 764,724" fill="none" stroke="#9a6700" stroke-width="1.6" marker-end="url(#aWarn)"/>
+  <polyline points="716,584 764,584" fill="none" stroke="#9a6700" stroke-width="1.6" marker-end="url(#aWarn)"/>
+  <polyline points="716,444 764,444" fill="none" stroke="#9a6700" stroke-width="1.6" marker-end="url(#aWarn)"/>
+  <polyline points="716,304 764,304" fill="none" stroke="#9a6700" stroke-width="1.6" marker-end="url(#aWarn)"/>
+  <polyline points="716,164 764,164" fill="none" stroke="#cf222e" stroke-width="1.6" marker-end="url(#aDang)"/>
+
+  <polyline points="386,672 386,636" fill="none" stroke="#0969da" stroke-width="1.6" marker-end="url(#aCtrl)"/>
+  <polyline points="386,532 386,496" fill="none" stroke="#0969da" stroke-width="1.6" marker-end="url(#aCtrl)"/>
+  <polyline points="386,392 386,356" fill="none" stroke="#0969da" stroke-width="1.6" marker-end="url(#aCtrl)"/>
+  <polyline points="386,252 386,216" fill="none" stroke="#0969da" stroke-width="1.6" marker-end="url(#aCtrl)"/>
+
+  <text x="40" y="806" font-size="11" fill="#57606a">Every tier is additive and backward-compatible: a T3 ledger still verifies. The edge bars above signing are opt-in — REQUIRE_SIGNED_ACTIVATION and REQUIRE_ANCHORED_ACTIVATION both default to false.</text>
+</svg>

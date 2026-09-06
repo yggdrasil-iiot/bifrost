@@ -43,6 +43,10 @@ One `gates` jar, deny-by-default, exit `0` admit / `1` governance-refuse / `2` u
 
 "Which version is live at an edge" is itself a **governed event** — and the record of those events is progressively hardened from an audit trail into an authenticated, non-repudiable history:
 
+![The activation ladder, T3 to T7: what each tier adds on the left, what it still leaves open on the right](docs/diagrams/activation-ladder.svg)
+
+Each rung closes the hole the rung below left open, and names the hole it leaves. The top rung's hole is stated rather than hidden, and T6 is marked as what it is — a second axis, not a rung.
+
 - **Governed activation (T3)** — activation requires **four-eyes SoD** (a distinct approver), seals the **exact runtime bytes** by SHA-256, appends to an audit ledger, and supports guarded rollback. Heimdall **binds the ledger's active version** at startup and re-checks the content hash at the edge (verify-then-trust).
 - **Lineage / record-of-record (T4)** — the ledger is **hash-chained** (`LedgerChain`, one canonical-preimage SHA-256 per entry), so any retroactive edit / delete / reorder / mid-truncation is detectable from the ledger alone. Heimdall **fail-closes on a broken chain** before binding.
 - **Identity / signed activation (T5)** — each activation is **dual-signed** (activator + approver Ed25519, JDK built-in) and the ledger tail is anchored by a **signed head**, closing the full-re-chain and tail-truncation gaps a bare hash chain leaves open. Signatures cover T4's `entryHash`, so structural verification is untouched and unsigned ledgers stay valid. Heimdall's `REQUIRE_SIGNED_ACTIVATION` (default off) fail-closes on a broken *signed* ledger.
