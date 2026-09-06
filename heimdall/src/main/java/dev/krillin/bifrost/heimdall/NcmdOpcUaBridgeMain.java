@@ -83,7 +83,7 @@ public final class NcmdOpcUaBridgeMain {
         boolean logOnly = flag(getenv, "ENFORCEMENT_LOG_ONLY", "");
         if (logOnly && requireSignedEffective)
             System.err.println("[BRIDGE] WARN: ENFORCEMENT_LOG_ONLY is ON together with a REQUIRE_*_ACTIVATION"
-                    + " bar. The ledger is being verified, but NO command is being blocked — the activation"
+                    + " bar. The ledger is being verified, but NO command is being blocked: the activation"
                     + " tiers govern which ledger the edge will trust, not whether commands are enforced.");
         String anchorStore = env(getenv, "ANCHOR_STORE", "file");
         String anchorDir = env(getenv, "ANCHOR_DIR", null);
@@ -237,7 +237,7 @@ public final class NcmdOpcUaBridgeMain {
         // readable from the log. This is the most consequential one in the system, so it prints in
         // both states rather than only when it is on.
         System.out.println("[BRIDGE] enforcement = " + (config.enforcementLogOnly()
-                ? "LOG-ONLY — commands that would be denied are APPLIED (rollout mode, see docs/ADOPTION.md)"
+                ? "LOG-ONLY: commands that would be denied are APPLIED (rollout mode, see docs/ADOPTION.md)"
                 : "enforcing"));
 
         Conformance conformance = loadConformance(config);

@@ -178,11 +178,16 @@ The middle row was named here as the one worth building first for adoption's sak
 since been built — it was the smallest of the three and it is what turned phase 4 from a cliff into
 a step. The two remaining rows are both real work and neither has been started.
 
-One qualification on the row that now says *built*: it is covered by unit tests on the bridge core
-(including the reverse case — forcing log-only on makes seven existing enforcement tests fail), but
-**there is no runtime gate driving it through a real broker yet**, which is the standard every
-*built* row on the [`ENTERPRISE.md` board](ENTERPRISE.md#the-board) is held to. Its natural home is
-a leg in `run-ncmd-runtime-gate.sh`.
+That row meets the standard every *built* row on the [`ENTERPRISE.md` board](ENTERPRISE.md#the-board)
+is held to: it names a script. `run-ncmd-runtime-gate.sh` T4 restarts the edge with
+`ENFORCEMENT_LOG_ONLY=on` against a live HiveMQ broker and a live OPC-UA server, sends both rogues,
+and asserts each is logged `would-deny` and then applied — with the live server witnessing the
+out-of-range `Rpm=9999` landing on the node, which is the assertion that cannot be satisfied by a
+bridge that is still blocking. T5 restarts without the flag and requires the rogue to be denied
+again, because reversibility by restart is the property this plan actually leans on.
+
+Both directions were checked by injecting the defect rather than by trusting the green: forcing
+log-only ON makes seven existing enforcement tests fail, and forcing it OFF makes T4 fail.
 
 The third row deserves a note against the board. `ENTERPRISE.md` gives axis 10 the trigger "any
 deployment that outlives its first certificate", which reads like a late problem. Laid against

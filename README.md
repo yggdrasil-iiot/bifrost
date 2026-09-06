@@ -117,7 +117,7 @@ scripts/run-template-conformance-gate.sh   # site ⊨ enterprise + 3-adapter equ
 scripts/run-composable-conformance-gate.sh # ONE ConformancePolicy at design-time AND runtime
 scripts/run-provenance-gate.sh             # git-anchored provenance manifest
 scripts/run-command-authz-gate.sh          # deny-by-default NCMD authorization
-scripts/run-ncmd-runtime-gate.sh           # Heimdall edge authz over a live broker
+scripts/run-ncmd-runtime-gate.sh           # Heimdall edge authz over a live broker (+ log-only rollout mode, T4/T5)
 scripts/run-activation-gate.sh             # T3 — four-eyes SoD, content seal, rollback, edge bind
 scripts/run-lineage-gate.sh                # T4 — tamper-evident hash chain, edge fail-close
 scripts/run-identity-gate.sh               # T5 — dual-signed activation, signed head, edge fail-close
