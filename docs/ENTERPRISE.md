@@ -216,6 +216,32 @@ the head, while the cost of both commands is the per-entry signature walk they s
 strongest tier on the ladder costs no more than the tier below it**, so the reason to leave
 `REQUIRE_ANCHORED_ACTIVATION` off is not performance.
 
+### The two anchor stores cost differently, and not where you would guess
+
+The figures above use the on-box `file` anchor. The `git` store is the one that actually
+defends a co-rollback, so what it costs matters. Measured on two registries of the same size
+(20 signed activations each), so the per-entry signature work is identical and the difference is
+the store:
+
+| | per activation | per verification |
+|---|---:|---:|
+| `file` anchor | 1,402 ms | 1,096 ms |
+| `git` anchor | 1,939 ms | 1,140 ms |
+| difference | **+537 ms** | **+44 ms** |
+
+**Cheap to check, expensive to write.** Verification adds about 45 ms once, because it is a
+single `git show HEAD:<file>` regardless of how long the ledger is. Activation adds about half a
+second every time, because it commits. The anchor repository was 171 KB after 20 commits, loose
+and un-repacked.
+
+Operationally that lands in the harmless column: an extra half-second on an event that happens
+ten times a day is nothing, and the check that runs at every edge bind is the cheap one. Choosing
+`file` over `git` is not a performance decision either — it is the topological one described in
+§4, and the gate says as much itself.
+
+Note the two stores are alternatives, not layers: a git-anchored activation writes no file
+anchor.
+
 ### Why there is no per-entry slope from the ladder
 
 The ladder runs produced timings that cannot be used, and it is worth saying why rather than
@@ -234,9 +260,8 @@ A site performing ten governed activations a day reaches 2,000 entries in about 
 which point the signed ledger is 1.3 MB and verifying every signature in it takes five seconds.
 Something else will hurt first.
 
-**Not measured:** `federation audit` across many sites, the `git` anchor store (these figures are
-the on-box `file` store, and a git witness adds a `git show` per verification), and any of this
-on server hardware rather than a laptop.
+**Not measured:** `federation audit` across many sites, how the git anchor repository grows once
+git repacks it, and any of this on server hardware rather than a laptop.
 
 ---
 
