@@ -358,6 +358,12 @@ specialization and rejects a non-conforming one with a non-zero exit, and the th
 one vendor's dialect. The claim worth making is narrow and testable: this shortens the *governance*
 part of a site rollout, not the rollout.
 
+Those are somebody else's calendar figures, and they say nothing about **order** — what goes in
+first at a plant that is already running, and what has to be true before the next thing goes in.
+That sequence, the phase where it turns risky, and the three gaps in this build that block it are
+in **[`ADOPTION.md`](ADOPTION.md)**. It is derived from the code's constraints rather than from
+experience, and says so.
+
 ---
 
 ## What this document does not claim

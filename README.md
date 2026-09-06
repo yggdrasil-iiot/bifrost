@@ -132,7 +132,9 @@ scripts/run-yggdrasil-full-loop-gate.sh    # closed loop: observe → command �
 
 This is a systems-architecture reference implementation; it records its limits rather than hiding them.
 For the distance between this and a real deployment — which scale problems are answered, which are
-deferred and why, and which are open — see **[docs/ENTERPRISE.md](docs/ENTERPRISE.md)**.
+deferred and why, and which are open — see **[docs/ENTERPRISE.md](docs/ENTERPRISE.md)**. For the
+order any of it could go into a plant that is already running, and the phase where that turns
+risky, see **[docs/ADOPTION.md](docs/ADOPTION.md)**.
 
 - **Authorization is direct principal grants, not roles/attributes (T6).** The policy names each principal explicitly (deny-by-default, maker-checker); RBAC roles and ABAC attributes are future threads, and the policy file is plaintext (bootstrap/change-control out-of-band, no policy-signing yet). authZ presupposes authN — with signing off there is no authorization, because there is no authenticated subject to authorize. Revocation is bind-fresh (a running edge re-checks at the next startup).
 - **Anchoring is only as strong as the anchor's off-box protection (T7).** The four-eyes head plus external witness make rollback *evident*, but a `FileAnchorStore` is a local projection that a co-rollback can rewrite in place — it defends the lone re-anchor, not the co-rollback. Real rollback-resistance rests on the witness being genuinely tamper-resistant off-box (a protected git remote / signed tag / TPM monotonic counter); the `GitAnchorStore` demonstrates the seam but a locally-committed anchor repo is still on-box. If the git anchor dir resolves *inside* the registry, both the gate and Heimdall **WARN loudly** — a co-located witness is rolled back with the tree it is meant to witness, so `ANCHOR_DIR` must point at a separate off-box repo to actually close the co-rollback. Anchoring presupposes signing (`ANCHORED` ⊃ `SIGNED`), so it does nothing with signing off.
