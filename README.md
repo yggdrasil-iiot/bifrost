@@ -2,7 +2,7 @@
 
 ![Java](https://img.shields.io/badge/Java-17-orange?logo=openjdk&logoColor=white)
 ![Build](https://img.shields.io/badge/build-Maven%20multi--module-blue)
-![Tests](https://img.shields.io/badge/tests-274-brightgreen)
+![Tests](https://img.shields.io/badge/tests-352-brightgreen)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache_2.0-blue.svg)](LICENSE)
 
 **The governance core of the [Yggdrasil](https://github.com/yggdrasil-iiot) IIoT spine — the "IAM" for the OT governance boundary.**
@@ -36,6 +36,7 @@ One `gates` jar, deny-by-default, exit `0` admit / `1` governance-refuse / `2` u
 | `identity keygen` · `identity verify-signed` | T5 — cryptographic identity over activations |
 | `identity authorize` | T6 — deny-by-default authorization: who may activate/approve a resource |
 | `identity verify-anchored` | T7 — external-anchor cross-check + four-eyes head (rollback-evident) |
+| `federation audit` | multi-site — aggregates per-site activation ledgers into one cross-site view of what is active where |
 
 ## The governed activation lifecycle
 
@@ -53,6 +54,31 @@ Each step is additive and backward-compatible — a T3/T4 ledger still verifies,
 
 `heimdall` is the write-boundary authorizer (a Sparkplug **NCMD** → OPC-UA bridge). Deny-by-default, it independently re-authorizes every command *at the edge* — without trusting any upstream authorization — enforcing command ACLs, conformance bounds, and the governed active version, and fails closed on any uncertainty (bad quality, broken/unsigned ledger, content mismatch, rogue command). It closes the loop the gate opens: *observe → command → observe*.
 
+## Federation — one authority, many sites
+
+Single-line governance is not enterprise governance, so the same primitives recombine into a
+multi-site topology: an **enterprise git registry** (the authority) plus a **separate enterprise
+anchor repository**, with per-site mirror clones that run local-first. Identity trust
+(`authorized-keys`, `activation-policy`) federates **down** with the mirror; each site keeps its
+**own** activation ledger and anchors it **up** to the enterprise anchor.
+
+`run-federation-gate.sh` proves six properties on two sites:
+
+| | Property |
+|---|---|
+| F1 | the enterprise template governs both sites — a conforming site specialization passes `site ⊨ enterprise`, a non-conforming one is rejected (exit 1) |
+| F2 | governance propagates by `git pull` and takes effect at that site's **next Heimdall restart** (Heimdall reads policy, conformance, ledger and anchor once, at start) |
+| F3 | each site activates and enforces independently, and denies a rogue command on its own |
+| F4 | a site keeps serving while offline, then reconciles on reconnect |
+| F5 | **cross-domain rollback is evident** — a site insider who co-rolls-back the local ledger, head *and* anchor is still caught, because the enterprise anchor is a different trust domain and witnesses the higher `seq` |
+| F6 | `federation audit` aggregates both sites' ledgers into one cross-site view of what is active where |
+
+F1/F5/F6 are pure CLI and always run; F2/F3/F4 need Docker and can be skipped.
+
+**Honest, and the gate says so itself:** F5's "cannot rewrite" is **topological**, not
+cryptographic. It holds because the enterprise anchor lives in a repository the site never
+rewrites. Real closure still needs a genuinely tamper-resistant off-box witness, exactly as in T7.
+
 ## Modules
 
 ```
@@ -66,12 +92,13 @@ sim/       an embedded Eclipse Milo OPC-UA server the gates drive end-to-end.
 ## Build & test
 
 ```bash
-mvn install     # Java 17 · 274 tests (core 174 · heimdall 35 · gates 58 · sim 7)
+mvn install     # Java 17 · 352 tests (core 223 · heimdall 42 · gates 76 · sim 11)
 ```
 
 ## Executable gates — the proof
 
 Governance is demonstrated end-to-end, not asserted. Pure-CLI gates need no broker; edge gates need Docker (HiveMQ CE) + host port 1883.
+All 15 last ran green on 2026-09-06 (Docker 26.1.4); the broker gates start and stop HiveMQ CE themselves.
 
 ```bash
 scripts/run-schema-gate.sh                 # schema compatibility admit/reject
@@ -86,6 +113,7 @@ scripts/run-lineage-gate.sh                # T4 — tamper-evident hash chain, e
 scripts/run-identity-gate.sh               # T5 — dual-signed activation, signed head, edge fail-close
 scripts/run-activation-authz-gate.sh       # T6 — deny-by-default authZ, maker-checker, edge revocation
 scripts/run-anchored-activation-gate.sh    # T7 — four-eyes head + external anchor, rollback/co-rollback caught
+scripts/run-federation-gate.sh             # multi-site — enterprise template + cross-domain anchor + federated audit
 scripts/run-yggdrasil-spine-gate.sh        # Mímir → Bifrost → Muninn northbound spine
 scripts/run-yggdrasil-full-loop-gate.sh    # closed loop: observe → command → observe
 ```
@@ -98,7 +126,7 @@ This is a systems-architecture reference implementation; it records its limits r
 - **Anchoring is only as strong as the anchor's off-box protection (T7).** The four-eyes head plus external witness make rollback *evident*, but a `FileAnchorStore` is a local projection that a co-rollback can rewrite in place — it defends the lone re-anchor, not the co-rollback. Real rollback-resistance rests on the witness being genuinely tamper-resistant off-box (a protected git remote / signed tag / TPM monotonic counter); the `GitAnchorStore` demonstrates the seam but a locally-committed anchor repo is still on-box. If the git anchor dir resolves *inside* the registry, both the gate and Heimdall **WARN loudly** — a co-located witness is rolled back with the tree it is meant to witness, so `ANCHOR_DIR` must point at a separate off-box repo to actually close the co-rollback. Anchoring presupposes signing (`ANCHORED` ⊃ `SIGNED`), so it does nothing with signing off.
 - **The trust anchor is a plaintext registry file** (`authorized-keys.jsonl`); key bootstrap / distribution / revocation are out-of-band (no PKI/OIDC/CRL yet).
 - **Conformance egress is structural + range**, and the activation seal binds the runtime `MasterSpec`, not the git-anchored recipe manifest (that unification is future work).
-- **Demo scale** — single broker, single edge, single instance, localhost; the sim's transfer is instant setpoint = PV (a governance loop, not process physics).
+- **Demo scale** — single broker, single edge, single instance, localhost; the sim's transfer is instant setpoint = PV (a governance loop, not process physics). **The federation gate is no exception: it stands both "sites" up on one machine.** It proves the multi-site *topology*, not multi-site operation.
 - Parts were developed with AI assistance; all designs and gate results were verified against live services by the author.
 
 ## License
