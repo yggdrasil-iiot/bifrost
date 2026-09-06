@@ -1,0 +1,53 @@
+# Tests, plus the five gates that need no broker. The other ten stand up HiveMQ CE and an
+# OPC-UA sim themselves; they are deliberately not run here, so a red badge always means a
+# real regression rather than a flaky container. Run those locally: scripts/run-*-gate.sh
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: tests + pure-CLI gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0            # the provenance gate reads git history
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: temurin
+          cache: maven
+
+      - name: Build, test, and emit the SBOM
+        run: mvn -B -ntp install
+
+      - name: 'Gate ① schema compatibility (admit + reject)'
+        run: bash scripts/run-schema-gate.sh
+
+      - name: 'Gate ② MasterSpec conformance'
+        run: bash scripts/run-spec-gate.sh
+
+      - name: 'Gate ③ site ⊨ enterprise + 3-adapter equivalence'
+        run: bash scripts/run-template-conformance-gate.sh
+
+      - name: 'Gate ④ deny-by-default command authorization'
+        run: bash scripts/run-command-authz-gate.sh
+
+      - name: 'Gate ⑤ git-anchored provenance (verify + tamper)'
+        run: bash scripts/run-provenance-gate.sh
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: bifrost-sbom
+          path: target/bifrost-sbom.*
+          if-no-files-found: error
