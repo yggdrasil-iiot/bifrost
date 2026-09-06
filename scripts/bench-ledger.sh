@@ -5,8 +5,12 @@
 # This is not a gate. It asserts nothing and always exits 0; it prints numbers so that
 # docs/ENTERPRISE.md §11 cites a measurement anyone can repeat rather than a claim.
 #
-#   bash scripts/bench-ledger.sh            # default ladder, ~2000 activations
+#   bash scripts/bench-ledger.sh                 # plain ledger  -> activation verify-chain
+#   MODE=signed bash scripts/bench-ledger.sh     # signed ledger -> identity verify-signed
 #   LADDER="25 50 100" bash scripts/bench-ledger.sh
+#
+# The two modes are separate runs on purpose: each activation is a JVM start, so doing both
+# ladders in one go takes the better part of an hour.
 #
 # Every activation is one JVM start, so the default ladder takes several minutes. The JVM
 # start is also why the fixed cost is reported separately: below a few hundred entries it
@@ -24,6 +28,7 @@ FIX="scripts/fixtures/activation"
 WORK="target/bench-ledger"
 JAR="gates/target/bifrost-gates.jar"
 LADDER="${LADDER:-25 50 100 250 500 1000 2000}"
+MODE="${MODE:-plain}"
 
 [ -f "$JAR" ] || mvn -q -pl core,gates -am install
 
@@ -39,24 +44,44 @@ REG="$(cygpath -m "$(pwd)/$WORK/registry")"
 JARW="$(cygpath -m "$(pwd)/$JAR")"
 LEDGER="$WORK/registry/activation/Line1.jsonl"
 
+SIGN_ARGS=()
+VERIFY=(activation verify-chain)
+if [ "$MODE" = "signed" ]; then
+  # A signed ledger needs keys, an authorized-keys list, and an activation policy that lets
+  # alice activate and bob approve. Same shape stage_reg uses in run-identity-gate.sh.
+  KEYS="$WORK/keys"; mkdir -p "$KEYS" "$WORK/registry/identity"
+  KEYSW="$(cygpath -m "$(pwd)/$KEYS")"
+  java -jar "$JARW" identity keygen alice --out "$KEYSW" >  "$WORK/registry/identity/authorized-keys.jsonl" 2>/dev/null
+  java -jar "$JARW" identity keygen bob   --out "$KEYSW" >> "$WORK/registry/identity/authorized-keys.jsonl" 2>/dev/null
+  cat > "$WORK/registry/identity/activation-policy.json" <<'JSON'
+{"version":"1","default":"deny","rules":[
+  {"id":"r-activate","principal":"alice","action":"activate","target":"Line1","kind":"recipe","ref":"mix-recipe"},
+  {"id":"r-approve","principal":"bob","action":"approve","target":"Line1","kind":"recipe","ref":"mix-recipe"}
+]}
+JSON
+  SIGN_ARGS=(--by-key "$KEYSW/alice.key" --approved-by-key "$KEYSW/bob.key")
+  VERIFY=(identity verify-signed)
+fi
+echo "# mode=$MODE  verify=${VERIFY[*]}"
+
 ms()      { date +%s%3N; }
 median3() { printf '%s\n' "$@" | sort -n | sed -n 2p; }
 
 # Bare JVM start, doing no work at all: the floor every CLI measurement below sits on.
 base=(); for _ in 1 2 3; do t0=$(ms); java -jar "$JARW" >/dev/null 2>&1 || true; t1=$(ms); base+=($((t1-t0))); done
 echo "# bare JVM start (median of 3): $(median3 "${base[@]}") ms"
-echo "n,ledger_bytes,verify_chain_ms"
+echo "n,ledger_bytes,verify_ms"
 
 n=0
 for target in $LADDER; do
   while [ "$n" -lt "$target" ]; do
     # alternate versions so each activation is a real change rather than a re-activation
     if [ $((n % 2)) -eq 0 ]; then v=1.0.0; else v=1.1.0; fi
-    java -jar "$JARW" activate "$REG" Line1 recipe mix-recipe "$v" --by alice --approved-by bob >/dev/null 2>&1
+    java -jar "$JARW" activate "$REG" Line1 recipe mix-recipe "$v" --by alice --approved-by bob "${SIGN_ARGS[@]}" >/dev/null 2>&1
     n=$((n+1))
   done
   runs=(); for _ in 1 2 3; do
-    t0=$(ms); java -jar "$JARW" activation verify-chain "$REG" Line1 >/dev/null 2>&1; t1=$(ms)
+    t0=$(ms); java -jar "$JARW" "${VERIFY[@]}" "$REG" Line1 >/dev/null 2>&1; t1=$(ms)
     runs+=($((t1-t0)))
   done
   echo "$n,$(wc -c < "$LEDGER"),$(median3 "${runs[@]}")"

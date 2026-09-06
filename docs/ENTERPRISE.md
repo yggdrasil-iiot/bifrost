@@ -28,7 +28,7 @@ the suites measured 352 tests in Bifrost and 242 in Huginn.
 | 8 | Brownfield vendor heterogeneity | **partial** | 3 `TemplateAdapter` implementations; the vendor-front gateway posture is designed, not built |
 | 9 | AAS alignment → conformance | **deferred** | Trigger: a customer asking for an IDTA submodel template by number |
 | 10 | Certificate expiry, key rotation | **open** | No mechanism. Trigger: any deployment that outlives its first certificate |
-| 11 | Audit query at scale | **measured** | `scripts/bench-ledger.sh` — growth is exactly 434 B/entry; verification is not the constraint ([detail](#11-audit-query-at-scale)) |
+| 11 | Audit query at scale | **measured** | `scripts/bench-ledger.sh` — growth is exactly 434 B/entry (645 signed); signature verification costs ~9× the chain walk ([detail](#11-audit-query-at-scale)) |
 
 Rows 5, 6 and 7 carry this document. Rows 1–4 are the easy ones to write because they are done;
 on their own they would be a feature list.
@@ -164,45 +164,63 @@ SBOM, which is described as becoming a standard artefact in 2026.
 
 ## 11. Audit query at scale
 
-The ledger only grows. Reproduce with `bash scripts/bench-ledger.sh`; it asserts nothing and
-prints numbers.
+The ledger only grows. Reproduce with `bash scripts/bench-ledger.sh` (add `MODE=signed` for the
+signed ladder); it asserts nothing and prints numbers.
 
-| entries | ledger bytes | `verify-chain`, median of 3 |
+### Growth is exact
+
+| entries | plain ledger | signed ledger |
 |---:|---:|---:|
-| 25 | 10,847 | 852 ms |
-| 50 | 21,697 | 649 ms |
-| 100 | 43,397 | 819 ms |
-| 250 | 108,497 | 912 ms |
-| 500 | 216,997 | 900 ms |
-| 1,000 | 433,997 | 1,428 ms |
-| 2,000 | 867,997 | 2,383 ms |
+| 25 | 10,847 B | 16,122 B |
+| 100 | 43,397 B | 64,497 B |
+| 500 | 216,997 B | 322,497 B |
+| 2,000 | 867,997 B | 1,289,997 B |
 
-**Growth is exact, and that is a real finding.** `bytes = 434n − 3` fits every row with no
-residual: entries are fixed-size, because a chained entry is a fixed set of fields plus one
-SHA-256. So **434 bytes per activation**, forever — 10,000 activations is 4.3 MB, and the
-ledger is a text file you can `wc -l`. A second run of the script reproduced these byte counts
-identically.
+`plain = 434n − 3` and `signed = 645n − 3` fit every row with no residual, because a chained
+entry is a fixed set of fields plus one SHA-256. **434 bytes per activation, 645 once signed.**
 
-**The latency column is much softer, and should be read as an order of magnitude.** Two things
-make it so. A bare `java -jar` with no arguments already costs 378 ms in that run, so below a few
-hundred entries the column is mostly a measurement of JVM startup — which is why 50 entries
-timed *faster* than 25. And a second run minutes later on the same laptop put the bare JVM start
-at 842 ms, more than double, with every other figure scaled to match. The byte counts are a
-property of the format; these timings are a property of one busy laptop.
+The 211-byte difference is fully accounted for: two Ed25519 signatures at 64 bytes each are 88
+base64 characters apiece (176), and the two JSON field wrappers `,"activatorSig":""` and
+`,"approverSig":""` are the remaining 35. Nothing unexplained is being stored.
 
-What survives that: above about 500 entries the marginal cost is roughly **1 ms per entry**
-(500→1,000 gives 1.06 ms, 1,000→2,000 gives 0.96 ms), on top of a fixed per-invocation cost of
-somewhere between 0.4 and 0.9 seconds.
+At 645 B/entry, ten thousand signed activations is 6.5 MB of newline-delimited JSON.
 
-**The operational reading is that this is not the binding constraint.** An entry is created by a
-governed activation, not by traffic. A site performing ten governed activations a day reaches
-2,000 entries in about seven months, at which point the ledger is under a megabyte and verifying
-the whole chain is a couple of seconds, most of it starting a JVM. Something else will hurt first.
+### Verification, measured back to back on one 2,000-entry signed ledger
 
-**Not measured:** `verify-signed` and `verify-anchored`, which add Ed25519 verification per entry
-and are certainly more expensive than the plain chain walk. That is the next number worth having,
-and it needs a signed ledger of the same sizes to be built first. Also unmeasured: `federation
-audit` across many sites, and any of this on server hardware rather than a laptop.
+| | wall clock | minus JVM start |
+|---|---:|---:|
+| bare `java -jar`, no arguments | 307 ms | — |
+| `activation verify-chain` | 842 ms | 535 ms |
+| `identity verify-signed` | 5,103 ms | 4,796 ms |
+
+Medians of five, interleaved with the baseline so all three share the same machine conditions.
+Spreads were tight (chain 820–891, signed 4,989–5,200).
+
+**Signature verification costs about nine times the plain chain walk** — 2.4 ms per entry against
+0.27 ms — and that ratio is the number to carry, because it was measured on one ledger in one
+sitting. Roughly 1 ms of it is each of the two Ed25519 verifications per entry.
+
+### Why there is no per-entry slope from the ladder
+
+The ladder runs produced timings that cannot be used, and it is worth saying why rather than
+quietly reporting the ones that looked plausible. In the signed ladder, 500 entries measured
+6,924 ms while 1,000 entries measured 3,044 ms. The work is monotonic in n, so that inversion is
+machine load, not the software. Across three runs on this laptop the bare JVM start alone moved
+between 281 ms and 842 ms. **A CLI-level stopwatch on a developer machine cannot resolve a
+sub-millisecond-per-entry signal.** The byte counts are a property of the format and reproduced
+identically every time; the timings are a property of one laptop's afternoon. Getting a real
+slope needs in-JVM timing or a quiet machine, and neither has been done.
+
+### The operational reading
+
+This is not the binding constraint. An entry is created by a governed activation, not by traffic.
+A site performing ten governed activations a day reaches 2,000 entries in about seven months, at
+which point the signed ledger is 1.3 MB and verifying every signature in it takes five seconds.
+Something else will hurt first.
+
+**Not measured:** `identity verify-anchored`, which adds the anchor cross-check on top of the
+signatures; `federation audit` across many sites; and any of this on server hardware rather than
+a laptop.
 
 ---
 
