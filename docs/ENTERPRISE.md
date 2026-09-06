@@ -28,7 +28,7 @@ the suites measured 352 tests in Bifrost and 242 in Huginn.
 | 8 | Brownfield vendor heterogeneity | **partial** | 3 `TemplateAdapter` implementations; the vendor-front gateway posture is designed, not built |
 | 9 | AAS alignment → conformance | **deferred** | Trigger: a customer asking for an IDTA submodel template by number |
 | 10 | Certificate expiry, key rotation | **open** | No mechanism. Trigger: any deployment that outlives its first certificate |
-| 11 | Audit query at scale | **unmeasured** | Ledger growth and `verify-chain` latency are measurable today and have not been measured |
+| 11 | Audit query at scale | **measured** | `scripts/bench-ledger.sh` — growth is exactly 434 B/entry; verification is not the constraint ([detail](#11-audit-query-at-scale)) |
 
 Rows 5, 6 and 7 carry this document. Rows 1–4 are the easy ones to write because they are done;
 on their own they would be a feature list.
@@ -159,6 +159,50 @@ SBOM, which is described as becoming a standard artefact in 2026.
   inventory that nobody diffs against a vulnerability feed changes an audit answer, not a risk.
 
 **Trigger:** already live. The reporting date is not conditional on adoption.
+
+---
+
+## 11. Audit query at scale
+
+The ledger only grows. Reproduce with `bash scripts/bench-ledger.sh`; it asserts nothing and
+prints numbers.
+
+| entries | ledger bytes | `verify-chain`, median of 3 |
+|---:|---:|---:|
+| 25 | 10,847 | 852 ms |
+| 50 | 21,697 | 649 ms |
+| 100 | 43,397 | 819 ms |
+| 250 | 108,497 | 912 ms |
+| 500 | 216,997 | 900 ms |
+| 1,000 | 433,997 | 1,428 ms |
+| 2,000 | 867,997 | 2,383 ms |
+
+**Growth is exact, and that is a real finding.** `bytes = 434n − 3` fits every row with no
+residual: entries are fixed-size, because a chained entry is a fixed set of fields plus one
+SHA-256. So **434 bytes per activation**, forever — 10,000 activations is 4.3 MB, and the
+ledger is a text file you can `wc -l`. A second run of the script reproduced these byte counts
+identically.
+
+**The latency column is much softer, and should be read as an order of magnitude.** Two things
+make it so. A bare `java -jar` with no arguments already costs 378 ms in that run, so below a few
+hundred entries the column is mostly a measurement of JVM startup — which is why 50 entries
+timed *faster* than 25. And a second run minutes later on the same laptop put the bare JVM start
+at 842 ms, more than double, with every other figure scaled to match. The byte counts are a
+property of the format; these timings are a property of one busy laptop.
+
+What survives that: above about 500 entries the marginal cost is roughly **1 ms per entry**
+(500→1,000 gives 1.06 ms, 1,000→2,000 gives 0.96 ms), on top of a fixed per-invocation cost of
+somewhere between 0.4 and 0.9 seconds.
+
+**The operational reading is that this is not the binding constraint.** An entry is created by a
+governed activation, not by traffic. A site performing ten governed activations a day reaches
+2,000 entries in about seven months, at which point the ledger is under a megabyte and verifying
+the whole chain is a couple of seconds, most of it starting a JVM. Something else will hurt first.
+
+**Not measured:** `verify-signed` and `verify-anchored`, which add Ed25519 verification per entry
+and are certainly more expensive than the plain chain walk. That is the next number worth having,
+and it needs a signed ledger of the same sizes to be built first. Also unmeasured: `federation
+audit` across many sites, and any of this on server hardware rather than a laptop.
 
 ---
 
