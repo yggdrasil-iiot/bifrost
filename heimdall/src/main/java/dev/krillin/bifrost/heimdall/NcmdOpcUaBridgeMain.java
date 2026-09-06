@@ -25,6 +25,8 @@ import dev.krillin.bifrost.core.schema.UdtDefinition;
  *   SPB_GROUP    Bifrost:Line1
  *   SPB_EDGE     recipe-edge
  *   POLICY_PATH  registry/policy.json
+ *
+ *   ENFORCEMENT_LOG_ONLY  false      (rollout mode: log what would be denied, apply it anyway)
  * </pre>
  *
  * Run: {@code mvn -q compile exec:java -Dexec.mainClass=dev.krillin.bifrost.heimdall.NcmdOpcUaBridgeMain}
@@ -44,7 +46,25 @@ public final class NcmdOpcUaBridgeMain {
     record Config(String broker, String opcua, String group, String edge, String policyPath,
                   String registryPath, String conformancePath, String activationPath, String activationTarget,
                   boolean requireSignedActivation, boolean requireAnchoredActivation, String anchorStore,
-                  String anchorDir) {}
+                  String anchorDir, boolean enforcementLogOnly) {}
+
+    /**
+     * Tri-state flag parse shared by every boolean env toggle. {@code true/on/1} and {@code false/off/0}
+     * are recognized; anything else falls to OFF with a loud WARN, because a mis-set security toggle
+     * that silently changes enforcement is worse than either setting.
+     *
+     * <p>OFF is the safe fall for all three flags as it happens, but for opposite reasons — for the
+     * {@code REQUIRE_*} bars OFF is the weaker setting and the WARN is the whole protection, whereas
+     * for {@code ENFORCEMENT_LOG_ONLY} OFF is full enforcement.
+     */
+    private static boolean flag(Function<String, String> getenv, String key, String offNote) {
+        String v = env(getenv, key, "false").strip();
+        if ("true".equalsIgnoreCase(v) || "on".equalsIgnoreCase(v) || "1".equals(v)) return true;
+        boolean off = "false".equalsIgnoreCase(v) || "off".equalsIgnoreCase(v) || "0".equals(v) || v.isEmpty();
+        if (!off) System.err.println("[BRIDGE] WARN: " + key + "='" + v + "' not recognized — treating as OFF"
+                + offNote + ". Use true/on/1 or false/off/0.");
+        return false;
+    }
 
     static Config resolve(Function<String, String> getenv) {
         String broker = env(getenv, "MQTT_URL", "tcp://localhost:1883");
@@ -57,23 +77,18 @@ public final class NcmdOpcUaBridgeMain {
         String activationPath = env(getenv, "ACTIVATION_PATH", null);
         String activationTarget = env(getenv, "ACTIVATION_TARGET", null);
         // NB: Boolean.parseBoolean("on") is FALSE — accept on/1/true so the gate's =on and =true both work.
-        String rsa = env(getenv, "REQUIRE_SIGNED_ACTIVATION", "false").strip();
-        boolean requireSigned = "true".equalsIgnoreCase(rsa) || "on".equalsIgnoreCase(rsa) || "1".equals(rsa);
-        boolean rsaOff = "false".equalsIgnoreCase(rsa) || "off".equalsIgnoreCase(rsa) || "0".equals(rsa) || rsa.isEmpty();
-        if (!requireSigned && !rsaOff)   // an unrecognized non-empty value fails to OFF — say so loudly, don't silently downgrade
-            System.err.println("[BRIDGE] WARN: REQUIRE_SIGNED_ACTIVATION='" + rsa
-                    + "' not recognized — treating as OFF (structural-only). Use true/on/1 or false/off/0.");
-        String raa = env(getenv, "REQUIRE_ANCHORED_ACTIVATION", "false").strip();
-        boolean requireAnchored = "true".equalsIgnoreCase(raa) || "on".equalsIgnoreCase(raa) || "1".equals(raa);
-        boolean raaOff = "false".equalsIgnoreCase(raa) || "off".equalsIgnoreCase(raa) || "0".equals(raa) || raa.isEmpty();
-        if (!requireAnchored && !raaOff)
-            System.err.println("[BRIDGE] WARN: REQUIRE_ANCHORED_ACTIVATION='" + raa
-                    + "' not recognized — treating as OFF. Use true/on/1 or false/off/0.");
+        boolean requireSigned = flag(getenv, "REQUIRE_SIGNED_ACTIVATION", " (structural-only)");
+        boolean requireAnchored = flag(getenv, "REQUIRE_ANCHORED_ACTIVATION", "");
         boolean requireSignedEffective = requireSigned || requireAnchored;   // anchored presupposes authN
+        boolean logOnly = flag(getenv, "ENFORCEMENT_LOG_ONLY", "");
+        if (logOnly && requireSignedEffective)
+            System.err.println("[BRIDGE] WARN: ENFORCEMENT_LOG_ONLY is ON together with a REQUIRE_*_ACTIVATION"
+                    + " bar. The ledger is being verified, but NO command is being blocked — the activation"
+                    + " tiers govern which ledger the edge will trust, not whether commands are enforced.");
         String anchorStore = env(getenv, "ANCHOR_STORE", "file");
         String anchorDir = env(getenv, "ANCHOR_DIR", null);
         return new Config(broker, opcua, group, edge, policyPath, registryPath, conformancePath, activationPath,
-                activationTarget, requireSignedEffective, requireAnchored, anchorStore, anchorDir);
+                activationTarget, requireSignedEffective, requireAnchored, anchorStore, anchorDir, logOnly);
     }
 
     /**
@@ -218,6 +233,12 @@ public final class NcmdOpcUaBridgeMain {
         CommandPolicy policy = mapper.readValue(Path.of(config.policyPath()).toFile(), CommandPolicy.class);
         System.out.println("[BRIDGE] policy loaded " + config.policyPath() + " (rules=" + policy.rules().size()
                 + ", default=" + policy.defaultEffect() + ")");
+        // Same rule as the activation-trust audit line: a toggle that changes enforcement must be
+        // readable from the log. This is the most consequential one in the system, so it prints in
+        // both states rather than only when it is on.
+        System.out.println("[BRIDGE] enforcement = " + (config.enforcementLogOnly()
+                ? "LOG-ONLY — commands that would be denied are APPLIED (rollout mode, see docs/ADOPTION.md)"
+                : "enforcing"));
 
         Conformance conformance = loadConformance(config);
 
@@ -225,7 +246,7 @@ public final class NcmdOpcUaBridgeMain {
         System.out.println("[BRIDGE] OPC-UA connected " + config.opcua());
 
         NcmdOpcUaBridge bridge = new NcmdOpcUaBridge(config.group(), config.edge(), policy, applier,
-                conformance.def(), conformance.policy(), conformance.recipe());
+                conformance.def(), conformance.policy(), conformance.recipe(), config.enforcementLogOnly());
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             try {
                 bridge.close();

@@ -58,6 +58,18 @@ public final class NcmdOpcUaBridge implements MqttCallback {
     private final Applier applier;
     private final CommandAuthorizer authorizer = new CommandAuthorizer();
 
+    /**
+     * Rollout mode (env {@code ENFORCEMENT_LOG_ONLY}, default OFF). When ON, a command that ①authz or
+     * ②conformance would refuse is logged as {@code LOG-ONLY would-deny} and then APPLIED anyway.
+     * It exists so an edge can be introduced at a running plant without the possibility of stopping
+     * the line on day one (see {@code docs/ADOPTION.md} phase 4); enforcement then arrives by
+     * removing allowlist rules, not by flipping a switch.
+     * <p>Deliberately NOT covered: the malformed-payload rejection below. There is no command in a
+     * payload that carries no command metric, so there is nothing to let through — shadowing it would
+     * turn a decode failure into a silent no-op reported as success.
+     */
+    private final boolean logOnly;
+
     // Governed conformance deps, loaded at startup (nullable => ② conformance OFF; pure authz).
     // Loaded and stored here in B1; the ② check that consumes them is wired in B2.
     private final UdtDefinition conformanceDef;
@@ -72,8 +84,16 @@ public final class NcmdOpcUaBridge implements MqttCallback {
     private final SparkplugBPayloadDecoder decoder = new SparkplugBPayloadDecoder();
     private MqttClient client;
 
+    /** Enforcing bridge — the default everywhere except an explicit rollout deployment. */
     public NcmdOpcUaBridge(String group, String edge, CommandPolicy policy, Applier applier,
                            UdtDefinition conformanceDef, ConformancePolicy conformancePolicy, MasterSpec activeRecipe) {
+        this(group, edge, policy, applier, conformanceDef, conformancePolicy, activeRecipe, false);
+    }
+
+    public NcmdOpcUaBridge(String group, String edge, CommandPolicy policy, Applier applier,
+                           UdtDefinition conformanceDef, ConformancePolicy conformancePolicy, MasterSpec activeRecipe,
+                           boolean logOnly) {
+        this.logOnly = logOnly;
         this.group = group;
         this.edge = edge;
         this.policy = policy;
@@ -119,11 +139,17 @@ public final class NcmdOpcUaBridge implements MqttCallback {
             }
         }
 
+        // The first reason this command WOULD have been refused, when log-only let it through anyway.
+        // Null in the normal enforcing case, which is what keeps the response identical to before.
+        String shadowed = null;
+
         CommandRequest cr = new CommandRequest(new Target(group, edge, null), name, value, dataType);
         Decision d = authorizer.authorize(policy, cr);
         if (!d.allowed()) {
-            System.out.println("[BRIDGE] DENY cmd=" + name + " val=" + value + " reason=" + d.reason());
-            return NcmdResponse.apply(cmdId, false, "denied: " + d.reason());
+            NcmdResponse refused = refuse(cmdId, name, value, d.reason());
+            if (refused != null) return refused;
+            shadowed = d.reason();
+            // fall through to ② as well: in log-only the point is to learn every reason, not the first.
         }
 
         // ① authz already passed (d.allowed()). ② conformance (opt-in: only when a policy is loaded):
@@ -157,12 +183,15 @@ public final class NcmdOpcUaBridge implements MqttCallback {
                             .evaluate(conformanceDef, conformancePolicy, activeRecipe, state);
                     if (!cv.ok()) {
                         String reason = cv.violations().get(0).rule() + ": " + cv.violations().get(0).detail();
-                        System.out.println("[BRIDGE] DENY cmd=" + name + " val=" + value + " reason=" + reason);
-                        return NcmdResponse.apply(cmdId, false, "denied: " + reason);
+                        NcmdResponse refused = refuse(cmdId, name, value, reason);
+                        if (refused != null) return refused;
+                        if (shadowed == null) shadowed = reason;
                     }
                 } catch (Exception confEx) {   // fail-closed: any conformance/read error DENIES
-                    System.out.println("[BRIDGE] DENY cmd=" + name + " val=" + value + " reason=conformance-error: " + confEx.getMessage());
-                    return NcmdResponse.apply(cmdId, false, "denied: conformance-error");
+                    String reason = "conformance-error: " + confEx.getMessage();
+                    NcmdResponse refused = refuse(cmdId, name, value, reason);
+                    if (refused != null) return NcmdResponse.apply(cmdId, false, "denied: conformance-error");
+                    if (shadowed == null) shadowed = reason;
                 }
             }
         }
@@ -175,11 +204,36 @@ public final class NcmdOpcUaBridge implements MqttCallback {
                 r = applier.write(name, ((Number) value).doubleValue());
             }
             System.out.println("[BRIDGE] APPLY cmd=" + name + " ok=" + r.ok());
-            return NcmdResponse.apply(cmdId, r.ok(), r.detail());
+            return NcmdResponse.apply(cmdId, r.ok(), detail(shadowed, r.detail()));
         } catch (Exception e) {
             System.out.println("[BRIDGE] APPLY cmd=" + name + " ok=false");
-            return NcmdResponse.apply(cmdId, false, "apply error: " + e.getMessage());
+            return NcmdResponse.apply(cmdId, false, detail(shadowed, "apply error: " + e.getMessage()));
         }
+    }
+
+    /**
+     * Refuse a command, or — in log-only mode — record the verdict and let it through by returning
+     * null. The two log tokens are deliberately distinct and neither is a substring of the other,
+     * so a log scraper counting {@code [BRIDGE] DENY} never counts a shadowed verdict as a block.
+     *
+     * @return the refusal response, or {@code null} when the caller should carry on and apply.
+     */
+    private NcmdResponse refuse(String cmdId, String name, Object value, String reason) {
+        if (logOnly) {
+            System.out.println("[BRIDGE] LOG-ONLY would-deny cmd=" + name + " val=" + value + " reason=" + reason);
+            return null;
+        }
+        System.out.println("[BRIDGE] DENY cmd=" + name + " val=" + value + " reason=" + reason);
+        return NcmdResponse.apply(cmdId, false, "denied: " + reason);
+    }
+
+    /**
+     * The shadowed verdict also rides back on the response, not only into the ops log — the operator
+     * who issued the command is the person who most needs to know it would have been blocked. The
+     * APPLIED EFFECT is unchanged; only this string differs from an enforcing run.
+     */
+    private static String detail(String shadowed, String applied) {
+        return shadowed == null ? applied : "log-only would-deny: " + shadowed + " | " + applied;
     }
 
     // ----- Paho shell (exercised only by the live gate) -----

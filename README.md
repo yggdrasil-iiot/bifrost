@@ -3,7 +3,7 @@
 [![CI](https://github.com/yggdrasil-iiot/bifrost/actions/workflows/ci.yml/badge.svg)](https://github.com/yggdrasil-iiot/bifrost/actions/workflows/ci.yml)
 ![Java](https://img.shields.io/badge/Java-17-orange?logo=openjdk&logoColor=white)
 ![Build](https://img.shields.io/badge/build-Maven%20multi--module-blue)
-![Tests](https://img.shields.io/badge/tests-352-brightgreen)
+![Tests](https://img.shields.io/badge/tests-362-brightgreen)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache_2.0-blue.svg)](LICENSE)
 
 **The governance core of the [Yggdrasil](https://github.com/yggdrasil-iiot) IIoT spine — the "IAM" for the OT governance boundary.**
@@ -100,7 +100,7 @@ sim/       an embedded Eclipse Milo OPC-UA server the gates drive end-to-end.
 ## Build & test
 
 ```bash
-mvn install     # Java 17 · 352 tests (core 223 · heimdall 42 · gates 76 · sim 11)
+mvn install     # Java 17 · 362 tests (core 223 · heimdall 52 · gates 76 · sim 11)
                 # also writes target/bifrost-sbom.{json,xml} — one CycloneDX 1.6 SBOM
                 # for the whole reactor (40 components, licences resolved)
 ```
@@ -138,6 +138,7 @@ risky, see **[docs/ADOPTION.md](docs/ADOPTION.md)**.
 
 - **Authorization is direct principal grants, not roles/attributes (T6).** The policy names each principal explicitly (deny-by-default, maker-checker); RBAC roles and ABAC attributes are future threads, and the policy file is plaintext (bootstrap/change-control out-of-band, no policy-signing yet). authZ presupposes authN — with signing off there is no authorization, because there is no authenticated subject to authorize. Revocation is bind-fresh (a running edge re-checks at the next startup).
 - **Anchoring is only as strong as the anchor's off-box protection (T7).** The four-eyes head plus external witness make rollback *evident*, but a `FileAnchorStore` is a local projection that a co-rollback can rewrite in place — it defends the lone re-anchor, not the co-rollback. Real rollback-resistance rests on the witness being genuinely tamper-resistant off-box (a protected git remote / signed tag / TPM monotonic counter); the `GitAnchorStore` demonstrates the seam but a locally-committed anchor repo is still on-box. If the git anchor dir resolves *inside* the registry, both the gate and Heimdall **WARN loudly** — a co-located witness is rolled back with the tree it is meant to witness, so `ANCHOR_DIR` must point at a separate off-box repo to actually close the co-rollback. Anchoring presupposes signing (`ANCHORED` ⊃ `SIGNED`), so it does nothing with signing off.
+- **Enforcement can be switched off, and that is a supported mode.** `ENFORCEMENT_LOG_ONLY` (default off) makes the edge evaluate every command and refuse none — what would have been denied is logged `[BRIDGE] LOG-ONLY would-deny` and applied anyway. It exists so an edge can be introduced at a running plant without being able to stop the line on day one ([docs/ADOPTION.md](docs/ADOPTION.md) phase 4), and the startup line `[BRIDGE] enforcement = …` prints in both states so the mode is always readable from the log. It does **not** shadow the malformed-payload rejection or the startup ledger-trust checks: a bridge that cannot trust the model it checks against fails to start rather than waving traffic past. Any deployment left in this mode is not enforcing anything.
 - **The trust anchor is a plaintext registry file** (`authorized-keys.jsonl`); key bootstrap / distribution / revocation are out-of-band (no PKI/OIDC/CRL yet).
 - **Conformance egress is structural + range**, and the activation seal binds the runtime `MasterSpec`, not the git-anchored recipe manifest (that unification is future work).
 - **Demo scale** — single broker, single edge, single instance, localhost; the sim's transfer is instant setpoint = PV (a governance loop, not process physics). **The federation gate is no exception: it stands both "sites" up on one machine.** It proves the multi-site *topology*, not multi-site operation.
