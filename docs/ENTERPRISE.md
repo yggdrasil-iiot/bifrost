@@ -207,7 +207,9 @@ Two things fall out, and the second is the more useful.
 
 **Signature verification costs roughly eight times the plain chain walk** — 2.2 ms per entry
 against 0.27 — which is about 1 ms for each of the two Ed25519 verifications per entry. That
-ratio is the number to carry, because it was measured on one ledger in one sitting.
+ratio is the number to carry, because it was measured on one ledger in one sitting. It is a floor:
+the federation sweep below shows the per-entry column here still contains process startup, which
+inflates the cheap side far more than the expensive one.
 
 **Anchoring is free on top of signing.** `verify-anchored` measured *below* `verify-signed`
 here, and the spreads overlap almost completely (anchored 4,346–5,183, signed 4,352–5,178). That
@@ -253,6 +255,62 @@ sub-millisecond-per-entry signal.** The byte counts are a property of the format
 identically every time; the timings are a property of one laptop's afternoon. Getting a real
 slope needs in-JVM timing or a quiet machine, and neither has been done.
 
+### `federation audit` across a hundred sites
+
+Reproduce with `bash scripts/bench-federation.sh`.
+
+`federation audit` reads each site's activation ledger and rolls it up. It verifies nothing — no
+chain walk, no signature check — so the only work that can scale is reading and parsing lines,
+which makes **total entries** the quantity to test rather than site count. The staged ledger
+reconfirmed the byte formula at a fresh point on the way in: 200 signed entries came to 128,997 B,
+and `645 × 200 − 3` is 128,997.
+
+Sweep A holds every site at 200 entries and grows the site count. Bare JVM start was 241 ms.
+
+| sites | total entries | audit | minus JVM |
+|---:|---:|---:|---:|
+| 1 | 200 | 601 ms | 360 ms |
+| 2 | 400 | 633 ms | 392 ms |
+| 5 | 1,000 | 647 ms | 406 ms |
+| 10 | 2,000 | 723 ms | 482 ms |
+| 25 | 5,000 | 857 ms | 616 ms |
+| 50 | 10,000 | 917 ms | 676 ms |
+| 100 | 20,000 | 1,000 ms | 759 ms |
+
+**A hundred sites holding twenty thousand signed activations between them audit in one second.**
+A hundredfold increase in entries costs about 400 ms, putting the marginal cost near 0.02 ms per
+entry — and the two widest steps, 5,000 → 10,000 → 20,000, put it nearer 0.01. The remaining
+~350 ms is fixed process setup above the bare JVM: Jackson and the gate's classes loading, paid
+once whether there is one site or a hundred.
+
+That fixed cost is worth carrying back to the verification table above. `verify-chain` on 2,000
+entries measured 537 ms over bare JVM; this audit on the same 2,000 entries measured 482 ms doing
+the same read and parse *without* the hashing. The gap is ~55 ms, so the chain hashing itself is
+nearer 0.03 ms per entry and **the 0.27 ms/entry in that table is mostly startup, not per-entry
+work.** Those are two separate runs, so take it as an order of magnitude, not a figure. The
+signature row is not affected the same way: 350 ms of setup spread over 2,000 entries is 0.18 ms
+against a measured 2.18, so **2 ms per entry to verify two Ed25519 signatures stands**, and the
+eight-to-one ratio between signed and plain was understating the gap, not overstating it.
+
+Sweep B was meant to test whether the *split* matters — same totals, different site counts — and
+it failed to. At a fixed 25 sites, depths of 25/50/100/200 gave 435/468/918/492 ms. The
+2,500-entry point is higher than sweep A's 20,000-entry point, which is impossible, and the
+5,000-entry point is the identical configuration to sweep A's 25-site row: 492 ms against 616 ms.
+**The repeat spread on one identical configuration is 124 ms, with one 400 ms outlier**, so sweep B
+resolves nothing. Sweep A survives only because its total change is three times that noise.
+
+### The audit is fast because it trusts the sites
+
+That is the finding to carry, not the millisecond count. `federation audit` answers *what does each
+site say is active*, not *is each site telling the truth*. The second question is Heimdall's, asked
+per site at bind time against that site's own ledger, head and anchor.
+
+A cross-site view that re-verified what each site reports would pay the per-entry costs above. For
+20,000 entries the chain walk is between half a second and five seconds — the two chain figures
+disagree by that much and the smaller one is the better-founded — and checking every signature is
+about forty seconds at the 2 ms/entry that does hold. Neither is prohibitive for a nightly
+enterprise audit. Neither is implemented.
+
 ### The operational reading
 
 This is not the binding constraint. An entry is created by a governed activation, not by traffic.
@@ -260,8 +318,8 @@ A site performing ten governed activations a day reaches 2,000 entries in about 
 which point the signed ledger is 1.3 MB and verifying every signature in it takes five seconds.
 Something else will hurt first.
 
-**Not measured:** `federation audit` across many sites, how the git anchor repository grows once
-git repacks it, and any of this on server hardware rather than a laptop.
+**Not measured:** how the git anchor repository grows once git repacks it, and any of this on
+server hardware rather than a laptop.
 
 ---
 
