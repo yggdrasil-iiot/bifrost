@@ -28,7 +28,7 @@ the suites measured 352 tests in Bifrost and 242 in Huginn.
 | 8 | Brownfield vendor heterogeneity | **partial** | 3 `TemplateAdapter` implementations; the vendor-front gateway posture is designed, not built |
 | 9 | AAS alignment → conformance | **deferred** | Trigger: a customer asking for an IDTA submodel template by number |
 | 10 | Certificate expiry, key rotation | **open** | No mechanism. Trigger: any deployment that outlives its first certificate |
-| 11 | Audit query at scale | **measured** | `scripts/bench-ledger.sh` — growth is exactly 434 B/entry (645 signed); signature verification costs ~9× the chain walk ([detail](#11-audit-query-at-scale)) |
+| 11 | Audit query at scale | **measured** | `scripts/bench-ledger.sh` — growth is exactly 434 B/entry (645 signed); signature verification costs ~8× the chain walk, and anchoring is free on top of it ([detail](#11-audit-query-at-scale)) |
 
 Rows 5, 6 and 7 carry this document. Rows 1–4 are the easy ones to write because they are done;
 on their own they would be a feature list.
@@ -183,22 +183,38 @@ The 211-byte difference is fully accounted for: two Ed25519 signatures at 64 byt
 base64 characters apiece (176), and the two JSON field wrappers `,"activatorSig":""` and
 `,"approverSig":""` are the remaining 35. Nothing unexplained is being stored.
 
-At 645 B/entry, ten thousand signed activations is 6.5 MB of newline-delimited JSON.
+Two smaller files sit beside the ledger. The **anchor** is append-only, one record per
+activation of the form `{"target":"Line1","seq":N,"tailEntryHash":"<64 hex>"}` — that is
+`109 + digits(N)` bytes, and 109×2000 + 6,890 comes to exactly the 224,890 B measured. The
+**head** is a single 347-byte file regardless of ledger length.
+
+At 645 B/entry plus 112, ten thousand signed activations is about 7.6 MB of newline-delimited
+JSON.
 
 ### Verification, measured back to back on one 2,000-entry signed ledger
 
-| | wall clock | minus JVM start |
-|---|---:|---:|
-| bare `java -jar`, no arguments | 307 ms | — |
-| `activation verify-chain` | 842 ms | 535 ms |
-| `identity verify-signed` | 5,103 ms | 4,796 ms |
+| | wall clock | minus JVM start | per entry |
+|---|---:|---:|---:|
+| bare `java -jar`, no arguments | 283 ms | — | — |
+| `activation verify-chain` | 820 ms | 537 ms | 0.27 ms |
+| `identity verify-signed` | 4,639 ms | 4,356 ms | 2.18 ms |
+| `identity verify-anchored` | 4,469 ms | 4,186 ms | 2.09 ms |
 
-Medians of five, interleaved with the baseline so all three share the same machine conditions.
-Spreads were tight (chain 820–891, signed 4,989–5,200).
+Medians of five, all four interleaved in one loop so they share the same machine conditions. An
+earlier two-way run reproduced the chain and signed figures (842 ms and 5,103 ms).
 
-**Signature verification costs about nine times the plain chain walk** — 2.4 ms per entry against
-0.27 ms — and that ratio is the number to carry, because it was measured on one ledger in one
-sitting. Roughly 1 ms of it is each of the two Ed25519 verifications per entry.
+Two things fall out, and the second is the more useful.
+
+**Signature verification costs roughly eight times the plain chain walk** — 2.2 ms per entry
+against 0.27 — which is about 1 ms for each of the two Ed25519 verifications per entry. That
+ratio is the number to carry, because it was measured on one ledger in one sitting.
+
+**Anchoring is free on top of signing.** `verify-anchored` measured *below* `verify-signed`
+here, and the spreads overlap almost completely (anchored 4,346–5,183, signed 4,352–5,178). That
+is what the mechanism predicts: the anchor check compares one `(seq, tailEntryHash)` pair against
+the head, while the cost of both commands is the per-entry signature walk they share. **The
+strongest tier on the ladder costs no more than the tier below it**, so the reason to leave
+`REQUIRE_ANCHORED_ACTIVATION` off is not performance.
 
 ### Why there is no per-entry slope from the ladder
 
@@ -218,9 +234,9 @@ A site performing ten governed activations a day reaches 2,000 entries in about 
 which point the signed ledger is 1.3 MB and verifying every signature in it takes five seconds.
 Something else will hurt first.
 
-**Not measured:** `identity verify-anchored`, which adds the anchor cross-check on top of the
-signatures; `federation audit` across many sites; and any of this on server hardware rather than
-a laptop.
+**Not measured:** `federation audit` across many sites, the `git` anchor store (these figures are
+the on-box `file` store, and a git witness adds a `git show` per verification), and any of this
+on server hardware rather than a laptop.
 
 ---
 
