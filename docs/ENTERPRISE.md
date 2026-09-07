@@ -29,6 +29,14 @@ it did.**
 
 ## The board
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="diagrams/readiness-board.dark.svg">
+  <img alt="Thirteen enterprise-readiness axes sorted into four columns: five built, three partial, two deferred with a named trigger, three open with no mechanism" src="diagrams/readiness-board.svg">
+</picture>
+
+The table below is the same board with the evidence attached. Read the figure for the shape of
+what is and is not answered; read the rows for why.
+
 | # | Axis | Status | Evidence, or the trigger that forces it |
 |---|---|---|---|
 | 1 | Multi-site authority, site specialization | **built** | `run-federation-gate.sh` F1 · `run-template-conformance-gate.sh` (site ⊨ enterprise, 3 adapters ≡ native) |

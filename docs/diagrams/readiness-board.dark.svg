@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif">
+
+  <rect x="8" y="8" width="1264" height="624" rx="14" fill="#0d1117" stroke="#30363d"/>
+
+  <text x="40" y="46" font-size="17" font-weight="600" fill="#c9d1d9">Enterprise readiness: 13 axes, and where each one stands</text>
+  <text x="40" y="70" font-size="12.5" fill="#8b949e">Evidence, boundary and trigger per axis: docs/ENTERPRISE.md</text>
+
+  <!-- ============ column headers ============ -->
+  <text x="40" y="106" font-size="12" font-weight="700" fill="#3fb950" letter-spacing="1">BUILT · 5</text>
+  <text x="40" y="124" font-size="11" fill="#8b949e">the question is answered</text>
+  <text x="344" y="106" font-size="12" font-weight="700" fill="#d29922" letter-spacing="1">PARTIAL · 3</text>
+  <text x="344" y="124" font-size="11" fill="#8b949e">built in part, gap named</text>
+  <text x="648" y="106" font-size="12" font-weight="700" fill="#8b949e" letter-spacing="1">DEFERRED · 2</text>
+  <text x="648" y="124" font-size="11" fill="#8b949e">not built, trigger named</text>
+  <text x="952" y="106" font-size="12" font-weight="700" fill="#f85149" letter-spacing="1">OPEN · 3</text>
+  <text x="952" y="124" font-size="11" fill="#8b949e">no mechanism at all</text>
+
+  <!-- ============ BUILT ============ -->
+  <rect x="40" y="138" width="288" height="76" rx="6" fill="#0f2f1a" stroke="#3fb950"/>
+  <text x="56" y="162" font-size="12" font-weight="600" fill="#c9d1d9">1 · Multi-site authority</text>
+  <text x="56" y="182" font-size="10.5" fill="#8b949e">federation and template-conformance gates</text>
+  <text x="56" y="200" font-size="10.5" fill="#8b949e">prove a site conforms to the enterprise</text>
+
+  <rect x="40" y="226" width="288" height="76" rx="6" fill="#0f2f1a" stroke="#3fb950"/>
+  <text x="56" y="250" font-size="12" font-weight="600" fill="#c9d1d9">2 · Governance propagation</text>
+  <text x="56" y="270" font-size="10.5" fill="#8b949e">built, with a boundary: a change is effective</text>
+  <text x="56" y="288" font-size="10.5" fill="#8b949e">at that site's next Heimdall restart</text>
+
+  <rect x="40" y="314" width="288" height="76" rx="6" fill="#0f2f1a" stroke="#3fb950"/>
+  <text x="56" y="338" font-size="12" font-weight="600" fill="#c9d1d9">3 · Site survives disconnection</text>
+  <text x="56" y="358" font-size="10.5" fill="#8b949e">it keeps serving offline and reconciles</text>
+  <text x="56" y="376" font-size="10.5" fill="#8b949e">when the link comes back</text>
+
+  <rect x="40" y="402" width="288" height="76" rx="6" fill="#0f2f1a" stroke="#3fb950"/>
+  <text x="56" y="426" font-size="12" font-weight="600" fill="#c9d1d9">4 · Tamper-evidence and rollback</text>
+  <text x="56" y="446" font-size="10.5" fill="#8b949e">lineage, identity and anchored-activation</text>
+  <text x="56" y="464" font-size="10.5" fill="#8b949e">gates, 19 legs across LN · I · AN</text>
+
+  <rect x="40" y="490" width="288" height="76" rx="6" fill="#0f2f1a" stroke="#3fb950"/>
+  <text x="56" y="514" font-size="12" font-weight="600" fill="#c9d1d9">11 · Audit query at scale</text>
+  <text x="56" y="534" font-size="10.5" fill="#8b949e">measured, not mechanised: 434 B per entry,</text>
+  <text x="56" y="552" font-size="10.5" fill="#8b949e">645 signed; verifying costs ~8× the walk</text>
+
+  <!-- ============ PARTIAL ============ -->
+  <rect x="344" y="138" width="288" height="76" rx="6" fill="#1c2128" stroke="#d29922"/>
+  <text x="360" y="162" font-size="12" font-weight="600" fill="#c9d1d9">5 · Conduit inventory (SR 6.2)</text>
+  <text x="360" y="182" font-size="10.5" fill="#8b949e">the observed list is produced and reconciled;</text>
+  <text x="360" y="200" font-size="10.5" fill="#8b949e">frequency, ownership and non-TCP are missing</text>
+
+  <rect x="344" y="226" width="288" height="76" rx="6" fill="#1c2128" stroke="#d29922"/>
+  <text x="360" y="250" font-size="12" font-weight="600" fill="#c9d1d9">7 · Supply chain and the CRA</text>
+  <text x="360" y="270" font-size="10.5" fill="#8b949e">SBOM, ledger and provenance manifest exist;</text>
+  <text x="360" y="288" font-size="10.5" fill="#8b949e">no vulnerability-handling process</text>
+
+  <rect x="344" y="314" width="288" height="76" rx="6" fill="#1c2128" stroke="#d29922"/>
+  <text x="360" y="338" font-size="12" font-weight="600" fill="#c9d1d9">8 · Brownfield vendor heterogeneity</text>
+  <text x="360" y="358" font-size="10.5" fill="#8b949e">three adapters, inbound only; the vendor-front</text>
+  <text x="360" y="376" font-size="10.5" fill="#8b949e">gateway posture is designed, not built</text>
+
+  <!-- ============ DEFERRED ============ -->
+  <rect x="648" y="138" width="288" height="76" rx="6" fill="#1c2128" stroke="#30363d"/>
+  <text x="664" y="162" font-size="12" font-weight="600" fill="#c9d1d9">6 · Identity lifecycle</text>
+  <text x="664" y="182" font-size="10.5" fill="#8b949e">trigger: a second site on real hardware,</text>
+  <text x="664" y="200" font-size="10.5" fill="#8b949e">or the first certificate expiry</text>
+
+  <rect x="648" y="226" width="288" height="76" rx="6" fill="#1c2128" stroke="#30363d"/>
+  <text x="664" y="250" font-size="12" font-weight="600" fill="#c9d1d9">9 · AAS alignment</text>
+  <text x="664" y="270" font-size="10.5" fill="#8b949e">trigger: a customer asking for an IDTA</text>
+  <text x="664" y="288" font-size="10.5" fill="#8b949e">submodel template by number</text>
+
+  <!-- ============ OPEN ============ -->
+  <rect x="952" y="138" width="288" height="76" rx="6" fill="#25171c" stroke="#f85149"/>
+  <text x="968" y="162" font-size="12" font-weight="600" fill="#c9d1d9">10 · Certificate expiry and rotation</text>
+  <text x="968" y="182" font-size="10.5" fill="#8b949e">no mechanism. trigger: any deployment</text>
+  <text x="968" y="200" font-size="10.5" fill="#8b949e">that outlives its first certificate</text>
+
+  <rect x="952" y="226" width="288" height="76" rx="6" fill="#25171c" stroke="#f85149"/>
+  <text x="968" y="250" font-size="12" font-weight="600" fill="#c9d1d9">12 · Write-path exclusivity</text>
+  <text x="968" y="270" font-size="10.5" fill="#8b949e">the governed edge is not the only way in.</text>
+  <text x="968" y="288" font-size="10.5" fill="#8b949e">trigger: a second client reaching the server</text>
+
+  <rect x="952" y="314" width="288" height="76" rx="6" fill="#25171c" stroke="#f85149"/>
+  <text x="968" y="338" font-size="12" font-weight="600" fill="#c9d1d9">13 · Model vs vendor runtime</text>
+  <text x="968" y="358" font-size="10.5" fill="#8b949e">adapters read a vendor's model in; nothing</text>
+  <text x="968" y="376" font-size="10.5" fill="#8b949e">reads its live configuration back out</text>
+
+  <text x="40" y="604" font-size="12" fill="#c9d1d9">Five of thirteen are answered. Each of the other eight names either the gap it leaves or the event that will force it. Axes 12 and 13 bound every enforcement claim the rest of this repository makes.</text>
+
+</svg>
