@@ -208,13 +208,24 @@ support: **this shortens the governance part of a site rollout, not the rollout.
 | Vendor-side verification (governed model vs vendor's copy) | phase 2 | [row 13](ENTERPRISE.md#13-governed-model-vs-vendor-runtime): not built |
 | ~~Heimdall shadow / log-only mode~~ | phase 4 | **built** — `ENFORCEMENT_LOG_ONLY`, 10 tests |
 | Certificate expiry and key rotation | phase 4–5 | [axis 10](ENTERPRISE.md#the-board): open, no mechanism |
+| **Write-path exclusivity** — the edge is a chokepoint by convention | phase 4 | [row 12](ENTERPRISE.md#12-write-path-exclusivity): open, and **not this project's code to write**; itself blocked on the row above |
 
 The middle row was named here as the one worth building first for adoption's sake, and it has
 since been built — it was the smallest of the three and it is what turned phase 4 from a cliff into
-a step. The two remaining rows are both real work and neither has been started.
+a step. Of what is left, two rows are code this project owes and has not started. The last row is
+not code at all.
 
-That row meets the standard every *built* row on the [`ENTERPRISE.md` board](ENTERPRISE.md#the-board)
-is held to: it names a script. `run-ncmd-runtime-gate.sh` T4 restarts the edge with
+**Why the last row is listed anyway.** Every other gap here is something this repository has to
+build. Write-path exclusivity is not. What closes it is server-side write permission on the
+controlled nodes, and — for protocols with no identity to authenticate — a network position, which
+is what 62443 zones and conduits are for ([§12](ENTERPRISE.md#12-write-path-exclusivity)). No
+amount of code here makes the governed edge exclusive. It belongs in this table because phase 4
+installs a gate, and whether that gate is a gate is settled by the plant rather than by the gate.
+It is also the clearest case of the general point: an adoption plan that lists only the software
+it owes is not an adoption plan.
+
+The struck-through log-only row meets the standard every *built* row on the
+[`ENTERPRISE.md` board](ENTERPRISE.md#the-board) is held to: it names a script. `run-ncmd-runtime-gate.sh` T4 restarts the edge with
 `ENFORCEMENT_LOG_ONLY=on` against a live HiveMQ broker and a live OPC-UA server, sends both rogues,
 and asserts each is logged `would-deny` and then applied — with the live server witnessing the
 out-of-range `Rpm=9999` landing on the node, which is the assertion that cannot be satisfied by a
@@ -224,7 +235,7 @@ again, because reversibility by restart is the property this plan actually leans
 Both directions were checked by injecting the defect rather than by trusting the green: forcing
 log-only ON makes seven existing enforcement tests fail, and forcing it OFF makes T4 fail.
 
-The third row deserves a note against the board. `ENTERPRISE.md` gives axis 10 the trigger "any
+The certificate row deserves a note against the board. `ENTERPRISE.md` gives axis 10 the trigger "any
 deployment that outlives its first certificate", which reads like a late problem. Laid against
 this sequence it is not: an OPC UA deployment acquires certificates in phase 4, so **the trigger
 fires inside the rollout, not after it.**
