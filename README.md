@@ -111,6 +111,7 @@ scripts/run-composable-conformance-gate.sh # ONE ConformancePolicy at design-tim
 scripts/run-provenance-gate.sh             # git-anchored provenance manifest
 scripts/run-command-authz-gate.sh          # deny-by-default NCMD authorization
 scripts/run-ncmd-runtime-gate.sh           # Heimdall edge authz over a live broker (+ log-only rollout mode, T4/T5)
+scripts/run-edge-resilience-gate.sh        # edge survives broker/OPC-UA loss, boots without a plant, announces its own death
 scripts/run-activation-gate.sh             # T3 — four-eyes SoD, content seal, rollback, edge bind
 scripts/run-lineage-gate.sh                # T4 — tamper-evident hash chain, edge fail-close
 scripts/run-identity-gate.sh               # T5 — dual-signed activation, signed head, edge fail-close
@@ -134,7 +135,7 @@ sim/       an embedded Eclipse Milo OPC-UA server the gates drive end-to-end.
 ## Build & test
 
 ```bash
-mvn install     # Java 17 · 362 tests (core 223 · heimdall 52 · gates 76 · sim 11)
+mvn install     # Java 17 · 383 tests (core 223 · heimdall 73 · gates 76 · sim 11)
                 # also writes target/bifrost-sbom.{json,xml} — one CycloneDX 1.6 SBOM
                 # for the whole reactor (40 components, licences resolved)
 ```
