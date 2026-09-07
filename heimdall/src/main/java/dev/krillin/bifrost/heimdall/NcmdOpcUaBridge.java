@@ -84,6 +84,17 @@ public final class NcmdOpcUaBridge implements MqttCallback {
     private final SparkplugBPayloadDecoder decoder = new SparkplugBPayloadDecoder();
     private MqttClient client;
 
+    /** Per-node ordered, bounded dispatch for applies. See {@link CommandExecutor}. */
+    private final CommandExecutor executor;
+
+    /** Counters + the /healthz state. Owned by the caller in production so main can serve it. */
+    private final EdgeHealth health;
+
+    /** Exposed so {@code NcmdOpcUaBridgeMain} can start the HTTP endpoint over the same instance. */
+    public EdgeHealth health() {
+        return health;
+    }
+
     /** Enforcing bridge — the default everywhere except an explicit rollout deployment. */
     public NcmdOpcUaBridge(String group, String edge, CommandPolicy policy, Applier applier,
                            UdtDefinition conformanceDef, ConformancePolicy conformancePolicy, MasterSpec activeRecipe) {
@@ -93,6 +104,19 @@ public final class NcmdOpcUaBridge implements MqttCallback {
     public NcmdOpcUaBridge(String group, String edge, CommandPolicy policy, Applier applier,
                            UdtDefinition conformanceDef, ConformancePolicy conformancePolicy, MasterSpec activeRecipe,
                            boolean logOnly) {
+        this(group, edge, policy, applier, conformanceDef, conformancePolicy, activeRecipe, logOnly,
+                new EdgeHealth(), 4, 64);
+    }
+
+    /**
+     * The widest constructor; the two above delegate here with the field defaults, so no existing
+     * caller or test had to change when health and the apply stripes were added.
+     */
+    public NcmdOpcUaBridge(String group, String edge, CommandPolicy policy, Applier applier,
+                           UdtDefinition conformanceDef, ConformancePolicy conformancePolicy, MasterSpec activeRecipe,
+                           boolean logOnly, EdgeHealth health, int applyThreads, int applyQueueDepth) {
+        this.health = health;
+        this.executor = new CommandExecutor(applyThreads, applyQueueDepth);
         this.logOnly = logOnly;
         this.group = group;
         this.edge = edge;
@@ -203,6 +227,9 @@ public final class NcmdOpcUaBridge implements MqttCallback {
             } else {
                 r = applier.write(name, ((Number) value).doubleValue());
             }
+            if (r.ok()) {
+                health.applied();
+            }
             System.out.println("[BRIDGE] APPLY cmd=" + name + " ok=" + r.ok());
             return NcmdResponse.apply(cmdId, r.ok(), detail(shadowed, r.detail()));
         } catch (Exception e) {
@@ -223,6 +250,9 @@ public final class NcmdOpcUaBridge implements MqttCallback {
             System.out.println("[BRIDGE] LOG-ONLY would-deny cmd=" + name + " val=" + value + " reason=" + reason);
             return null;
         }
+        // Counted only here, on the enforcing path. A log-only would-deny is not a denial, which is
+        // the same reason the two log tokens above are kept distinct.
+        health.denied();
         System.out.println("[BRIDGE] DENY cmd=" + name + " val=" + value + " reason=" + reason);
         return NcmdResponse.apply(cmdId, false, "denied: " + reason);
     }
@@ -264,6 +294,7 @@ public final class NcmdOpcUaBridge implements MqttCallback {
     }
 
     public void close() throws Exception {
+        executor.close();
         if (client != null) {
             if (client.isConnected()) client.disconnect();
             client.close();
@@ -277,17 +308,43 @@ public final class NcmdOpcUaBridge implements MqttCallback {
     @Override public void deliveryComplete(IMqttDeliveryToken token) { }
 
     @Override public void messageArrived(String topic, MqttMessage message) {
-        // Publishing from the MQTT callback thread is not allowed; dispatch off-thread.
+        // Publishing from the MQTT callback thread is not allowed; dispatch off-thread. The stripe
+        // key is the command's node id, so two setpoints for one node keep their arrival order.
         byte[] payload = message.getPayload();
-        new Thread(() -> {
+        final SparkplugBPayload req;
+        try {
+            req = decoder.buildFromByteArray(payload, null);
+        } catch (Exception decodeFailure) {
+            // Previously this threw on a throwaway thread and printed a stack trace with no context.
+            System.out.println("[BRIDGE] DROP undecodable payload on " + topic + ": " + decodeFailure);
+            return;
+        }
+        String stripeKey = (req.getMetrics() == null || req.getMetrics().isEmpty())
+                ? "" : String.valueOf(req.getMetrics().get(0).getName());
+        boolean accepted = executor.submit(stripeKey, () -> {
             try {
-                SparkplugBPayload req = decoder.buildFromByteArray(payload, null);
                 NcmdResponse resp = handle(topic, req);
                 client.publish(ndataTopic, encodeResponse(resp), 1, false);
             } catch (Exception e) {
-                e.printStackTrace();
+                System.out.println("[BRIDGE] response publish failed for " + stripeKey + ": " + e);
             }
-        }).start();
+        });
+        if (!accepted) {
+            System.out.println("[BRIDGE] OVERLOAD cmd=" + stripeKey + " - queue full, command refused");
+            try {
+                client.publish(ndataTopic, encodeResponse(overloaded(req.getUuid())), 1, false);
+            } catch (Exception e) {
+                System.out.println("[BRIDGE] overload response publish failed: " + e);
+            }
+        }
+    }
+
+    /**
+     * The overload refusal, extracted so a unit test can assert its wording without a broker.
+     * A dropped command that nobody is told about is worse than a refused one.
+     */
+    static NcmdResponse overloaded(String cmdId) {
+        return NcmdResponse.apply(cmdId, false, "overloaded: edge queue full");
     }
 
     /** Encode a response payload per Heimdall's response wire contract (metric names/types below). */

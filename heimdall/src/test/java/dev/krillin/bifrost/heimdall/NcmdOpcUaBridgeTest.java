@@ -231,6 +231,25 @@ class NcmdOpcUaBridgeTest {
         assertTrue(r.detail().contains("above-max"), r.detail());
     }
 
+    // ----- R0: dispatch and counters -----
+
+    @Test void overload_refusal_is_a_refusal_and_says_why() {
+        NcmdResponse r = NcmdOpcUaBridge.overloaded("c-9");
+        assertFalse(r.ok(), "an overloaded edge must not report success for a command it never ran");
+        assertEquals("c-9", r.cmdId(), "the refusal must correlate, or the caller cannot match it");
+        assertTrue(r.detail().contains("overloaded"), r.detail());
+    }
+
+    @Test void counters_separate_applied_from_denied() throws Exception {
+        EdgeHealth h = new EdgeHealth();
+        NcmdOpcUaBridge b = new NcmdOpcUaBridge(GROUP, EDGE, policy(), new FakeApplier(),
+                null, null, null, false, h, 4, 64);
+        b.handle(NCMD_TOPIC, cmd("c-1", "write", "ns=2;s=Recipe/Rpm", 1500.0, MetricDataType.Double, null, null));
+        b.handle(NCMD_TOPIC, cmd("c-2", "write", "ns=2;s=Nope", 1.0, MetricDataType.Double, null, null));
+        assertEquals(1, h.appliedCount());
+        assertEquals(1, h.deniedCount());
+    }
+
     /** Records interactions and returns programmed results. */
     static final class FakeApplier implements Applier {
         boolean writeCalled, callCalled, readCalled;
