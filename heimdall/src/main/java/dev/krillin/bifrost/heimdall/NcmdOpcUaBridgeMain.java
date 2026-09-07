@@ -80,11 +80,11 @@ public final class NcmdOpcUaBridgeMain {
         boolean requireSigned = flag(getenv, "REQUIRE_SIGNED_ACTIVATION", " (structural-only)");
         boolean requireAnchored = flag(getenv, "REQUIRE_ANCHORED_ACTIVATION", "");
         boolean requireSignedEffective = requireSigned || requireAnchored;   // anchored presupposes authN
+        // Deliberately NOT warned about: log-only together with a REQUIRE_*_ACTIVATION bar. The two are
+        // orthogonal -- the bars decide which ledger the edge will trust before it binds, log-only decides
+        // whether commands are refused -- so raising the ladder while still in log-only is an ordinary
+        // rollout state. The startup line below already says in plain words that nothing is being blocked.
         boolean logOnly = flag(getenv, "ENFORCEMENT_LOG_ONLY", "");
-        if (logOnly && requireSignedEffective)
-            System.err.println("[BRIDGE] WARN: ENFORCEMENT_LOG_ONLY is ON together with a REQUIRE_*_ACTIVATION"
-                    + " bar. The ledger is being verified, but NO command is being blocked: the activation"
-                    + " tiers govern which ledger the edge will trust, not whether commands are enforced.");
         String anchorStore = env(getenv, "ANCHOR_STORE", "file");
         String anchorDir = env(getenv, "ANCHOR_DIR", null);
         return new Config(broker, opcua, group, edge, policyPath, registryPath, conformancePath, activationPath,

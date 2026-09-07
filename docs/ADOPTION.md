@@ -21,8 +21,10 @@ decision below falls out of this one rule.
 ## Three facts in the code that fix the order
 
 **Huginn cannot stop anything, by construction.** It is `huginn.jar capture.pcap policy.yaml` —
-offline pcap, not an inline device, and live capture is not built. It is the only component that
-can be introduced at a running site with no operational risk at all. That makes it the wedge.
+offline pcap, not an inline device, and live capture is not built. Nothing it does can reach the
+plant, which is what makes it the wedge. *Obtaining* the capture is a separate matter and not
+risk-free: mirroring a port is a change to production network equipment and is scheduled like one.
+The tool is inert; the tap is not.
 
 **Heimdall enforces by default, and can be told not to.** In `NcmdOpcUaBridge`, command
 authorization is deny-by-default and always on; conformance and the activation checks are the
@@ -68,6 +70,13 @@ nobody noticed is not.
 **Exit when new conduits stop appearing.** Shift patterns, the monthly batch and a maintenance
 window all have to happen at least once. If week four is still producing new paths, the duty cycle
 has not been captured and every later phase would be built on a list that is missing rows.
+
+**Collect two things, not one.** The captures, and an inventory of **product and gateway
+versions** for everything that will hold a copy of a governed model — Ignition, Kepware, ThingWorx,
+the historian. Version decides which vendor-side direction is even available (the Ignition tag/UDT
+export endpoint does not exist before 8.3.2; parts of the Kepware Configuration API need particular
+6.x versions), so a plan written without it will promise a reconciliation some site cannot perform.
+It is also the cheapest thing to collect and the easiest to forget.
 
 **Cost to the site:** somebody has to pull the captures and hand them over. Without live capture
 this phase has a person in it.
