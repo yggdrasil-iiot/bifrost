@@ -238,8 +238,21 @@ public final class NcmdOpcUaBridge implements MqttCallback {
 
     // ----- Paho shell (exercised only by the live gate) -----
 
+    /**
+     * MQTT client id for this edge. It MUST be per-edge: two bridges sharing an id take each
+     * other's session in a loop, which is exactly what the previous constant caused. ':' and '/'
+     * are folded because a group such as "Bifrost:Line1" carries the Sparkplug topic separator,
+     * which brokers reject inside a client id.
+     *
+     * <p>The result can exceed the 23 characters MQTT 3.1 guaranteed; 3.1.1 removed that limit and
+     * HiveMQ accepts it. If another broker is ever targeted, this is the line to shorten.
+     */
+    static String clientId(String group, String edge) {
+        return ("heimdall-" + group + "-" + edge).replaceAll("[:/]", "-");
+    }
+
     public void connect(String broker) throws Exception {
-        client = new MqttClient(broker, "bifrost-ncmd-bridge", new MemoryPersistence());
+        client = new MqttClient(broker, clientId(group, edge), new MemoryPersistence());
         client.setCallback(this);
         MqttConnectOptions opts = new MqttConnectOptions();
         opts.setCleanSession(true);
