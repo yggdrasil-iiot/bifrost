@@ -458,14 +458,15 @@ blob case is weaker and has to be recorded as weaker, which is what this row exi
 **Not built.** Neither direction exists in this codebase, and the capability-bearing port does not
 exist.
 
-**Still unverified, and it is the licence question.** None of the public documentation read here
-states whether the Configuration API, the Ignition export endpoint, or ThingWorx's import services
-are gated by edition, licence tier, or an administrator having to enable the service. PTC's own
-support pages refused automated retrieval, so the answer has to come from a licence document or a
-sales channel, and it is load-bearing: an API that exists but is not licensed in the tier a plant
-already owns is not available. Version gating *is* confirmed and is real on its own — the Ignition
-endpoint does not exist before 8.3.2, and several Kepware Configuration API capabilities require
-particular 6.x versions.
+**Assumed: the products are licensed and supported.** A site that has standardized on these tools
+runs licensed versions of them. Whether a particular API sits behind an edition boundary is a
+procurement question with a procurement answer, and an architecture is not designed around it.
+
+**The version is the real per-site check.** The Ignition export endpoint does not exist before
+8.3.2, and several Kepware Configuration API capabilities require particular 6.x versions. Installed
+version is a fact about a plant rather than about a purchase order, it differs between sites, and it
+decides which of the two directions above is available there — so it belongs in the phase-0 survey
+next to the conduit list, not in a design assumption.
 
 Row 8 is the neighbouring concern and a different one: it is about *ingesting* heterogeneous
 vendors at all. This row is about keeping the governed model and the vendor's copy in agreement
