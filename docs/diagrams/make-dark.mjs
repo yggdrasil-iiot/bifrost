@@ -23,6 +23,8 @@ const MAP = {
   '#e6e9ee': '#21262d',   // lane stroke
   '#0969da': '#58a6ff',   // accent / control
   '#ddf4ff': '#121d2f',   // accent fill
+  '#eef5ff': '#101a28',   // accent fill, faint (zone behind nodes)
+  '#cfe0f5': '#22334d',   // accent border, faint
   '#1a7f37': '#3fb950',   // success
   '#eaf3ea': '#0f2f1a',   // success fill
   '#9a6700': '#d29922',   // attention
