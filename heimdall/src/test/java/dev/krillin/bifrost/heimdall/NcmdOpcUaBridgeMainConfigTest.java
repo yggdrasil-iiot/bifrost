@@ -4,6 +4,37 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class NcmdOpcUaBridgeMainConfigTest {
+
+    // ----- R0: health endpoint + apply stripes -----
+
+    @Test
+    void healthPortDefaultsTo9090AndZeroDisables() {
+        assertEquals(9090, NcmdOpcUaBridgeMain.resolve(k -> null).healthPort());
+        assertEquals(0, NcmdOpcUaBridgeMain.resolve(k -> "HEALTH_PORT".equals(k) ? "0" : null).healthPort());
+    }
+
+    @Test
+    void healthPortIsReadFromTheEnvironment() {
+        assertEquals(9091, NcmdOpcUaBridgeMain.resolve(k -> "HEALTH_PORT".equals(k) ? "9091" : null).healthPort());
+    }
+
+    /** A garbled port must not silently pick a different one — fall to the default and say so. */
+    @Test
+    void anUnparseableHealthPortFallsToTheDefault() {
+        assertEquals(9090, NcmdOpcUaBridgeMain.resolve(k -> "HEALTH_PORT".equals(k) ? "banana" : null).healthPort());
+    }
+
+    @Test
+    void applyThreadsDefaultToFour() {
+        assertEquals(4, NcmdOpcUaBridgeMain.resolve(k -> null).applyThreads());
+    }
+
+    /** The default alone is satisfied by a hard-coded 4 — prove the variable is actually read. */
+    @Test
+    void applyThreadsAreReadFromTheEnvironment() {
+        assertEquals(8, NcmdOpcUaBridgeMain.resolve(
+                k -> "HEIMDALL_APPLY_THREADS".equals(k) ? "8" : null).applyThreads());
+    }
     @Test void activationEnvResolved() {
         var cfg = NcmdOpcUaBridgeMain.resolve(Map.of(
             "ACTIVATION_TARGET","Line1", "ACTIVATION_PATH","/reg")::get);
