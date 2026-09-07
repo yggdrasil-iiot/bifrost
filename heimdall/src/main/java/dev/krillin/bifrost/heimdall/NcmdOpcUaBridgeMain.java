@@ -242,11 +242,27 @@ public final class NcmdOpcUaBridgeMain {
 
         Conformance conformance = loadConformance(config);
 
-        OpcUaApplier applier = new OpcUaApplier(config.opcua()).connect();
-        System.out.println("[BRIDGE] OPC-UA connected " + config.opcua());
+        EdgeHealth health = new EdgeHealth();
+
+        // Connect eagerly so a healthy start is still reported as one, but do NOT die if the plant
+        // is down: a site power event restarts the OPC-UA server and this edge together, and an
+        // edge that exits here crash-loops under a restart policy instead of waiting. The applier's
+        // lazy reconnect brings the session up on the first command that needs it.
+        //
+        // This does not weaken the startup ledger-trust checks above. Those still fail closed, and
+        // deliberately so: an invisible machine is transient, an untrustworthy model is not.
+        OpcUaApplier applier = new OpcUaApplier(config.opcua(), health);
+        try {
+            applier.connect();
+            System.out.println("[BRIDGE] OPC-UA connected " + config.opcua());
+        } catch (Exception plantDown) {
+            System.out.println("[BRIDGE] OPC-UA not reachable at start (" + plantDown.getMessage()
+                    + ") - starting anyway, commands will answer plant-unreachable until it returns");
+        }
 
         NcmdOpcUaBridge bridge = new NcmdOpcUaBridge(config.group(), config.edge(), policy, applier,
-                conformance.def(), conformance.policy(), conformance.recipe(), config.enforcementLogOnly());
+                conformance.def(), conformance.policy(), conformance.recipe(), config.enforcementLogOnly(),
+                health, 4, 64);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             try {
                 bridge.close();
@@ -254,6 +270,7 @@ public final class NcmdOpcUaBridgeMain {
                 // best-effort
             }
             applier.close();
+            health.stopHttp();
         }));
 
         bridge.connect(config.broker());
