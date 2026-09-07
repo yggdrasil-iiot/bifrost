@@ -8,7 +8,15 @@
 
 **The governance core of the [Yggdrasil](https://github.com/yggdrasil-iiot) IIoT spine — the "IAM" for the OT governance boundary.**
 
-Bifrost decides *what is allowed to cross the OT/IT boundary*. Nothing — no equipment model, no process spec, no runtime command, no version activation — reaches the plant floor or the unified namespace except as a **governed, fail-closed, provenance-verified contract**. Governance is enforced twice: **pre-deploy** (a CLI gate that rejects a bad change before it merges) and **at the runtime edge** (Heimdall, which refuses a bad command or a bad activation at the OPC-UA write boundary). Every claim in this README is backed by an **executable gate** (`scripts/run-*-gate.sh`), not just unit tests.
+Bifrost decides *what is allowed to cross the OT/IT boundary*. Nothing — no equipment model, no process spec, no runtime command, no version activation — reaches the plant floor or the unified namespace except as a **governed, fail-closed, provenance-verified contract**. Governance is enforced twice: **pre-deploy** (a CLI gate that rejects a bad change before it merges) and **at the runtime edge** (Heimdall, which refuses a bad command or a bad activation at the OPC-UA write boundary).
+
+**Start here.** Three things this repo is arguing, in the order they are worth checking:
+
+| | |
+|---|---|
+| **[docs/ENTERPRISE.md](docs/ENTERPRISE.md)** | Eleven axes of taking this to an enterprise, each marked *built · deferred · open · measured*. A **built** row names the gate that proves it; a **deferred** row names the trigger that would force it. Ledger growth, verification cost and audit-at-scale are measured — and the measurements that came out unusable are reported as failures rather than quietly dropped. |
+| **[docs/ADOPTION.md](docs/ADOPTION.md)** | The order any of this could go into a plant that is **already running** — six phases, each with an exit criterion and an abort criterion, and the phase where it stops being risk-free. Derived from the code's constraints rather than from experience, and it says so. |
+| **[Executable gates](#executable-gates)** | Every claim below is backed by a gate you can run, not by a unit test. All 15 last ran green on **2026-09-07** (Docker 26.1.4), with no leg skipped. |
 
 ## What it governs
 
@@ -89,28 +97,11 @@ F1/F5/F6 are pure CLI and always run; F2/F3/F4 need Docker and can be skipped.
 cryptographic. It holds because the enterprise anchor lives in a repository the site never
 rewrites. Real closure still needs a genuinely tamper-resistant off-box witness, exactly as in T7.
 
-## Modules
+## Executable gates
 
-```
-core/      the governed model + evaluators — schema, spec/conformance, acl (+OPA-in-wasm),
-           template, provenance, activation (T3/T4/T5 identity, T7 anchor). Pure logic, no broker.
-gates/     the pre-deploy CLI over core (the `gates` jar).
-heimdall/  the runtime edge — NCMD authorization + activation binding, fail-closed.
-sim/       an embedded Eclipse Milo OPC-UA server the gates drive end-to-end.
-```
-
-## Build & test
-
-```bash
-mvn install     # Java 17 · 362 tests (core 223 · heimdall 52 · gates 76 · sim 11)
-                # also writes target/bifrost-sbom.{json,xml} — one CycloneDX 1.6 SBOM
-                # for the whole reactor (40 components, licences resolved)
-```
-
-## Executable gates — the proof
-
-Governance is demonstrated end-to-end, not asserted. Pure-CLI gates need no broker; edge gates need Docker (HiveMQ CE) + host port 1883.
-All 15 last ran green on 2026-09-07 (Docker 26.1.4), with no leg skipped; the broker gates start and stop HiveMQ CE themselves.
+Governance is demonstrated end-to-end, not asserted. Pure-CLI gates need no broker; edge gates need
+Docker (HiveMQ CE) + host port 1883 and start/stop the container themselves. A gate exits `0` or it
+does not pass — there is no partial credit, and a skipped Docker leg is visible in its own output.
 
 ```bash
 scripts/run-schema-gate.sh                 # schema compatibility admit/reject
@@ -130,13 +121,29 @@ scripts/run-yggdrasil-spine-gate.sh        # Mímir → Bifrost → Muninn north
 scripts/run-yggdrasil-full-loop-gate.sh    # closed loop: observe → command → observe
 ```
 
+## Modules
+
+```
+core/      the governed model + evaluators — schema, spec/conformance, acl (+OPA-in-wasm),
+           template, provenance, activation (T3/T4/T5 identity, T7 anchor). Pure logic, no broker.
+gates/     the pre-deploy CLI over core (the `gates` jar).
+heimdall/  the runtime edge — NCMD authorization + activation binding, fail-closed.
+sim/       an embedded Eclipse Milo OPC-UA server the gates drive end-to-end.
+```
+
+## Build & test
+
+```bash
+mvn install     # Java 17 · 362 tests (core 223 · heimdall 52 · gates 76 · sim 11)
+                # also writes target/bifrost-sbom.{json,xml} — one CycloneDX 1.6 SBOM
+                # for the whole reactor (40 components, licences resolved)
+```
+
 ## Honest scope & limitations
 
-This is a systems-architecture reference implementation; it records its limits rather than hiding them.
-For the distance between this and a real deployment — which scale problems are answered, which are
-deferred and why, and which are open — see **[docs/ENTERPRISE.md](docs/ENTERPRISE.md)**. For the
-order any of it could go into a plant that is already running, and the phase where that turns
-risky, see **[docs/ADOPTION.md](docs/ADOPTION.md)**.
+This is a systems-architecture reference implementation; it records its limits rather than hiding
+them. The list below is the short form — the long form, with what would force each item, is
+[docs/ENTERPRISE.md](docs/ENTERPRISE.md).
 
 - **Authorization is direct principal grants, not roles/attributes (T6).** The policy names each principal explicitly (deny-by-default, maker-checker); RBAC roles and ABAC attributes are future threads, and the policy file is plaintext (bootstrap/change-control out-of-band, no policy-signing yet). authZ presupposes authN — with signing off there is no authorization, because there is no authenticated subject to authorize. Revocation is bind-fresh (a running edge re-checks at the next startup).
 - **Anchoring is only as strong as the anchor's off-box protection (T7).** The four-eyes head plus external witness make rollback *evident*, but a `FileAnchorStore` is a local projection that a co-rollback can rewrite in place — it defends the lone re-anchor, not the co-rollback. Real rollback-resistance rests on the witness being genuinely tamper-resistant off-box (a protected git remote / signed tag / TPM monotonic counter); the `GitAnchorStore` demonstrates the seam but a locally-committed anchor repo is still on-box. If the git anchor dir resolves *inside* the registry, both the gate and Heimdall **WARN loudly** — a co-located witness is rolled back with the tree it is meant to witness, so `ANCHOR_DIR` must point at a separate off-box repo to actually close the co-rollback. Anchoring presupposes signing (`ANCHORED` ⊃ `SIGNED`), so it does nothing with signing off.
