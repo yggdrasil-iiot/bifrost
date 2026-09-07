@@ -1,0 +1,12 @@
+# The build context is the repo root and only heimdall/target/bifrost-heimdall.jar is copied,
+# so everything heavy is excluded. Without this the context ships .git plus every module's target.
+.git
+.gitignore
+**/target/classes
+**/target/test-classes
+**/target/generated-sources
+**/target/maven-status
+**/target/surefire-reports
+build
+docs
+*.md
