@@ -26,7 +26,7 @@ public final class ActivationService {
                 return refuse("activation.approval.self", "approver '" + r.by() + "' must differ from the activator (four-eyes)");
             if (r.rollback() && !versionInHistory(r))
                 return refuse("activation.rollback.unknown-version",
-                        "cannot rollback to " + r.version() + " — never activated on target " + r.target());
+                        "cannot rollback to " + r.version() + " - never activated on target " + r.target());
             if (signer != null) {                                   // T5: fail-closed identity checks
                 var idv = signer.preflight();
                 if (!idv.isEmpty()) return new ActivationVerdict(false, null, idv);

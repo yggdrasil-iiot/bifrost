@@ -30,6 +30,12 @@ jobs:
       - name: Build, test, and emit the SBOM
         run: mvn -B -ntp install
 
+      # Java re-encodes System.out through the console charset, so a non-ASCII character in a
+      # printed literal becomes "?" on a Windows console. CI runs on Linux and would never see it,
+      # which is exactly why the check belongs here rather than in a gate.
+      - name: ASCII-only console output
+        run: node scripts/check-ascii-output.mjs .
+
       - name: 'Gate ① schema compatibility (admit + reject)'
         run: bash scripts/run-schema-gate.sh
 

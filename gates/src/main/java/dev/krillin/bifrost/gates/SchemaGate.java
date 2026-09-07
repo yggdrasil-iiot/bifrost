@@ -32,7 +32,7 @@ public final class SchemaGate {
             Optional<UdtDefinition> current = store.latest(proposed.templateRef());
 
             if (current.isEmpty()) {
-                System.out.println("[GATE] new templateRef '" + proposed.templateRef() + "' " + proposed.version() + " — initial registration allowed ✅");
+                System.out.println("[GATE] new templateRef '" + proposed.templateRef() + "' " + proposed.version() + " - initial registration allowed");
                 if (promote) { store.promote(proposed); System.out.println("[GATE] promoted to registry"); }
                 return 0;
             }
@@ -41,11 +41,11 @@ public final class SchemaGate {
             System.out.println("[GATE] ref=" + proposed.templateRef() + " mode=" + mode
                     + " registered=" + current.get().version() + " proposed=" + proposed.version());
             if (verdict.compatible()) {
-                System.out.println("[GATE] PASS ✅");
+                System.out.println("[GATE] PASS");
                 if (promote) { store.promote(proposed); System.out.println("[GATE] promoted to registry"); }
                 return 0;
             }
-            System.out.println("[GATE] FAIL ❌ — violations:");
+            System.out.println("[GATE] FAIL - violations:");
             for (Violation v : verdict.violations()) System.out.println("  - [" + v.rule() + "] " + v.detail());
             return 1;
         } catch (Exception e) {

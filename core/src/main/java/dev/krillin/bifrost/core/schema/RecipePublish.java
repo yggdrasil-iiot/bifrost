@@ -40,7 +40,7 @@ public final class RecipePublish {
         try {
             String status = gitText(repo, "status", "--porcelain", "--", sourcePath);
             if (status == null) { System.err.println("[PUBLISH] error: git status failed"); return 2; }
-            if (!status.isBlank()) { System.err.println("[PUBLISH] refuse: '" + sourcePath + "' is dirty — commit first"); return 1; }
+            if (!status.isBlank()) { System.err.println("[PUBLISH] refuse: '" + sourcePath + "' is dirty - commit first"); return 1; }
             String defRef = gitText(repo, "log", "-1", "--format=%H", "--", sourcePath);
             defRef = defRef == null ? null : defRef.trim();
             if (defRef == null || !defRef.matches("[0-9a-f]{40}")) { System.err.println("[PUBLISH] refuse: no commit for " + sourcePath); return 1; }

@@ -57,7 +57,7 @@ public final class ActivateGate {
                 Path anchorRepo = Path.of(anchorDir != null ? anchorDir : reg.toString());
                 if (dev.krillin.bifrost.core.identity.GitAnchorStore.isColocatedWith(anchorRepo, reg))
                     System.err.println("[GATE] WARN: git anchor repo " + anchorRepo + " is inside the registry "
-                            + reg + " — an insider who rolls back the registry rolls back this witness too."
+                            + reg + " - an insider who rolls back the registry rolls back this witness too."
                             + " Point --anchor-dir at a separate, off-box, protected repo to actually close co-rollback.");
                 anchorStore = new dev.krillin.bifrost.core.identity.GitAnchorStore(anchorRepo);
             } else {

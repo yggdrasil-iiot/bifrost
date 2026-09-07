@@ -34,10 +34,10 @@ public final class PolicyGate {
         }
         List<String> v = lint(policy);
         if (v.isEmpty()) {
-            System.out.println("[ACL-GATE] PASS ✅ (rules=" + policy.rules().size() + ")");
+            System.out.println("[ACL-GATE] PASS (rules=" + policy.rules().size() + ")");
             return 0;
         }
-        System.out.println("[ACL-GATE] FAIL ❌ — violations:");
+        System.out.println("[ACL-GATE] FAIL - violations:");
         for (String s : v) System.out.println("  - " + s);
         return 1;
     }

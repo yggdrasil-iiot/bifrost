@@ -39,7 +39,7 @@ public final class CompatibilityChecker {
         for (String name : pro.keySet()) {
             if (!reg.containsKey(name) && addBreaks) {
                 v.add(new Violation(kind + ".added",
-                        kind + " '" + name + "' added — violates " + mode + " (field absent in old data); new templateRef + major bump required"));
+                        kind + " '" + name + "' added - violates " + mode + " (field absent in old data); new templateRef + major bump required"));
             }
         }
         for (Map.Entry<String, String> e : reg.entrySet()) {
@@ -47,11 +47,11 @@ public final class CompatibilityChecker {
             if (!pro.containsKey(name)) {
                 if (removeBreaks) {
                     v.add(new Violation(kind + ".removed",
-                            kind + " '" + name + "' removed — violates " + mode + " (old consumers expect this field); new templateRef + major bump required"));
+                            kind + " '" + name + "' removed - violates " + mode + " (old consumers expect this field); new templateRef + major bump required"));
                 }
             } else if (!pro.get(name).equals(e.getValue())) {
                 v.add(new Violation(kind + ".typeChanged",
-                        kind + " '" + name + "' type changed " + e.getValue() + " → " + pro.get(name) + " — breaking in all modes"));
+                        kind + " '" + name + "' type changed " + e.getValue() + " -> " + pro.get(name) + " - breaking in all modes"));
             }
         }
     }

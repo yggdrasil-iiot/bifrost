@@ -92,7 +92,7 @@ public final class OpcUaApplier implements Applier {
         ReadBack baseline = read(doneNodeId);
         if (isTrue(baseline.value())) {
             return new Result(false,
-                    "doneNode " + doneNodeId + " already true before call — reset required (no rising edge)");
+                    "doneNode " + doneNodeId + " already true before call - reset required (no rising edge)");
         }
 
         StatusCode trigger = client.writeValues(

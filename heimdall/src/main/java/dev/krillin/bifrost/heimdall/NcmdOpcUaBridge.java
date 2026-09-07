@@ -171,7 +171,7 @@ public final class NcmdOpcUaBridge implements MqttCallback {
                         // Fail-closed: a needed cross-member with no numeric readNodeId cannot be verified,
                         // so DON'T silently skip it (that would leave the antecedent absent => not-triggered => fail-open).
                         if (sb == null) throw new IllegalStateException(
-                                "cross-constraint member '" + sibMember + "' has no readNodeId binding — cannot verify");
+                                "cross-constraint member '" + sibMember + "' has no readNodeId binding - cannot verify");
                         // Derive the sibling's type from the governed model (not hardcoded "Double") so a
                         // non-Double numeric sibling doesn't spuriously trip spec.type.mismatch.
                         String sibType = conformanceDef.members().stream()

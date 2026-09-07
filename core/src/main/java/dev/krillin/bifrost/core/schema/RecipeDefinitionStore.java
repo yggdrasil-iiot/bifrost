@@ -29,7 +29,7 @@ public final class RecipeDefinitionStore {
         if (Files.exists(manifestFile)) {
             RecipeManifest existing = mapper.readValue(manifestFile.toFile(), RecipeManifest.class);
             if (!existing.contentSha256().equals(contentSha256))
-                throw new IOException("recipe " + ref + "/" + version + " already published with different content (immutable — bump version)");
+                throw new IOException("recipe " + ref + "/" + version + " already published with different content (immutable - bump version)");
             return existing;
         }
         Files.createDirectories(dir);

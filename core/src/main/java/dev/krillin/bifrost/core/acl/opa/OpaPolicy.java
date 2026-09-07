@@ -143,7 +143,7 @@ public final class OpaPolicy {
                 default:
                     throw new IllegalStateException(
                             "unexpected OPA wasm host import env." + imp.name()
-                                    + " — spike ground truth said the import set was fixed;"
+                                    + " - spike ground truth said the import set was fixed;"
                                     + " re-verify the ABI for this opa version");
             }
         }
@@ -175,6 +175,6 @@ public final class OpaPolicy {
             }
         }
         throw new IllegalStateException(
-                "OPA wasm module does not import env.memory — ABI assumption violated");
+                "OPA wasm module does not import env.memory - ABI assumption violated");
     }
 }

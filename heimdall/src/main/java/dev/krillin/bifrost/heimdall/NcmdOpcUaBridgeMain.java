@@ -61,7 +61,7 @@ public final class NcmdOpcUaBridgeMain {
         String v = env(getenv, key, "false").strip();
         if ("true".equalsIgnoreCase(v) || "on".equalsIgnoreCase(v) || "1".equals(v)) return true;
         boolean off = "false".equalsIgnoreCase(v) || "off".equalsIgnoreCase(v) || "0".equals(v) || v.isEmpty();
-        if (!off) System.err.println("[BRIDGE] WARN: " + key + "='" + v + "' not recognized — treating as OFF"
+        if (!off) System.err.println("[BRIDGE] WARN: " + key + "='" + v + "' not recognized - treating as OFF"
                 + offNote + ". Use true/on/1 or false/off/0.");
         return false;
     }
@@ -182,7 +182,7 @@ public final class NcmdOpcUaBridgeMain {
             if ("git".equals(anchorStoreKind)
                     && dev.krillin.bifrost.core.identity.GitAnchorStore.isColocatedWith(anchorRepo, ledgerDir))
                 System.err.println("[BRIDGE] WARN: git anchor repo " + anchorRepo + " is inside the registry "
-                        + ledgerDir + " — a registry rollback rolls back this witness too; the co-rollback (#2)"
+                        + ledgerDir + " - a registry rollback rolls back this witness too; the co-rollback (#2)"
                         + " guarantee is NOT in force. Set ANCHOR_DIR to a separate off-box protected repo.");
             dev.krillin.bifrost.core.activation.AnchorStore anchors = "git".equals(anchorStoreKind)
                     ? new dev.krillin.bifrost.core.identity.GitAnchorStore(anchorRepo)

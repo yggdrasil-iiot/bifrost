@@ -50,8 +50,8 @@ public final class SpecGate {
             ConformanceVerdict verdict = new ConformanceEvaluator().evaluate(def, policy, null, spec.setpoints());
             System.out.println("[GATE] ref=" + spec.specRef() + " equipment=" + spec.equipmentRef()
                     + "@" + spec.equipmentVersion() + " setpoints=" + spec.setpoints().size());
-            if (verdict.ok()) { System.out.println("[GATE] PASS ✅"); return 0; }
-            System.out.println("[GATE] FAIL ❌ — violations:");
+            if (verdict.ok()) { System.out.println("[GATE] PASS"); return 0; }
+            System.out.println("[GATE] FAIL - violations:");
             for (Violation viol : verdict.violations()) System.out.println("  - [" + viol.rule() + "] " + viol.detail());
             return 1;
         } catch (Exception e) {
