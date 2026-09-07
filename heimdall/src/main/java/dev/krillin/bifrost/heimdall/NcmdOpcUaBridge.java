@@ -1,5 +1,6 @@
 package dev.krillin.bifrost.heimdall;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.LinkedHashSet;
@@ -7,7 +8,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
-import org.eclipse.paho.client.mqttv3.MqttCallback;
+import org.eclipse.paho.client.mqttv3.MqttCallbackExtended;
 import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
@@ -50,7 +51,7 @@ import dev.krillin.bifrost.core.schema.UdtDefinition;
  * {@code doneNode}/{@code timeoutMs}, response metrics {@code ok}/{@code value}/{@code good}/
  * {@code detail}.
  */
-public final class NcmdOpcUaBridge implements MqttCallback {
+public final class NcmdOpcUaBridge implements MqttCallbackExtended {
 
     private final String group;
     private final String edge;
@@ -79,6 +80,18 @@ public final class NcmdOpcUaBridge implements MqttCallback {
     private final String ncmdTopic;
     private final String queryTopic;
     private final String ndataTopic;
+
+    /**
+     * Bifrost's own liveness topic, carrying a retained "online"/"offline".
+     *
+     * <p>Deliberately NOT the Sparkplug NDEATH topic. In the spine
+     * ({@code scripts/run-yggdrasil-spine-gate.sh}) Muninn is the node that births this
+     * group/edge, and two components birthing one edge is a protocol error rather than a detail.
+     * Deciding who owns the Sparkplug node identity for an edge that Heimdall commands and Muninn
+     * feeds is a larger question than this change. This follows the existing
+     * {@code bifrost/.../QUERY/...} convention and needs no ownership decision.
+     */
+    private final String statusTopic;
 
     private final SparkplugBPayloadEncoder encoder = new SparkplugBPayloadEncoder();
     private final SparkplugBPayloadDecoder decoder = new SparkplugBPayloadDecoder();
@@ -128,6 +141,7 @@ public final class NcmdOpcUaBridge implements MqttCallback {
         this.ncmdTopic = "spBv1.0/" + group + "/NCMD/" + edge;
         this.queryTopic = "bifrost/" + group + "/QUERY/" + edge;
         this.ndataTopic = "spBv1.0/" + group + "/NDATA/" + edge;
+        this.statusTopic = "bifrost/" + group + "/STATUS/" + edge;
     }
 
     // ----- pure core (no broker / no live OPC-UA) -----
@@ -306,23 +320,73 @@ public final class NcmdOpcUaBridge implements MqttCallback {
         client.setCallback(this);
         MqttConnectOptions opts = new MqttConnectOptions();
         opts.setCleanSession(true);
+        opts.setAutomaticReconnect(true);
+        // Explicit, because the will's latency IS this value: the broker cannot declare us dead
+        // until the keepalive lapses, and the 60s default makes a death take ~90s to appear.
+        opts.setKeepAliveInterval(20);
+        // The will is the whole liveness story: if this process dies, is partitioned, or hangs past
+        // the keepalive, the BROKER publishes "offline" on our behalf. Nothing else can report a
+        // death that the dying process did not notice. See statusTopic's javadoc for why this is
+        // not Sparkplug NDEATH.
+        opts.setWill(statusTopic, "offline".getBytes(StandardCharsets.UTF_8), 1, true);
         client.connect(opts);
-        client.subscribe(ncmdTopic, 1);
-        client.subscribe(queryTopic, 1);
+        subscribeAll();
+        publishStatus("online");
         System.out.println("[BRIDGE] subscribed NCMD=" + ncmdTopic + " QUERY=" + queryTopic
                 + " (policy rules=" + policy.rules().size() + ")");
+    }
+
+    private void subscribeAll() throws Exception {
+        client.subscribe(ncmdTopic, 1);
+        client.subscribe(queryTopic, 1);
+    }
+
+    private void publishStatus(String state) {
+        try {
+            client.publish(statusTopic, state.getBytes(StandardCharsets.UTF_8), 1, true);
+        } catch (Exception e) {
+            System.out.println("[BRIDGE] status publish failed (" + state + "): " + e);
+        }
+    }
+
+    @Override
+    public void connectComplete(boolean reconnect, String serverURI) {
+        health.brokerConnected();
+        if (!reconnect) {
+            return;   // the initial connect already subscribed and announced
+        }
+        // LOAD-BEARING. cleanSession(true) means the broker dropped our subscriptions along with
+        // the session, and automatic reconnect does not restore them. Without this the bridge comes
+        // back CONNECTED and deaf — which reads healthy in the log, and is worse than the outage.
+        //
+        // This runs on Paho's callback thread and both calls below are synchronous, so the callback
+        // is blocked until they ack. That is the standard resubscribe pattern and the window is
+        // bounded, but it is why nothing heavier belongs here.
+        try {
+            subscribeAll();
+            publishStatus("online");
+            System.out.println("[BRIDGE] reconnected to " + serverURI + ", resubscribed");
+        } catch (Exception e) {
+            System.out.println("[BRIDGE] RESUBSCRIBE FAILED after reconnect: " + e);
+        }
     }
 
     public void close() throws Exception {
         executor.close();
         if (client != null) {
-            if (client.isConnected()) client.disconnect();
+            if (client.isConnected()) {
+                // An orderly stop is not a death: say so ourselves rather than leaving the will to
+                // report it. A hard kill still leaves the broker to publish "offline" for us.
+                publishStatus("offline");
+                client.disconnect();
+            }
             client.close();
         }
     }
 
     @Override public void connectionLost(Throwable cause) {
-        System.out.println("[BRIDGE] connection lost: " + cause);
+        health.brokerDisconnected();
+        System.out.println("[BRIDGE] connection lost: " + cause + " (auto-reconnect armed)");
     }
 
     @Override public void deliveryComplete(IMqttDeliveryToken token) { }
