@@ -89,6 +89,40 @@ public final class OpcUaApplier implements Applier {
     }
 
     /**
+     * Did this throwable come from the transport failing, rather than from the server rendering a
+     * verdict about a value?
+     *
+     * <p>{@link #isConnectionFault(StatusCode)} alone is not enough, which the resilience gate
+     * proved: when the server dies mid-session, Milo attempts its own reconnect and the failure
+     * arrives as a Netty {@code AnnotatedConnectException} ("Connection refused") wrapped in the
+     * thrown exception — carrying no OPC-UA StatusCode at all. That was being reported to the
+     * operator as {@code apply error: io.netty.channel...}, which is the same defect as reporting
+     * it as a conformance error: a transport failure dressed up as something about the command.
+     *
+     * <p>Every Netty/JDK connect and reset failure is an {@link java.io.IOException} somewhere in
+     * the cause chain, and a value-level refusal never is, so the chain is the honest test.
+     */
+    private static boolean hasTransportCause(Throwable t) {
+        for (Throwable c = t; c != null; c = c.getCause()) {
+            if (c instanceof java.io.IOException) {
+                return true;
+            }
+            if (c.getCause() == c) {
+                break;   // defensive: never loop on a self-referencing cause
+            }
+        }
+        return false;
+    }
+
+    /** True when a failure out of a Milo call means "the plant is not visible". */
+    private static boolean isUnreachable(Exception e) {
+        if (e instanceof UaException ua && isConnectionFault(ua.getStatusCode())) {
+            return true;
+        }
+        return hasTransportCause(e);
+    }
+
+    /**
      * Ensure a usable session, or say the plant is unreachable.
      *
      * <p>{@code synchronized} because the apply path is striped: without it two stripes can both
@@ -145,8 +179,8 @@ public final class OpcUaApplier implements Applier {
         DataValue dv;
         try {
             dv = client.readValue(0.0, TimestampsToReturn.Neither, NodeId.parse(nodeId));
-        } catch (UaException e) {
-            if (isConnectionFault(e.getStatusCode())) {
+        } catch (Exception e) {
+            if (isUnreachable(e)) {
                 throw fault("read " + nodeId + ": " + e.getMessage(), e);
             }
             throw e;
@@ -188,8 +222,8 @@ public final class OpcUaApplier implements Applier {
             sc = client.writeValues(
                     List.of(NodeId.parse(nodeId)),
                     List.of(new DataValue(new Variant(value)))).get(0);
-        } catch (UaException e) {
-            if (isConnectionFault(e.getStatusCode())) {
+        } catch (Exception e) {
+            if (isUnreachable(e)) {
                 throw fault("write " + nodeId + ": " + e.getMessage(), e);
             }
             throw e;
@@ -226,8 +260,8 @@ public final class OpcUaApplier implements Applier {
             trigger = client.writeValues(
                     List.of(NodeId.parse(triggerNodeId)),
                     List.of(new DataValue(new Variant(Boolean.TRUE)))).get(0);
-        } catch (UaException e) {
-            if (isConnectionFault(e.getStatusCode())) {
+        } catch (Exception e) {
+            if (isUnreachable(e)) {
                 throw fault("trigger write " + triggerNodeId + ": " + e.getMessage(), e);
             }
             throw e;
