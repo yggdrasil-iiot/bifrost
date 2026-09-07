@@ -234,10 +234,17 @@ echo "[GATE] E3+E5 OK: UNREACHABLE, no DENY, response says plant-unreachable, /h
 # ---------------------------------------------------------------------------
 echo "[GATE] ===== E4: the plant leg recovers with NO bridge restart ====="
 BEFORE="$(apply_count "$RPM_NODE" "$A_LOG")"
+# "session re-established" is ALSO printed by the first connect at startup, so a bare grep matches
+# that one and proves nothing - the same accumulating-log trap as the APPLY assertions. Require the
+# count to INCREASE. This distinction is load-bearing for a second reason: Milo's own client
+# reconnects internally, so a command succeeding after the sim returns does NOT by itself prove
+# that this repo's reconnect ran. The count increase is what proves it.
+RECONN_BEFORE="$(count_in "OPC-UA session re-established" "$A_LOG")"
 start_sim || fail "E4 the sim did not restart"
 sleep 7      # outlast the applier's 5s reconnect backoff
 pub "$RPM_NODE" 1500.0 Double "$EDGE_A"
-wait_line "$A_LOG" "OPC-UA session re-established" 20 || fail "E4 the session was never re-established"
+for _ in $(seq 1 20); do [ "$(count_in "OPC-UA session re-established" "$A_LOG")" -gt "$RECONN_BEFORE" ] && break; sleep 2; done
+[ "$(count_in "OPC-UA session re-established" "$A_LOG")" -gt "$RECONN_BEFORE" ]   || fail "E4 the applier never rebuilt the session — recovery came from somewhere else, not from this code"
 for _ in $(seq 1 20); do [ "$(apply_count "$RPM_NODE" "$A_LOG")" -gt "$BEFORE" ] && break; sleep 2; done
 [ "$(apply_count "$RPM_NODE" "$A_LOG")" -gt "$BEFORE" ] || fail "E4 no NEW command applied after the sim returned"
 for _ in $(seq 1 10); do [ "$(health_code 9090)" = "200" ] && break; sleep 2; done
