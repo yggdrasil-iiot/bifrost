@@ -62,6 +62,8 @@ Each step is additive and backward-compatible — a T3/T4 ledger still verifies,
 
 `heimdall` is the write-boundary authorizer (a Sparkplug **NCMD** → OPC-UA bridge). Deny-by-default, it independently re-authorizes every command *at the edge* — without trusting any upstream authorization — enforcing command ACLs, conformance bounds, and the governed active version, and fails closed on any uncertainty (bad quality, broken/unsigned ledger, content mismatch, rogue command). It closes the loop the gate opens: *observe → command → observe*.
 
+For introducing it at a **running** plant there is `ENFORCEMENT_LOG_ONLY`: the edge reaches every verdict and refuses nothing, logging what it would have denied. Enforcement then arrives by removing allowlist rules one reviewable diff at a time rather than by flipping a switch on a live line. Off by default, reversible by a restart, and proven end-to-end by `run-ncmd-runtime-gate.sh` T4/T5 — see **[docs/ADOPTION.md](docs/ADOPTION.md)** for where it sits in a rollout, and the limitations below for what it does *not* cover.
+
 ## Federation — one authority, many sites
 
 Single-line governance is not enterprise governance, so the same primitives recombine into a
@@ -108,7 +110,7 @@ mvn install     # Java 17 · 362 tests (core 223 · heimdall 52 · gates 76 · s
 ## Executable gates — the proof
 
 Governance is demonstrated end-to-end, not asserted. Pure-CLI gates need no broker; edge gates need Docker (HiveMQ CE) + host port 1883.
-All 15 last ran green on 2026-09-06 (Docker 26.1.4); the broker gates start and stop HiveMQ CE themselves.
+All 15 last ran green on 2026-09-07 (Docker 26.1.4), with no leg skipped; the broker gates start and stop HiveMQ CE themselves.
 
 ```bash
 scripts/run-schema-gate.sh                 # schema compatibility admit/reject
