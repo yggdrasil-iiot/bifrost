@@ -211,6 +211,20 @@ public final class NcmdOpcUaBridge implements MqttCallback {
                         if (refused != null) return refused;
                         if (shadowed == null) shadowed = reason;
                     }
+                } catch (PlantUnreachableException unreachable) {
+                    // NOT a verdict. The plant is not visible, so ② could not be evaluated at all.
+                    // Reported separately so an operator is never sent to look at the model because
+                    // a server restarted, and counted separately so /healthz can go unhealthy.
+                    //
+                    // The log line is printed in BOTH unreachable catches on purpose. Today's
+                    // shipped fixture (registry/conformance/Line1-Mixer/1.0.0.json) has no cross
+                    // constraints, so readDouble is never called there and an outage always lands
+                    // on the apply path below; logging only there would make the resilience gate
+                    // green for a reason unrelated to this branch.
+                    System.out.println("[BRIDGE] UNREACHABLE cmd=" + name + " reason=" + unreachable.getMessage());
+                    health.plantUnreachable();
+                    return NcmdResponse.apply(cmdId, false,
+                            detail(shadowed, "plant-unreachable: " + unreachable.getMessage()));
                 } catch (Exception confEx) {   // fail-closed: any conformance/read error DENIES
                     String reason = "conformance-error: " + confEx.getMessage();
                     NcmdResponse refused = refuse(cmdId, name, value, reason);
@@ -232,6 +246,12 @@ public final class NcmdOpcUaBridge implements MqttCallback {
             }
             System.out.println("[BRIDGE] APPLY cmd=" + name + " ok=" + r.ok());
             return NcmdResponse.apply(cmdId, r.ok(), detail(shadowed, r.detail()));
+        } catch (PlantUnreachableException unreachable) {
+            // Same rule as the ② catch above: a refusal, but never reported as a verdict.
+            System.out.println("[BRIDGE] UNREACHABLE cmd=" + name + " reason=" + unreachable.getMessage());
+            health.plantUnreachable();
+            return NcmdResponse.apply(cmdId, false,
+                    detail(shadowed, "plant-unreachable: " + unreachable.getMessage()));
         } catch (Exception e) {
             System.out.println("[BRIDGE] APPLY cmd=" + name + " ok=false");
             return NcmdResponse.apply(cmdId, false, detail(shadowed, "apply error: " + e.getMessage()));
