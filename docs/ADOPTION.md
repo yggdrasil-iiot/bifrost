@@ -100,8 +100,16 @@ wants**, which is what makes this phase worth doing on its own even if the proje
 site grants to a tool that has not yet demonstrated it understands the plant better than the
 spreadsheet does.
 
+**A second reconciliation belongs in this phase**, against the vendor tools rather than the wire.
+Wherever a ThingWorx, Kepware or Ignition holds its own copy of a governed model, read that copy
+back and compare it — read-only, same as the traffic side. It answers the question that decides
+whether any of this is vendor-independent in practice: *which copy is being hand-edited*. See
+[`ENTERPRISE.md` §13](ENTERPRISE.md#13-governed-model-vs-vendor-runtime), which is open, and note
+that some products will only ever support this direction and never a push.
+
 **This is also the first phase that needs code that does not exist.** Huginn reads its own
-`CommunicationPolicy` YAML and holds no reference to the governed registry.
+`CommunicationPolicy` YAML and holds no reference to the governed registry, and nothing reads a
+vendor's configuration back at all.
 
 ### 3 — Gate the change process, not the runtime
 
@@ -188,6 +196,7 @@ support: **this shortens the governance part of a site rollout, not the rollout.
 | Gap | Bites at | Status today |
 |---|---|---|
 | Huginn ↔ Bifrost seam, **including the surface mismatch** | phase 2, hard-blocks phase 4 | not built |
+| Vendor-side verification (governed model vs vendor's copy) | phase 2 | [row 13](ENTERPRISE.md#13-governed-model-vs-vendor-runtime): not built |
 | ~~Heimdall shadow / log-only mode~~ | phase 4 | **built** — `ENFORCEMENT_LOG_ONLY`, 10 tests |
 | Certificate expiry and key rotation | phase 4–5 | [axis 10](ENTERPRISE.md#the-board): open, no mechanism |
 

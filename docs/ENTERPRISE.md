@@ -38,15 +38,17 @@ it did.**
 | 5 | **Conduit inventory (IEC 62443 SR 6.2)** | **partial** | Huginn produces the *observed* list and reconciles it; frequency, ownership and non-TCP conduits are missing ([detail](#5-conduit-inventory)) |
 | 6 | **Identity lifecycle** | **deferred, with a path** | Trigger: the second site on real hardware, or the first certificate expiry ([detail](#6-identity-lifecycle)) |
 | 7 | **Supply chain / EU CRA** | **partial** | Ledger, provenance manifest and a CycloneDX SBOM exist; **no vulnerability-handling process, and the ledger does not reach the build** ([detail](#7-supply-chain-and-the-cra)) |
-| 8 | Brownfield vendor heterogeneity | **partial** | 3 `TemplateAdapter` implementations; the vendor-front gateway posture is designed, not built |
+| 8 | Brownfield vendor heterogeneity | **partial** | 3 `TemplateAdapter` implementations (inbound only — see row 13); the vendor-front gateway posture is designed, not built |
 | 9 | AAS alignment → conformance | **deferred** | Trigger: a customer asking for an IDTA submodel template by number |
 | 10 | Certificate expiry, key rotation | **open** | No mechanism. Trigger: any deployment that outlives its first certificate |
 | 11 | Audit query at scale | **measured** | `scripts/bench-ledger.sh` — growth is exactly 434 B/entry (645 signed); signature verification costs ~8× the chain walk, and anchoring is free on top of it ([detail](#11-audit-query-at-scale)) |
 | 12 | **Write-path exclusivity** | **open** | Nothing makes the governed edge the only way in. Trigger: any deployment where a second client can reach the server ([detail](#12-write-path-exclusivity)) |
+| 13 | **Governed model vs vendor runtime** | **open** | Adapters read a vendor's model *in*; nothing reads a vendor's live configuration *back* to check it still matches. Trigger: the first vendor tool that holds a second copy of a governed model — which is any real deployment ([detail](#13-governed-model-vs-vendor-runtime)) |
 
-Rows 5, 6, 7 and 12 carry this document. Rows 1–4 are the easy ones to write because they are
-done; on their own they would be a feature list. **Row 12 is the newest and the most load-bearing**:
-the rest of the board governs what passes through the edge, and row 12 is whether anything has to.
+Rows 5, 6 and 7 carry the engineering. **Rows 12 and 13 bound everything else on the board**, and
+both are open: row 12 is whether anything *has* to pass through the governed edge, and row 13 is
+whether the governed model is still the one the vendor tools are actually running. Rows 1–4 are the
+easy ones to write because they are done; on their own they would be a feature list.
 
 ---
 
@@ -389,6 +391,59 @@ governing it is the point — but it is not yet a boundary.
 
 ---
 
+## 13. Governed model vs vendor runtime
+
+A governed model is useless until it also exists inside the tools that run the plant — a
+ThingWorx template, a Kepware tag list, an Ignition UDT, a historian's tag set. Those are copies,
+and **whichever copy is hand-edited is the real source.** Today the `TemplateAdapter` port reads a
+vendor's model *in*; nothing reads a vendor's live configuration *back*. So in practice the
+vendor's copy is authored and the registry follows it, which is the opposite of the intent.
+
+Two directions close that, and they are not equally available.
+
+| | What it does | Needs | Availability |
+|---|---|---|---|
+| **Verify** | read the vendor's configuration, compare it to the governed definition, report divergence | read/export only | **anything that can export** |
+| **Project** | generate the vendor's configuration from the governed definition and push it | a write/config API | **product by product** |
+
+**Verify comes first, and not only because it is cheaper.** It is the direction that answers the
+question actually in doubt — *which side is currently authoritative* — and it needs no write
+access to a system somebody else operates, which is what makes it deployable early. Projection
+prevents divergence; verification finds it. The same relation as
+[§5](#5-conduit-inventory) one layer up: Huginn compares the declaration against the wire, this
+compares the declaration against the vendor's model store.
+
+### Why this is a dependency-inversion problem, not a connector list
+
+Some products will not accept a push at all — export-only, or an import that is a human clicking
+through a wizard. A design that assumes projection everywhere forces those products to be
+misrepresented as supported.
+
+The core therefore has to own the abstraction and stay ignorant of every vendor, exactly as
+`TemplateAdapter` already does on the inbound side: it takes a `JsonNode`, not an Ignition type,
+so `core` has no compile-time knowledge that Ignition exists. The outbound side needs the same
+inversion, with one addition that the inbound side did not need:
+
+**the port has to carry capability, not assume it.** Verification is the floor — anything that can
+emit its configuration can be checked. Projection is an extension that a connector declares only if
+the product genuinely supports it. A connector that cannot push says so, and the governed model
+degrades to *verified, manually applied* for that product rather than silently pretending.
+
+That degradation is a governance outcome, not a failure: a product that can only be verified is
+still governed, because divergence becomes a finding with an owner. It is weaker than projection
+and should be recorded as weaker — which is what this row exists to do.
+
+**Not built.** Neither direction exists today, the capability-bearing port does not exist, and no
+vendor API has been checked for what it actually exposes at which licence tier. That last point is
+the first task, not the last: the whole row is unbuildable if the products in scope turn out to be
+export-only, and it would be dishonest to design around an API nobody has confirmed.
+
+Row 8 is the neighbouring concern and a different one: it is about *ingesting* heterogeneous
+vendors at all. This row is about keeping the governed model and the vendor's copy in agreement
+once both exist.
+
+---
+
 ## Where this sits next to what shipped
 
 Broker-side governance arrived while this was being built. EMQX Enterprise 6.2 ships a UNS
@@ -455,6 +510,9 @@ experience, and says so.
   as scoped to the cooperating client until that is closed.
 - **Detection is not part of the enforcement, and its scope is the declaration.** Nothing here
   claims to see every write path in a plant, and a claim of that shape would not be governance.
+- **Vendor independence is a claim about the model, the authorization decision and the record —
+  not about the whole stack.** Connectivity, runtime, visualization and historian are bought.
+  And the claim is currently one-directional: row 13.
 
 ## How to falsify this document
 
