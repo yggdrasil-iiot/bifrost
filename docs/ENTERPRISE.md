@@ -43,7 +43,7 @@ it did.**
 | 10 | Certificate expiry, key rotation | **open** | No mechanism. Trigger: any deployment that outlives its first certificate |
 | 11 | Audit query at scale | **measured** | `scripts/bench-ledger.sh` — growth is exactly 434 B/entry (645 signed); signature verification costs ~8× the chain walk, and anchoring is free on top of it ([detail](#11-audit-query-at-scale)) |
 | 12 | **Write-path exclusivity** | **open** | Nothing makes the governed edge the only way in. Trigger: any deployment where a second client can reach the server ([detail](#12-write-path-exclusivity)) |
-| 13 | **Governed model vs vendor runtime** | **open** | Adapters read a vendor's model *in*; nothing reads a vendor's live configuration *back* to check it still matches. Trigger: the first vendor tool that holds a second copy of a governed model — which is any real deployment ([detail](#13-governed-model-vs-vendor-runtime)) |
+| 13 | **Governed model vs vendor runtime** | **open** | Adapters read a vendor's model *in*; nothing reads a vendor's live configuration *back*. Vendor APIs checked 2026-09-07: all three read and write, but Kepware and Ignition are per-object and ThingWorx is a whole-entity blob ([detail](#13-governed-model-vs-vendor-runtime)) |
 
 Rows 5, 6 and 7 carry the engineering. **Rows 12 and 13 bound everything else on the board**, and
 both are open: row 12 is whether anything *has* to pass through the governed edge, and row 13 is
@@ -413,30 +413,59 @@ prevents divergence; verification finds it. The same relation as
 [§5](#5-conduit-inventory) one layer up: Huginn compares the declaration against the wire, this
 compares the declaration against the vendor's model store.
 
+### What the three products actually expose
+
+Checked 2026-09-07 against vendor documentation, because designing this around an assumption
+would have been the wrong way round. **The assumption was wrong**: this section previously said
+some products would be export-only. All three have a programmatic path in both directions. The
+difference that matters is not *whether* you can write, it is **at what granularity**.
+
+| | Read the configuration back | Write it | Granularity |
+|---|---|---|---|
+| **Kepware** | Configuration API, HTTPS REST `GET` over channels / devices / tags | same API: add, modify, delete | **per object** |
+| **Ignition** | `GET /data/api/v1/tags/export?provider=X&type=json` (**8.3.2+**; absent in 8.3.0–8.3.1), or `system.tag.getConfiguration()` | `system.tag.configure()` — gateway scripting, including UDT definitions (`tagType: "UdtType"`); REST only if fronted by WebDev | **per object** |
+| **ThingWorx** | Composer import/export, or REST `Exporter` / `ExportDatabase`; XML or binary | upload a zip to a file repository, unzip, then `ImportSourceControlEntities` | **whole-entity blob** |
+
+Kepware is the cleanest of the three: PTC ships an official Python SDK for the Configuration API,
+and it covers `GET` / add / modify / delete across connectivity objects (project properties are
+get-and-modify only). Ignition splits the two directions across two mechanisms — read is REST on a
+recent enough gateway, write is scripting. ThingWorx has both directions but as an entity blob
+moved through a file repository, which is a materially different thing to reconcile against.
+
 ### Why this is a dependency-inversion problem, not a connector list
 
-Some products will not accept a push at all — export-only, or an import that is a human clicking
-through a wizard. A design that assumes projection everywhere forces those products to be
-misrepresented as supported.
-
-The core therefore has to own the abstraction and stay ignorant of every vendor, exactly as
+The core has to own the abstraction and stay ignorant of every vendor, exactly as
 `TemplateAdapter` already does on the inbound side: it takes a `JsonNode`, not an Ignition type,
 so `core` has no compile-time knowledge that Ignition exists. The outbound side needs the same
-inversion, with one addition that the inbound side did not need:
+inversion, with one addition the inbound side did not need — and the table above says what that
+addition has to carry.
 
-**the port has to carry capability, not assume it.** Verification is the floor — anything that can
-emit its configuration can be checked. Projection is an extension that a connector declares only if
-the product genuinely supports it. A connector that cannot push says so, and the governed model
-degrades to *verified, manually applied* for that product rather than silently pretending.
+**The port must express granularity, not just direction.** The naive flags (`canRead`, `canWrite`)
+would report all three products as fully supported and hide the only difference that changes how
+this is operated:
 
-That degradation is a governance outcome, not a failure: a product that can only be verified is
-still governed, because divergence becomes a finding with an owner. It is weaker than projection
-and should be recorded as weaker — which is what this row exists to do.
+- **Per-object** products can be reconciled incrementally. Divergence is reported per tag, and a
+  correction touches one object.
+- **Blob** products can only be reconciled by exporting the whole entity set and diffing it. There
+  is no per-object write, so a correction re-imports a set, and the smallest unit of both the
+  finding and the fix is much larger.
 
-**Not built.** Neither direction exists today, the capability-bearing port does not exist, and no
-vendor API has been checked for what it actually exposes at which licence tier. That last point is
-the first task, not the last: the whole row is unbuildable if the products in scope turn out to be
-export-only, and it would be dishonest to design around an API nobody has confirmed.
+A connector therefore declares read, write **and granularity**, and the core degrades what it
+promises accordingly: per-object reconciliation where it is available, whole-set comparison where
+it is not. Both are governance — divergence becomes a finding with an owner either way — but the
+blob case is weaker and has to be recorded as weaker, which is what this row exists to do.
+
+**Not built.** Neither direction exists in this codebase, and the capability-bearing port does not
+exist.
+
+**Still unverified, and it is the licence question.** None of the public documentation read here
+states whether the Configuration API, the Ignition export endpoint, or ThingWorx's import services
+are gated by edition, licence tier, or an administrator having to enable the service. PTC's own
+support pages refused automated retrieval, so the answer has to come from a licence document or a
+sales channel, and it is load-bearing: an API that exists but is not licensed in the tier a plant
+already owns is not available. Version gating *is* confirmed and is real on its own — the Ignition
+endpoint does not exist before 8.3.2, and several Kepware Configuration API capabilities require
+particular 6.x versions.
 
 Row 8 is the neighbouring concern and a different one: it is about *ingesting* heterogeneous
 vendors at all. This row is about keeping the governed model and the vendor's copy in agreement
@@ -521,6 +550,14 @@ fifteen need no broker at all. If a row's gate does not prove what the row claim
 wrong and should be reported as a bug in this document, not excused.
 
 ---
+
+*Vendor API findings in §13 (checked 2026-09-07):
+[Kepware Configuration API service](https://support.ptc.com/help/kepware/kepware_server/en/kepware/server/config-api-service.html) and
+[PTC's official Config API Python SDK](https://github.com/PTCInc/Kepware-ConfigAPI-SDK-Python);
+Ignition [8.3 OpenAPI tag/UDT export thread](https://forum.inductiveautomation.com/t/ignition-8-3-openapi-functionality-similar-to-tag-browser-export-for-tag-and-udt-json/113192)
+and [`system.tag.configure`](https://www.docs.inductiveautomation.com/docs/8.1/appendix/scripting-functions/system-tag/system-tag-configure);
+ThingWorx [manual import/export](https://support.ptc.com/help/thingworx/platform/r9/en/ThingWorx/Help/Getting_Started/ImportingandExportinginThingWorx/ManuallyImportingandExporting.html)
+and [automating entity import](https://community.ptc.com/t5/ThingWorx-Developers/Automated-Import-of-Project-Entities/td-p/755036).*
 
 *References for the external claims on this page: EU Cyber Resilience Act timeline
 ([EC](https://digital-strategy.ec.europa.eu/en/policies/cyber-resilience-act)); the CRA/62443
