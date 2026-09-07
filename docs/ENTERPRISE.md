@@ -14,6 +14,19 @@ the suites measured 352 tests in Bifrost and 242 in Huginn.
 
 ---
 
+## What is being governed, and what is not
+
+Governance here means one thing: **a declared boundary, enforced where traffic has to pass, with a
+record of who authorized what.** The scope is *chosen* — declaring something out of scope is a
+governance act, not a gap, provided the exclusion is written down rather than inherited from what a
+tool happens to decode.
+
+Observation is not part of the enforcement. It does two bounded jobs: it produces the enumeration a
+declaration is written from, and it tells you afterwards whether the topological assumption behind
+the declaration still holds. Its scope is the declaration's scope, not the plant's. **A programme
+whose success condition is "see every write path" can never finish, and would not be governance if
+it did.**
+
 ## The board
 
 | # | Axis | Status | Evidence, or the trigger that forces it |
@@ -29,9 +42,11 @@ the suites measured 352 tests in Bifrost and 242 in Huginn.
 | 9 | AAS alignment → conformance | **deferred** | Trigger: a customer asking for an IDTA submodel template by number |
 | 10 | Certificate expiry, key rotation | **open** | No mechanism. Trigger: any deployment that outlives its first certificate |
 | 11 | Audit query at scale | **measured** | `scripts/bench-ledger.sh` — growth is exactly 434 B/entry (645 signed); signature verification costs ~8× the chain walk, and anchoring is free on top of it ([detail](#11-audit-query-at-scale)) |
+| 12 | **Write-path exclusivity** | **open** | Nothing makes the governed edge the only way in. Trigger: any deployment where a second client can reach the server ([detail](#12-write-path-exclusivity)) |
 
-Rows 5, 6 and 7 carry this document. Rows 1–4 are the easy ones to write because they are done;
-on their own they would be a feature list.
+Rows 5, 6, 7 and 12 carry this document. Rows 1–4 are the easy ones to write because they are
+done; on their own they would be a feature list. **Row 12 is the newest and the most load-bearing**:
+the rest of the board governs what passes through the edge, and row 12 is whether anything has to.
 
 ---
 
@@ -75,13 +90,27 @@ model to train and no drift in the baseline, because there is no baseline.
   across three 4SICS captures), and responses are never counted as requests.
 - Coverage is reported next to violations, so "0 findings" cannot hide "we read almost nothing".
 
+**The register is not the deliverable — the declaration is.** Its job is to make a
+deny-by-default `CommunicationPolicy` writable, and afterwards to say whether that policy still
+matches the wire. That is what bounds it: enumeration ends when the declaration can be written, and
+reconciliation covers what the declaration covers. Completeness over the whole plant is neither
+achievable nor the objective.
+
+That distinction sharpens the gaps below rather than removing them. **A conduit deliberately placed
+out of scope is governed — by a written exclusion. A conduit that is invisible because nothing
+decodes it is not out of scope; it is unaccounted for**, and the two are indistinguishable in
+today's output.
+
 **What a real conduit register needs that Huginn does not yet produce:**
 - **Frequency.** A finding says a path exists, not how often it is used. An auditor's register
   wants both. The data is in the capture; the report does not aggregate it over time.
 - **Responsibility.** Who owns this conduit is not derivable from traffic. It has to come from
   the declaration side, which means `CommunicationPolicy` needs an owner field.
-- **Non-TCP conduits.** UDP, and anything not Modbus/TCP or S7comm, is counted as out of scope
-  rather than enumerated. A register that silently omits a protocol is worse than no register.
+- **Declared exclusions, distinct from blind spots.** UDP and anything that is not Modbus/TCP or
+  S7comm is counted as out of scope — but by the decoder's limits, not by anyone's decision.
+  `CommunicationPolicy` has no way to say *"this conduit is governed elsewhere, by change control"*,
+  which is a legitimate and common answer. Until it does, a deliberate exclusion and an
+  unaccounted-for path look identical in the report.
 - **S7comm-plus**, which is what S7-1200/1500 speak natively. Zero frames in the sample set, so
   there is nothing to verify an implementation against.
 - **Live capture.** Today it reads a pcap. The decode path is identical either way, but a
@@ -89,6 +118,8 @@ model to train and no drift in the baseline, because there is no baseline.
 
 **Trigger:** the first time this is used to answer an audit rather than to demonstrate a
 mechanism. That is when frequency and ownership stop being optional.
+
+---
 
 ---
 
@@ -323,6 +354,41 @@ server hardware rather than a laptop.
 
 ---
 
+## 12. Write-path exclusivity
+
+Every other row on the board governs what passes through the governed edge. This row is whether
+anything **has** to.
+
+Today, nothing does. The bundled OPC-UA server runs `AnonymousIdentityValidator` with
+`SecurityPolicy.None`, and the controlled nodes carry `UserAccessLevel = 3` — read and write, for
+anyone who can open a session. **Heimdall is therefore a chokepoint by convention, not by
+construction**: it governs the commands routed through it, and a second client writing the same
+node is not denied, because nothing is positioned to deny it.
+
+What closes it is mostly not code:
+
+- **Server-side write permission.** Only the governed identity may write the controlled nodes;
+  every other session is read-only. This is ordinary OPC-UA server configuration, and it is the
+  whole of the mechanism on that surface.
+- **A network position, for protocols that cannot authenticate.** Modbus/TCP has no identity at
+  all. There, exclusivity is not a setting but a topology — the device reachable only through a
+  gateway — which is what 62443 zones and conduits are for.
+- **The enumeration to know which paths to close**, which is [§5](#5-conduit-inventory). The two
+  are a cycle, not a sequence: you close what you enumerated, then re-observe to find what closing
+  it revealed.
+
+**This row is open rather than deferred because it is blocked on another open row.** An exclusive
+write identity is a certificate, and [§6](#6-identity-lifecycle)/row 10 have no rotation
+mechanism. That is the concrete reason row 10's trigger fires *inside* a rollout rather than after
+it (see [`ADOPTION.md`](ADOPTION.md)).
+
+The honest consequence is worth stating plainly, because it bounds every claim above it: **an edge
+in the path without an exclusive write credential governs the cooperating clients and nothing
+else.** That is still worth deploying — the plant's own tooling is the cooperating client, and
+governing it is the point — but it is not yet a boundary.
+
+---
+
 ## Where this sits next to what shipped
 
 Broker-side governance arrived while this was being built. EMQX Enterprise 6.2 ships a UNS
@@ -383,6 +449,12 @@ experience, and says so.
 - **Huginn is not wired to Bifrost.** It reads its own `CommunicationPolicy`; there is no
   reference to the governed registry in its code. Connecting them is the next real test of the
   seam, and it has not been taken.
+- **The edge is not an exclusive write path.** Row 12. Everything above governs the commands that
+  are routed through the edge; a client that writes the same node without going through it is not
+  denied, because nothing on this board is positioned to deny it. Read every enforcement claim here
+  as scoped to the cooperating client until that is closed.
+- **Detection is not part of the enforcement, and its scope is the declaration.** Nothing here
+  claims to see every write path in a plant, and a claim of that shape would not be governance.
 
 ## How to falsify this document
 

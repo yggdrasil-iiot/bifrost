@@ -54,10 +54,16 @@ same way.
 
 Take captures from a SPAN or TAP port and run Huginn. Declare nothing, block nothing.
 
-The output is **the observed list of communication paths** — the observed half of a 62443 conduit
-register. That matters for a non-technical reason: it makes the first step an artifact the
+The output is **the enumeration a declaration gets written from** — which paths exist, so that
+phase 1 can say deny-by-default and mean something. It doubles as the observed half of a 62443
+conduit register, which matters for a non-technical reason: it makes the first step an artifact the
 auditors already ask for, rather than a project premised on the site's process being wrong. There
 is very little to argue with.
+
+**The goal is a writable declaration, not a complete picture of the plant.** Paths that will be
+governed by change control or by segmentation instead should be written down as deliberate
+exclusions here, while it is cheap to say so. An exclusion someone decided is governed; a path
+nobody noticed is not.
 
 **Exit when new conduits stop appearing.** Shift patterns, the monthly batch and a maintenance
 window all have to happen at least once. If week four is still producing new paths, the duty cycle
@@ -128,8 +134,19 @@ readable from its log.
 **Narrow the scope to one edge.** `SPB_GROUP` and `SPB_EDGE` are per-edge, so the first deployment
 covers one line or one cell and the blast radius is that one.
 
-**Derive the initial policy from what phase 2 observed.** An allowlist built from the traffic that
-actually occurs **cannot deny anything on day one** — day-one refusal becomes structurally
+**Make the edge the only way in.** Until the controlled nodes are writable *only* by the governed
+identity, the edge governs the clients that choose to use it and nothing else — see
+[`ENTERPRISE.md` §12](ENTERPRISE.md#12-write-path-exclusivity), which is open, and which is where
+the certificate-lifecycle gap actually bites. An edge deployed without this is worth having, because
+the plant's own tooling is the client that matters, but it is not yet a boundary and should not be
+described as one.
+
+**Derive the initial policy from what phase 2 observed — after its findings are resolved.** This is
+the reason phase 2 is not skippable: an allowlist derived straight from observation encodes whatever
+bypass already exists *as a permission*, and a governed registry is a bad place to launder one. Every
+phase-2 discrepancy has to end as either a corrected model, a closed path, or a written exclusion
+before it becomes a rule. An allowlist built from the traffic that legitimately occurs
+**cannot deny anything on day one** — day-one refusal becomes structurally
 impossible rather than merely unlikely. Enforcement then arrives by **subtraction**: rules are
 removed one at a time, and each removal is a reviewable diff with a named approver, which is
 exactly what phase 3 built the machinery for.
