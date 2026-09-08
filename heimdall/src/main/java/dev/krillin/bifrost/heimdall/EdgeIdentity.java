@@ -1,7 +1,14 @@
 package dev.krillin.bifrost.heimdall;
 
+import java.io.ByteArrayInputStream;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.FileAttribute;
+import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.MessageDigest;
@@ -10,6 +17,8 @@ import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.time.Period;
+import java.util.EnumSet;
+import java.util.Set;
 
 import org.eclipse.milo.opcua.stack.core.util.SelfSignedCertificateBuilder;
 import org.eclipse.milo.opcua.stack.core.util.SelfSignedCertificateGenerator;
@@ -81,13 +90,13 @@ public final class EdgeIdentity {
 
     /** Load the identity in {@code dir}, generating and persisting one if it is not there yet. */
     public static EdgeIdentity loadOrCreate(Path dir, String applicationUri) throws Exception {
-        Files.createDirectories(dir);
+        createPrivateDirectory(dir);
         Path certPath = dir.resolve(CERT_FILE);
         Path keyPath = dir.resolve(KEY_FILE);
 
         if (Files.exists(certPath) && Files.exists(keyPath)) {
             X509Certificate cert = (X509Certificate) CertificateFactory.getInstance("X.509")
-                    .generateCertificate(new java.io.ByteArrayInputStream(Files.readAllBytes(certPath)));
+                    .generateCertificate(new ByteArrayInputStream(Files.readAllBytes(certPath)));
             PrivateKey priv = KeyFactory.getInstance("RSA")
                     .generatePrivate(new PKCS8EncodedKeySpec(Files.readAllBytes(keyPath)));
             return new EdgeIdentity(cert, new KeyPair(cert.getPublicKey(), priv), applicationUri);
@@ -105,8 +114,52 @@ public final class EdgeIdentity {
                 .setSignatureAlgorithm(SelfSignedCertificateBuilder.SA_SHA256_RSA)
                 .build();
 
-        Files.write(certPath, cert.getEncoded());
-        Files.write(keyPath, kp.getPrivate().getEncoded());
+        Files.write(certPath, cert.getEncoded());   // the certificate is public by design
+        writePrivateKey(keyPath, kp.getPrivate().getEncoded());
         return new EdgeIdentity(cert, kp, applicationUri);
+    }
+
+    /**
+     * Create the identity directory owner-only where the filesystem supports it.
+     *
+     * <p>This whole round is about the edge holding a credential no one else holds. A key file the
+     * rest of the machine can read is not that, so the permissions are part of the mechanism rather
+     * than hygiene around it.
+     */
+    private static void createPrivateDirectory(Path dir) throws Exception {
+        if (Files.exists(dir)) {
+            return;
+        }
+        try {
+            Files.createDirectories(dir, PosixFilePermissions.asFileAttribute(
+                    PosixFilePermissions.fromString("rwx------")));
+        } catch (UnsupportedOperationException notPosix) {
+            Files.createDirectories(dir);
+        }
+    }
+
+    /**
+     * Write the private key so only the owner can read it, and say so out loud when the filesystem
+     * cannot promise that.
+     *
+     * <p>{@code CREATE_NEW} with the mode as a file attribute means the key is never briefly
+     * world-readable between creation and a chmod. On a filesystem with no POSIX permissions —
+     * Windows, which is where this is developed — that guarantee cannot be made, and the honest
+     * response is to write the key and tell the operator the protection is the directory ACL's job,
+     * not to fall back silently and leave them believing otherwise.
+     */
+    private static void writePrivateKey(Path keyPath, byte[] pkcs8) throws Exception {
+        try {
+            FileAttribute<Set<PosixFilePermission>> ownerOnly = PosixFilePermissions.asFileAttribute(
+                    PosixFilePermissions.fromString("rw-------"));
+            try (FileChannel ch = FileChannel.open(keyPath,
+                    EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE), ownerOnly)) {
+                ch.write(ByteBuffer.wrap(pkcs8));
+            }
+        } catch (UnsupportedOperationException notPosix) {
+            Files.write(keyPath, pkcs8);
+            System.out.println("[BRIDGE] WARN: " + keyPath + " holds the edge's private key and this"
+                    + " filesystem does not support POSIX permissions - restrict access to it by ACL");
+        }
     }
 }
