@@ -353,8 +353,10 @@ public final class NcmdOpcUaBridgeMain {
         // path depend on the filesystem at command time.
         final dev.krillin.bifrost.core.identity.AuthorizedKeys keys =
                 dev.krillin.bifrost.core.identity.AuthorizedKeys.load(Path.of(config.registryPath()));
-        java.util.function.Function<String, java.security.PublicKey> trustAnchor =
-                name -> keys.forPrincipal(name).orElse(null);
+        // Every key the principal is registered with, not "its key": a rotation leaves a predecessor
+        // and a successor in the anchor at once, and an envelope carries no key id to choose between them.
+        java.util.function.Function<String, java.util.List<java.security.PublicKey>> trustAnchor =
+                keys::allForPrincipal;
         if (config.requireSignedCommand()) {
             System.out.println("[BRIDGE] REQUIRE_SIGNED_COMMAND on - every command must carry a verified"
                     + " sub/sig (trust anchor: " + config.registryPath() + "/identity/authorized-keys.jsonl)");

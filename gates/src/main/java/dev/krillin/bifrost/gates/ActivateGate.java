@@ -166,12 +166,13 @@ public final class ActivateGate {
         }
         dev.krillin.bifrost.core.identity.AuthorizedKeys authorized =
                 dev.krillin.bifrost.core.identity.AuthorizedKeys.load(reg);
-        // Refuse BEFORE minting. A second line for an already-registered principal makes AuthorizedKeys.load
-        // throw on a duplicate-principal-different-key, which stops every verification and the edge with it.
-        if (authorized.forPrincipal(principal).isPresent()) {
+        // Refuse BEFORE minting. A second key for a principal is a ROTATION, which has its own command
+        // and prints the retirement of the predecessor along with the successor; minting one here would
+        // leave two live duty keys with nothing recording that the first was meant to be replaced.
+        if (!authorized.allForPrincipal(principal).isEmpty()) {
             return refusedMint(List.of(new Violation("identity.principal.already-registered",
-                    "'" + principal + "' already has a key line; mint a new duty principal rather than"
-                    + " adding a second line for this one")));
+                    "'" + principal + "' already has a key line; mint a new duty principal, or run"
+                    + " 'identity rotate-key' to replace this one's key")));
         }
         // Four-eyes at mint time: each key file must bind to its claimed principal's REGISTERED key, and the
         // two must resolve to different keys. Identical discipline to a signed activation, reused verbatim.

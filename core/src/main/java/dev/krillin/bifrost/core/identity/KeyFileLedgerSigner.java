@@ -54,13 +54,13 @@ public final class KeyFileLedgerSigner implements LedgerSigner {
 
     /** The key file signs a probe that verifies under the principal's REGISTERED pubkey; else a violation. */
     private Optional<PublicKey> bindsToPrincipal(String principal, PrivateKey key, List<Violation> sink) {
-        Optional<PublicKey> reg = authorized.forPrincipal(principal);
-        if (reg.isEmpty() || !Ed25519Keys.verify(PROBE, Ed25519Keys.sign(PROBE, key), reg.get())) {
+        Optional<PublicKey> bound = authorized.verifying(principal, PROBE, Ed25519Keys.sign(PROBE, key));
+        if (bound.isEmpty()) {
             sink.add(new Violation("identity.key.principal-mismatch",
-                    "key file for '" + principal + "' does not match its registered public key (or principal not registered)"));
+                    "key file for '" + principal + "' does not match any of its registered public keys (or principal not registered)"));
             return Optional.empty();
         }
-        return reg;
+        return bound;
     }
 
     @Override public Signatures sign(String entryHash) {

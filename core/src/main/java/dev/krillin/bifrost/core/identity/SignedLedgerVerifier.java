@@ -67,13 +67,15 @@ public final class SignedLedgerVerifier {
             ActivationEvent e = en.event();
             if (en.activatorSig() == null || en.approverSig() == null)
                 return SignedVerdict.broken(i, "identity.sig.missing");
-            Optional<PublicKey> aKey = authorized.forPrincipal(e.activatedBy());
-            Optional<PublicKey> pKey = authorized.forPrincipal(e.approvedBy());
-            if (aKey.isEmpty() || pKey.isEmpty())
+            // A principal may hold several keys once rotation exists, and an entry carries no key id,
+            // so the question is which of its registered keys signed this -- not "its key".
+            if (authorized.allForPrincipal(e.activatedBy()).isEmpty()
+                    || authorized.allForPrincipal(e.approvedBy()).isEmpty())
                 return SignedVerdict.broken(i, "identity.key.unregistered");
             byte[] msg = en.entryHash().getBytes(StandardCharsets.UTF_8);
-            if (!Ed25519Keys.verify(msg, en.activatorSig(), aKey.get())
-                    || !Ed25519Keys.verify(msg, en.approverSig(), pKey.get()))
+            Optional<PublicKey> aKey = authorized.verifying(e.activatedBy(), msg, en.activatorSig());
+            Optional<PublicKey> pKey = authorized.verifying(e.approvedBy(), msg, en.approverSig());
+            if (aKey.isEmpty() || pKey.isEmpty())
                 return SignedVerdict.broken(i, "identity.sig.invalid");
             if (java.util.Arrays.equals(aKey.get().getEncoded(), pKey.get().getEncoded()))
                 return SignedVerdict.broken(i, "identity.four-eyes.same-key");
@@ -97,11 +99,10 @@ public final class SignedLedgerVerifier {
             return SignedVerdict.broken(-1, "identity.head.tail-mismatch");
         if (head.seq() != hist.size() - 1)
             return SignedVerdict.broken(-1, "identity.head.seq-mismatch");
-        Optional<PublicKey> hKey = authorized.forPrincipal(head.signedBy());
         // head.signedBy need NOT equal the tail approver (spec §4.7) — only must be registered
         byte[] hp = SignedHeadStore.preimage(head.target(), head.seq(), head.tailEntryHash())
                 .getBytes(StandardCharsets.UTF_8);
-        if (hKey.isEmpty() || !Ed25519Keys.verify(hp, head.sig(), hKey.get()))
+        if (authorized.verifying(head.signedBy(), hp, head.sig()).isEmpty())
             return SignedVerdict.broken(-1, "identity.head.sig-invalid");
         return SignedVerdict.whole();
     }
@@ -132,12 +133,12 @@ public final class SignedLedgerVerifier {
         SignedHead head = heads.read(target).orElseThrow();
         if (head.coSignedBy() == null || head.coSig() == null)
             return SignedVerdict.broken(-1, "identity.head.four-eyes.missing");
-        Optional<PublicKey> coKey = authorized.forPrincipal(head.coSignedBy());
         byte[] hp = SignedHeadStore.preimage(head.target(), head.seq(), head.tailEntryHash())
                 .getBytes(StandardCharsets.UTF_8);
-        if (coKey.isEmpty() || !Ed25519Keys.verify(hp, head.coSig(), coKey.get()))
+        Optional<PublicKey> coKey = authorized.verifying(head.coSignedBy(), hp, head.coSig());
+        if (coKey.isEmpty())
             return SignedVerdict.broken(-1, "identity.head.four-eyes.invalid");
-        Optional<PublicKey> primary = authorized.forPrincipal(head.signedBy());
+        Optional<PublicKey> primary = authorized.verifying(head.signedBy(), hp, head.sig());
         if (primary.isPresent() && java.util.Arrays.equals(primary.get().getEncoded(), coKey.get().getEncoded()))
             return SignedVerdict.broken(-1, "identity.head.four-eyes.same-key");
         return SignedVerdict.whole();
