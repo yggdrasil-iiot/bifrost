@@ -49,6 +49,10 @@ EDGE_A="recipe-edge"
 RPM_NODE="ns=2;s=Recipe/Rpm"
 GOOD_VALUE="1500.0"
 ROGUE_VALUE="4242.0"      # distinct from GOOD_VALUE on purpose: see X2
+# X4 publishes through the EDGE, so its value must be one the edge policy ALLOWS. ROGUE_VALUE is
+# above Rpm's max of 3000, so using it here made X4 green because ②conformance denied the command
+# before OPC-UA was ever reached - nothing to do with the certificate. In range and distinct.
+X4_VALUE="1600.0"
 
 command -v docker >/dev/null 2>&1 || { echo "[GATE] FAIL: docker not found on PATH"; exit 1; }
 
@@ -234,14 +238,20 @@ kill_by_jvmarg "heimdall.gate=X1"
 sleep 3
 start_edge X4 "$EDGE_BAD_LOG" "$(cygpath -m "$(pwd)/$PKI_BAD")" 9091 \
   || fail "X4 the untrusted edge did not reach ready (it must start, then be refused by the server)"
+# THE assertion for the identity validator. Without it, X4 proves only what X2 already proves —
+# that the write filter denies the write — because the filter stops this edge even when the server
+# has accepted its certificate. Bad_IdentityTokenRejected is the server refusing at the IDENTITY
+# layer, by name, and it is the only thing here that tests the thumbprint predicate.
+wait_line "$EDGE_BAD_LOG" "Bad_IdentityTokenRejected" 15 \
+  || fail "X4 the server did not reject the untrusted certificate - it was accepted, and only the write filter stopped it"
 BEFORE="$(apply_count "$RPM_NODE" "$EDGE_BAD_LOG")"
-pub "$RPM_NODE" "$ROGUE_VALUE"
+pub "$RPM_NODE" "$X4_VALUE"
 sleep 12
 [ "$(apply_count "$RPM_NODE" "$EDGE_BAD_LOG")" = "$BEFORE" ] \
   || fail "X4 an edge with an untrusted certificate APPLIED a command"
-grep -q "\[SIM\] SET $RPM_NODE = $ROGUE_VALUE" "$SIM_SEC_LOG" \
+grep -q "\[SIM\] SET $RPM_NODE = $X4_VALUE" "$SIM_SEC_LOG" \
   && fail "X4 the sim witnessed a value from the untrusted edge"
-echo "[GATE] X4 OK: the untrusted certificate applied nothing"
+echo "[GATE] X4 OK: certificate rejected at the identity layer, and nothing applied"
 
 echo ""
 echo "[GATE] PASS run-write-exclusivity-gate.sh"
