@@ -77,6 +77,13 @@ public final class SignedLedgerVerifier {
             Optional<PublicKey> pKey = authorized.verifying(e.approvedBy(), msg, en.approverSig());
             if (aKey.isEmpty() || pKey.isEmpty())
                 return SignedVerdict.broken(i, "identity.sig.invalid");
+            // Four-eyes has always been enforced on KEYS, but what it means is two PEOPLE. Once a
+            // principal may hold several keys, key-distinctness stops implying person-distinctness:
+            // one person could sign both legs with two keys of their own and pass a key-only check.
+            // So both must hold, and the principal check is named separately -- an operator reading
+            // "same-key" for what is actually one person signing twice would look for the wrong fault.
+            if (e.activatedBy() != null && e.activatedBy().equals(e.approvedBy()))
+                return SignedVerdict.broken(i, "identity.four-eyes.same-principal");
             if (java.util.Arrays.equals(aKey.get().getEncoded(), pKey.get().getEncoded()))
                 return SignedVerdict.broken(i, "identity.four-eyes.same-key");
         }
@@ -138,6 +145,9 @@ public final class SignedLedgerVerifier {
         Optional<PublicKey> coKey = authorized.verifying(head.coSignedBy(), hp, head.coSig());
         if (coKey.isEmpty())
             return SignedVerdict.broken(-1, "identity.head.four-eyes.invalid");
+        // Same reasoning as the per-entry check above: two keys held by one person are not two people.
+        if (head.signedBy() != null && head.signedBy().equals(head.coSignedBy()))
+            return SignedVerdict.broken(-1, "identity.head.four-eyes.same-principal");
         Optional<PublicKey> primary = authorized.verifying(head.signedBy(), hp, head.sig());
         if (primary.isPresent() && java.util.Arrays.equals(primary.get().getEncoded(), coKey.get().getEncoded()))
             return SignedVerdict.broken(-1, "identity.head.four-eyes.same-key");
