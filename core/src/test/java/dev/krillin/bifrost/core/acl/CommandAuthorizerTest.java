@@ -15,6 +15,9 @@ class CommandAuthorizerTest {
     private CommandRequest req(String command, Object value, String type) {
         return new CommandRequest(gw3, command, value, type);
     }
+    private CommandRequest req(String command, Object value, String type, String subject) {
+        return new CommandRequest(gw3, command, value, type, subject);
+    }
 
     // trigger-only commands (no constraint)
     @Test void noConstraint_trueValue_allows() {
@@ -98,5 +101,47 @@ class CommandAuthorizerTest {
                 new Rule("second","eng",gw3,"Setpoint/Rpm", new Constraint("Double",0.0,3000.0)));
         // 1500 is blocked by the first rule (max=10) -> DENY, proving the second rule is never reached
         assertFalse(auth.authorize(p, req("Setpoint/Rpm", 1500.0, "Double")).allowed());
+    }
+
+    // ----- R1: the subject, when one is asserted -----
+
+    @Test void subject_matching_rule_principal_is_allowed() {
+        CommandPolicy p = policy(new Rule("r1","ops",gw3,"Setpoint/Rpm", new Constraint("Double",0.0,3000.0)));
+        assertTrue(auth.authorize(p, req("Setpoint/Rpm", 1500.0, "Double", "ops")).allowed());
+    }
+
+    @Test void subject_not_matching_rule_principal_is_denied() {
+        CommandPolicy p = policy(new Rule("r1","ops",gw3,"Setpoint/Rpm", new Constraint("Double",0.0,3000.0)));
+        Decision d = auth.authorize(p, req("Setpoint/Rpm", 1500.0, "Double", "eng"));
+        assertFalse(d.allowed());
+        assertTrue(d.reason().startsWith("principal-mismatch"), d.reason());
+    }
+
+    /**
+     * The reason travels to the NDATA response as well as the ops log, on a broker this design's own
+     * premise says authenticates nobody. Naming the authorized principal there would hand an
+     * unauthenticated prober the answer for every rule.
+     */
+    @Test void principal_mismatch_does_not_name_the_authorized_principal() {
+        CommandPolicy p = policy(new Rule("r1","ops",gw3,"Setpoint/Rpm", new Constraint("Double",0.0,3000.0)));
+        String reason = auth.authorize(p, req("Setpoint/Rpm", 1500.0, "Double", "eng")).reason();
+        assertFalse(reason.contains("ops"), "leaks the authorized principal: " + reason);
+        assertTrue(reason.contains("r1"), "should still identify the rule: " + reason);
+    }
+
+    /**
+     * Backward compatibility, and load-bearing: every pre-R1 caller passes no subject. Null means
+     * "not asserted", NOT "anonymous is fine" - REQUIRE_SIGNED_COMMAND is what makes an unasserted
+     * subject impossible, and it refuses outright rather than through the bridge's refuse(), which
+     * log-only would shadow.
+     */
+    @Test void no_subject_means_the_principal_is_not_checked() {
+        CommandPolicy p = policy(new Rule("r1","ops",gw3,"Setpoint/Rpm", new Constraint("Double",0.0,3000.0)));
+        assertTrue(auth.authorize(p, req("Setpoint/Rpm", 1500.0, "Double")).allowed());
+    }
+
+    @Test void a_wildcard_rule_principal_admits_any_subject() {
+        CommandPolicy p = policy(new Rule("r1","*",gw3,"Setpoint/Rpm", new Constraint("Double",0.0,3000.0)));
+        assertTrue(auth.authorize(p, req("Setpoint/Rpm", 1500.0, "Double", "anyone")).allowed());
     }
 }
