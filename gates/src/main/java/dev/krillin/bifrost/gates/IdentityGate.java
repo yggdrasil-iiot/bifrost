@@ -17,6 +17,9 @@ import java.util.*;
 /** Identity gate. Subcommands:
  *   keygen <principal> --out <dir>   generate an Ed25519 keypair; write <principal>.key (PKCS8 b64) and
  *                                    <principal>.pub (X.509 b64); print the authorized-keys.jsonl line.
+ *   rotate-key <reg> <principal> --out <dir> [--retire-at <instant>]
+ *                                    mint a successor key and print the replacement block for that
+ *                                    principal: every existing line retired, plus the successor.
  *   verify-signed <reg> <target>     full authenticated verification (0 intact / 1 broken / 2 usage).  (Task 11)
  *   verify-anchored <reg> <target> [--anchor-store file|git] [--anchor-dir <dir>]
  *                                    TrustLevel.ANCHORED: verify-signed + external-anchor cross-check
@@ -26,10 +29,16 @@ public final class IdentityGate {
     public static void main(String[] args) { System.exit(run(args)); }
 
     public static int run(String[] args) {
+        return run(args, java.time.Clock.systemUTC());
+    }
+
+    /** Clock-injected: a retirement stamp that could only be tested by sleeping would not be tested. */
+    public static int run(String[] args, java.time.Clock clock) {
         if (args.length == 0) { usage(); return 2; }
         try {
             switch (args[0]) {
                 case "keygen": return keygen(Arrays.copyOfRange(args, 1, args.length));
+                case "rotate-key": return rotateKey(Arrays.copyOfRange(args, 1, args.length), clock);
                 case "verify-signed": return verifySigned(Arrays.copyOfRange(args, 1, args.length));
                 case "verify-anchored": return verifyAnchored(Arrays.copyOfRange(args, 1, args.length));
                 case "authorize": return authorize(Arrays.copyOfRange(args, 1, args.length));
@@ -166,5 +175,88 @@ public final class IdentityGate {
         return 1;
     }
 
-    private static void usage() { System.err.println("Usage: identity <keygen|verify-signed|verify-anchored|authorize> ..."); }
+    private static final String ROTATE_USAGE =
+            "Usage: identity rotate-key <reg> <principal> --out <dir> [--retire-at <instant>]";
+
+    /**
+     * Mint a successor signing key for a principal and print the replacement block for it.
+     *
+     * <p>It PRINTS rather than edits, like {@code activation duty-key-mint}: the trust anchor is the
+     * one file whose change control is deliberately out-of-band, and a CLI that rewrites it silently
+     * is the wrong tool. What it prints is the WHOLE principal -- every existing line re-emitted with
+     * a retirement stamp, plus the successor -- so the operator replaces a contiguous region instead
+     * of hand-editing JSON under time pressure, and cannot end up with the predecessor still live or,
+     * far worse, deleted.
+     *
+     * <p>Deleting a predecessor is the landmine {@code ADOPTION.md} names: SignedLedgerVerifier
+     * resolves every historical entry against this file, so a removed line turns entries that key
+     * signed years ago into identity.key.unregistered, permanently, on an append-only ledger.
+     */
+    private static int rotateKey(String[] a, java.time.Clock clock) throws Exception {
+        String out = null, retireAt = null;
+        java.util.List<String> pos = new java.util.ArrayList<>();
+        for (int i = 0; i < a.length; i++) {
+            switch (a[i]) {
+                case "--out" -> out = (++i < a.length) ? a[i] : null;
+                case "--retire-at" -> retireAt = (++i < a.length) ? a[i] : null;
+                default -> pos.add(a[i]);
+            }
+        }
+        if (pos.size() < 2 || out == null) { System.err.println(ROTATE_USAGE); return 2; }
+        Path reg = Path.of(pos.get(0));
+        String principal = pos.get(1);
+        if (!isSafePrincipal(principal)) {
+            System.err.println("[GATE] rotate-key: invalid principal (allowed [A-Za-z0-9_.-], 1-64): " + principal);
+            return 2;
+        }
+        java.time.Instant at;
+        try {
+            at = retireAt == null ? clock.instant() : java.time.Instant.parse(retireAt);
+        } catch (java.time.format.DateTimeParseException bad) {
+            System.err.println("[GATE] rotate-key: --retire-at must be an ISO-8601 instant"
+                    + " (e.g. 2026-12-25T00:00:00Z), got: " + retireAt);
+            return 2;
+        }
+        var authorized = dev.krillin.bifrost.core.identity.AuthorizedKeys.load(reg);
+        java.util.List<dev.krillin.bifrost.core.identity.AuthorizedKey> existing =
+                authorized.declaredFor(principal);
+        // Rotation REPLACES a key; it does not enrol a principal. Minting for an unregistered name here
+        // would print a block retiring nothing, which reads like a rotation and is an enrolment.
+        if (existing.isEmpty()) {
+            System.out.println("[GATE] REFUSED:");
+            System.out.println("  - [identity.principal.not-registered] '" + principal
+                    + "' has no key line to rotate; use 'identity keygen' to enrol a new principal");
+            return 1;
+        }
+        Path dir = Path.of(out);
+        String pub = writeKeyPair(principal, dir);
+        System.err.println("[GATE] rotate-key principal=" + principal + " retire-at=" + at
+                + " -> " + dir.resolve(principal + ".key") + " , " + dir.resolve(principal + ".pub"));
+
+        System.out.println("[GATE] rotate-key principal=" + principal + " => MINTED (retire-at " + at + ")");
+        System.out.println("Replace every line for '" + principal + "' in "
+                + reg.resolve("identity").resolve("authorized-keys.jsonl") + " with exactly these:");
+        com.fasterxml.jackson.databind.ObjectMapper mapper =
+                dev.krillin.bifrost.core.schema.JsonMapperFactory.create();
+        for (dev.krillin.bifrost.core.identity.AuthorizedKey k : existing) {
+            // An earlier retirement stamp is history and is NOT rewritten; only a still-open key closes now.
+            java.time.Instant close = k.notAfter() != null ? k.notAfter() : at;
+            System.out.println(mapper.writeValueAsString(
+                    new dev.krillin.bifrost.core.identity.AuthorizedKey(
+                            k.principal(), k.publicKey(), k.notBefore(), close)));
+        }
+        System.out.println(mapper.writeValueAsString(
+                new dev.krillin.bifrost.core.identity.AuthorizedKey(principal, pub, at, null)));
+        System.out.println("Do NOT delete the retired lines. They still verify every entry they signed,"
+                + " and the ledger is append-only: removing one breaks that target permanently and the"
+                + " edge bound to it refuses to start.");
+        System.out.println("Retiring a key is not revoking it. The predecessor can no longer SIGN after "
+                + at + "; it can still authenticate what it already signed, which is the point.");
+        return 0;
+    }
+
+    private static void usage() {
+        System.err.println("Usage: identity <keygen|rotate-key|verify-signed|verify-anchored|authorize> ...");
+        System.err.println("       " + ROTATE_USAGE);
+    }
 }
