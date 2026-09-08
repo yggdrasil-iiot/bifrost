@@ -214,16 +214,28 @@ public final class OpcUaApplier implements Applier {
      * endpoint instead would defeat the entire round.
      */
     private OpcUaClient createGoverned() throws Exception {
-        return OpcUaClient.create(
-                endpoint,
-                endpoints -> endpoints.stream().filter(OpcUaApplier::isSecure).findFirst(),
-                transport -> { },
-                cfg -> cfg
-                        .setApplicationUri(identity.applicationUri())
-                        .setCertificate(identity.certificate())
-                        .setKeyPair(identity.keyPair())
-                        .setIdentityProvider(new X509IdentityProvider(
-                                identity.certificate(), identity.keyPair().getPrivate())));
+        try {
+            return OpcUaClient.create(
+                    endpoint,
+                    endpoints -> endpoints.stream().filter(OpcUaApplier::isSecure).findFirst(),
+                    transport -> { },
+                    cfg -> cfg
+                            .setApplicationUri(identity.applicationUri())
+                            .setCertificate(identity.certificate())
+                            .setKeyPair(identity.keyPair())
+                            .setIdentityProvider(new X509IdentityProvider(
+                                    identity.certificate(), identity.keyPair().getPrivate())));
+        } catch (Exception e) {
+            // Decided behaviour, not a fallback. When no secure endpoint is offered, the edge
+            // REFUSES rather than quietly using the anonymous one: an edge holding an identity and
+            // not presenting it is the exact defect this round exists to remove, and it would look
+            // green in every log. Milo's own message for "no endpoint matched" is opaque and reads
+            // like the server is down, when in fact the server is up and offering nothing secure.
+            throw new PlantUnreachableException(
+                    "no Basic256Sha256/SignAndEncrypt endpoint at " + endpoint
+                            + "; an identity is configured so the anonymous endpoint is deliberately"
+                            + " not used (" + e.getMessage() + ")", e);
+        }
     }
 
     /** Mark the session dead so the next command reconnects instead of inheriting a dead client. */

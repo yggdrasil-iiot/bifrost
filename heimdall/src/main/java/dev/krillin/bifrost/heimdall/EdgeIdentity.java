@@ -120,6 +120,23 @@ public final class EdgeIdentity {
     }
 
     /**
+     * {@code java -cp bifrost-heimdall.jar …EdgeIdentity --print-thumbprint <dir> <applicationUri>}
+     * — generate the identity if absent, then print only its thumbprint.
+     *
+     * <p>Exists for the write-exclusivity gate, which has to start the SERVER already trusting the
+     * client's thumbprint. Without this the gate would have to start the edge first against a
+     * server that is not up, scrape its log, then start the server — which works only because the
+     * edge tolerates a down plant, and leans on a reconnect backoff for no reason.
+     */
+    public static void main(String[] args) throws Exception {
+        if (args.length != 3 || !"--print-thumbprint".equals(args[0])) {
+            System.err.println("usage: EdgeIdentity --print-thumbprint <dir> <applicationUri>");
+            System.exit(2);
+        }
+        System.out.println(loadOrCreate(Path.of(args[1]), args[2]).thumbprint());
+    }
+
+    /**
      * Create the identity directory owner-only where the filesystem supports it.
      *
      * <p>This whole round is about the edge holding a credential no one else holds. A key file the
@@ -158,7 +175,9 @@ public final class EdgeIdentity {
             }
         } catch (UnsupportedOperationException notPosix) {
             Files.write(keyPath, pkcs8);
-            System.out.println("[BRIDGE] WARN: " + keyPath + " holds the edge's private key and this"
+            // stderr, not stdout: --print-thumbprint's stdout is captured by the gate and a warning
+            // mixed into it would be read as part of the thumbprint.
+            System.err.println("[BRIDGE] WARN: " + keyPath + " holds the edge's private key and this"
                     + " filesystem does not support POSIX permissions - restrict access to it by ACL");
         }
     }
