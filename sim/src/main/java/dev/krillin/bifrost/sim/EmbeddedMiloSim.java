@@ -1,5 +1,8 @@
 package dev.krillin.bifrost.sim;
 
+import java.security.KeyPair;
+import java.security.cert.X509Certificate;
+import java.time.Period;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -11,6 +14,7 @@ import org.eclipse.milo.opcua.sdk.server.ManagedNamespaceWithLifecycle;
 import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
 import org.eclipse.milo.opcua.sdk.server.OpcUaServerConfig;
 import org.eclipse.milo.opcua.sdk.server.identity.AnonymousIdentityValidator;
+import org.eclipse.milo.opcua.sdk.server.identity.X509IdentityValidator;
 import org.eclipse.milo.opcua.sdk.server.items.DataItem;
 import org.eclipse.milo.opcua.sdk.server.items.MonitoredItem;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaObjectNode;
@@ -18,10 +22,17 @@ import org.eclipse.milo.opcua.sdk.server.nodes.UaObjectTypeNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaVariableNode;
 import org.eclipse.milo.opcua.stack.core.AttributeId;
 import org.eclipse.milo.opcua.stack.core.Identifiers;
+import org.eclipse.milo.opcua.stack.core.security.CertificateGroup;
+import org.eclipse.milo.opcua.stack.core.security.CertificateValidator;
+import org.eclipse.milo.opcua.stack.core.security.DefaultApplicationGroup;
 import org.eclipse.milo.opcua.stack.core.security.DefaultCertificateManager;
+import org.eclipse.milo.opcua.stack.core.security.MemoryCertificateStore;
 import org.eclipse.milo.opcua.stack.core.security.MemoryCertificateQuarantine;
+import org.eclipse.milo.opcua.stack.core.security.MemoryTrustListManager;
+import org.eclipse.milo.opcua.stack.core.security.RsaSha256CertificateFactory;
 import org.eclipse.milo.opcua.stack.core.security.SecurityPolicy;
 import org.eclipse.milo.opcua.stack.core.transport.TransportProfile;
+import org.eclipse.milo.opcua.stack.core.util.SelfSignedCertificateBuilder;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DataValue;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DateTime;
 import org.eclipse.milo.opcua.stack.core.types.builtin.ExtensionObject;
@@ -60,18 +71,77 @@ final class EmbeddedMiloSim implements AutoCloseable {
 
     private final int bindPort;
     private final String bindHost;
+
+    /**
+     * R3: add a Basic256Sha256/SignAndEncrypt endpoint requiring the governed X.509 identity, and
+     * make the controlled nodes read-only for every other session. Default OFF, so every gate that
+     * predates this still exercises the anonymous endpoint it was written against.
+     */
+    private final boolean requireIdentity;
+    private final String governedThumbprint;
+
     private OpcUaServer server;
     private SimNamespace namespace;
 
     EmbeddedMiloSim() { this(BIND_PORT, DEFAULT_BIND_HOST); }
 
-    EmbeddedMiloSim(int bindPort, String bindHost) {
+    EmbeddedMiloSim(int bindPort, String bindHost) { this(bindPort, bindHost, false, null); }
+
+    EmbeddedMiloSim(int bindPort, String bindHost, boolean requireIdentity, String governedThumbprint) {
         this.bindPort = bindPort;
         this.bindHost = bindHost;
+        this.requireIdentity = requireIdentity;
+        this.governedThumbprint = governedThumbprint;
     }
 
     int bindPort() { return bindPort; }
     String bindHost() { return bindHost; }
+
+    /**
+     * The certificate group a Basic256Sha256 endpoint requires. The sim previously had none at all
+     * — {@code DefaultCertificateManager} was built with an empty group list because
+     * SecurityPolicy.None never consults it.
+     *
+     * <p><b>The validator here is deliberately insecure, and the reason matters.</b> It validates
+     * INCOMING CLIENT APPLICATION certificates, before any user token is examined. A strict
+     * validator over an empty trust list would reject the governed edge's secure channel before its
+     * X.509 user token was ever looked at — the write-exclusivity gate would fail for a reason that
+     * has nothing to do with identity, and its untrusted-certificate leg would pass for a reason
+     * that has nothing to do with the thumbprint. Accepting the application certificate and letting
+     * the thumbprint predicate be the decision keeps the gate measuring the thing it names.
+     *
+     * <p>It is also exactly axis 10's gap: real trust needs a populated trust list, which is the
+     * same missing PKI that has no rotation and no revocation.
+     */
+    private CertificateGroup securityGroup() throws Exception {
+        return DefaultApplicationGroup.createAndInitialize(
+                new MemoryTrustListManager(),
+                new MemoryCertificateStore(),
+                new RsaSha256CertificateFactory() {
+                    @Override
+                    protected X509Certificate[] createRsaSha256CertificateChain(KeyPair keyPair) throws Exception {
+                        return new X509Certificate[] {
+                            new SelfSignedCertificateBuilder(keyPair)
+                                    .setCommonName("Bifrost OPC-UA Sim")
+                                    .setOrganization("yggdrasil-iiot")
+                                    .setApplicationUri("urn:bifrost:opcua:sim-server")
+                                    .setValidityPeriod(Period.ofYears(2))
+                                    .setSignatureAlgorithm(SelfSignedCertificateBuilder.SA_SHA256_RSA)
+                                    .build()
+                        };
+                    }
+                },
+                new CertificateValidator.InsecureCertificateValidator());
+    }
+
+    /** The server's own certificate out of the group, for the secured endpoint to present. */
+    private static X509Certificate serverCertificate(CertificateGroup group) throws Exception {
+        NodeId typeId = group.getSupportedCertificateTypeIds().get(0);
+        X509Certificate[] chain = group.getCertificateChain(typeId)
+                .orElseThrow(() -> new IllegalStateException(
+                        "certificate group produced no chain for " + typeId));
+        return chain[0];
+    }
 
     EmbeddedMiloSim start() throws Exception {
         EndpointConfig endpointConfig = EndpointConfig.newBuilder()
@@ -85,22 +155,59 @@ final class EmbeddedMiloSim implements AutoCloseable {
                 .addTokenPolicies(new UserTokenPolicy("anonymous", UserTokenType.Anonymous, null, null, null))
                 .build();
 
-        // No security policy is actually exercised (SecurityPolicy.None / anonymous-only), but the
-        // config builder still wants a CertificateManager — an in-memory, no-cert-groups instance is
-        // sufficient since it is never consulted for this endpoint.
-        DefaultCertificateManager certificateManager =
-                new DefaultCertificateManager(new MemoryCertificateQuarantine(), List.of());
+        // The anonymous endpoint above stays even when identity is required: a plant needs
+        // read-only clients (historians, HMIs) and locking them out is not what write-path
+        // exclusivity means. Only the WRITE bit moves, via GovernedWriteFilter.
+        Set<EndpointConfig> endpoints = new LinkedHashSet<>();
+        endpoints.add(endpointConfig);
+
+        // Built before the secured endpoint because the endpoint itself needs the certificate:
+        // EndpointConfig.Builder.build() throws "security requires certificate" without it. Holding
+        // it in the CertificateManager alone is not enough.
+        CertificateGroup group = requireIdentity ? securityGroup() : null;
+
+        // Without identity: an in-memory, NO-cert-groups manager is enough, because SecurityPolicy
+        // .None never consults it. With identity: a Basic256Sha256 endpoint means the server must
+        // hold its own key material, which needs a real certificate group.
+        DefaultCertificateManager certificateManager = requireIdentity
+                ? new DefaultCertificateManager(new MemoryCertificateQuarantine(), List.of(group))
+                : new DefaultCertificateManager(new MemoryCertificateQuarantine(), List.of());
+
+        if (requireIdentity) {
+            endpoints.add(EndpointConfig.newBuilder()
+                    .setTransportProfile(TransportProfile.TCP_UASC_UABINARY)
+                    .setBindAddress(bindHost)
+                    .setBindPort(bindPort)
+                    .setHostname(bindHost)
+                    .setPath("")
+                    .setSecurityPolicy(SecurityPolicy.Basic256Sha256)
+                    .setSecurityMode(MessageSecurityMode.SignAndEncrypt)
+                    .setCertificate(serverCertificate(group))
+                    // A null securityPolicyUri makes AbstractX509IdentityValidator fall back to the
+                    // channel's policy, which is what we want on a Basic256Sha256 endpoint.
+                    .addTokenPolicies(new UserTokenPolicy("x509", UserTokenType.Certificate, null, null, null))
+                    .build());
+        }
 
         OpcUaServerConfig serverConfig = OpcUaServerConfig.builder()
                 .setApplicationUri("urn:bifrost:opcua:sim-server")
                 .setApplicationName(LocalizedText.english("Bifrost OPC-UA Sim"))
                 .setProductUri("urn:bifrost:opcua:sim-server")
-                .setEndpoints(Set.of(endpointConfig))
+                .setEndpoints(endpoints)
                 .setBuildInfo(new BuildInfo(
                         "urn:bifrost:opcua:sim-server", "krillin", "bifrost opc-ua sim",
                         "0.1.0", "", DateTime.now()))
                 .setCertificateManager(certificateManager)
-                .setIdentityValidator(AnonymousIdentityValidator.INSTANCE)
+                // The thumbprint predicate is the whole authorization decision for the secured
+                // endpoint. It fails closed on an unconfigured thumbprint, matching
+                // GovernedWriteFilter: "require an identity" with no identity named must mean
+                // nobody, never everybody.
+                .setIdentityValidator(requireIdentity
+                        ? new X509IdentityValidator(cert -> governedThumbprint != null
+                                && !governedThumbprint.isBlank()
+                                && governedThumbprint.trim().equalsIgnoreCase(
+                                        GovernedWriteFilter.thumbprintOf(cert)))
+                        : AnonymousIdentityValidator.INSTANCE)
                 .build();
 
         server = new OpcUaServer(serverConfig, transportProfile -> {
@@ -111,10 +218,17 @@ final class EmbeddedMiloSim implements AutoCloseable {
         // Pre-register the namespace URI so the custom namespace gets index 2 deterministically
         // (index 0 = OPC-UA foundation, index 1 = server application URI).
         server.getNamespaceTable().add(NAMESPACE_URI);
-        namespace = new SimNamespace(server);
+        namespace = new SimNamespace(server, requireIdentity ? new GovernedWriteFilter(governedThumbprint) : null);
         namespace.startup();
         server.startup().get(30, TimeUnit.SECONDS);
 
+        if (requireIdentity) {
+            // Printed only AFTER startup succeeds. OpcUaServer logs a failed endpoint bind as a
+            // WARN and carries on, so without this line the sim would announce itself as listening
+            // while offering no secured endpoint at all, and the gate would test nothing.
+            System.out.println("[SIM] secured endpoint Basic256Sha256/SignAndEncrypt, governed thumbprint "
+                    + governedThumbprint);
+        }
         return this;
     }
 
@@ -140,9 +254,35 @@ final class EmbeddedMiloSim implements AutoCloseable {
      */
     static final class SimNamespace extends ManagedNamespaceWithLifecycle {
 
-        SimNamespace(OpcUaServer server) {
+        /** Null when identity is not required, in which case the nodes keep UserAccessLevel 3. */
+        private final GovernedWriteFilter writeFilter;
+
+        SimNamespace(OpcUaServer server, GovernedWriteFilter writeFilter) {
             super(server, NAMESPACE_URI);
+            this.writeFilter = writeFilter;
             getLifecycleManager().addStartupTask(this::createNodes);
+        }
+
+        /**
+         * Put the controlled nodes behind the governed-write filter.
+         *
+         * <p>The set is every node a client can WRITE and that matters to the governed model:
+         * Rpm and Temp are the setpoints, ApplyRecipe is the activate trigger
+         * {@code OpcUaApplier.call()} fires, ApplyDone is the equipment's confirmation, and
+         * WeldCurrent is the second line's setpoint. <b>ApplyRecipe is the one that is easy to
+         * forget and the worst to miss</b>: an anonymous client able to fire a recipe apply, while
+         * the project claims write-path exclusivity, is a hole in the claim itself. ApplyDone is
+         * included for the mirror-image reason — writing it fakes a confirmation.
+         *
+         * <p>Running needs nothing: {@code typeMember} already builds it at access level 1.
+         */
+        private void govern(UaVariableNode... nodes) {
+            if (writeFilter == null) {
+                return;
+            }
+            for (UaVariableNode n : nodes) {
+                n.getFilterChain().addFirst(writeFilter);
+            }
         }
 
         private void createNodes() {
@@ -172,7 +312,8 @@ final class EmbeddedMiloSim implements AutoCloseable {
             // is the DONE flag the sim owns. Heimdall's OpcUaApplier.call() writes ApplyRecipe=true,
             // polls ApplyDone until true (confirm), then writes ApplyRecipe=false to release/rearm.
             UaVariableNode applyDone = makeBooleanNode("Recipe/ApplyDone", "ApplyDone", false);
-            makeBooleanNode("Recipe/ApplyRecipe", "ApplyRecipe", false)
+            UaVariableNode applyRecipe = makeBooleanNode("Recipe/ApplyRecipe", "ApplyRecipe", false);
+            applyRecipe
                     .addAttributeObserver((node, attributeId, value) -> {
                         if (attributeId == AttributeId.Value) {
                             Object v = value instanceof DataValue dv && dv.getValue() != null
@@ -188,6 +329,9 @@ final class EmbeddedMiloSim implements AutoCloseable {
             createMixerInstance();
 
             UaVariableNode weldCurrent = makeDoubleNode("Weld/WeldCurrent", "WeldCurrent", 0.0);
+            // Every client-writable node that matters to the governed model. See govern()'s javadoc
+            // for why ApplyRecipe and ApplyDone are in this list and Running is not.
+            govern(rpm, temp, applyRecipe, applyDone, weldCurrent);
             weldCurrent.addAttributeObserver((node, attributeId, value) -> {
                 if (attributeId == AttributeId.Value) {
                     Object v = value instanceof DataValue dv && dv.getValue() != null

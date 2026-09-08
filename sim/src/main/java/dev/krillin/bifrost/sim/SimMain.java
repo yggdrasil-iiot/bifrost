@@ -14,7 +14,8 @@ public final class SimMain {
     public static void main(String[] args) throws Exception {
         int port = resolvePort(System.getenv());
         String host = resolveHost(System.getenv());
-        EmbeddedMiloSim sim = new EmbeddedMiloSim(port, host).start();
+        EmbeddedMiloSim sim = new EmbeddedMiloSim(port, host,
+                resolveRequireIdentity(System.getenv()), resolveGovernedThumbprint(System.getenv())).start();
         Runtime.getRuntime().addShutdownHook(new Thread(sim::close));
 
         // The gate waits for the substring "OPC-UA sim listening" — keep this line stable.
@@ -31,6 +32,37 @@ public final class SimMain {
     static String resolveHost(Map<String, String> env) {
         String v = env.get("SIM_BIND_HOST");
         return (v == null || v.isBlank()) ? EmbeddedMiloSim.DEFAULT_BIND_HOST : v.trim();
+    }
+
+    /**
+     * {@code SIM_REQUIRE_IDENTITY} — add a Basic256Sha256/SignAndEncrypt endpoint that requires the
+     * governed X.509 identity, and make the controlled nodes read-only for everyone else.
+     *
+     * <p>Default OFF, and that matters: every gate written before this existed runs against the
+     * anonymous endpoint, and they stay meaningful only because this round adds a capability rather
+     * than changing the posture. An unrecognised value falls OFF with a loud warning, matching
+     * heimdall's {@code flag()} — a typo in a security toggle must not silently mean "off".
+     */
+    static boolean resolveRequireIdentity(Map<String, String> env) {
+        String v = env.get("SIM_REQUIRE_IDENTITY");
+        if (v == null || v.isBlank()) {
+            return false;
+        }
+        String t = v.trim();
+        if ("on".equalsIgnoreCase(t) || "true".equalsIgnoreCase(t) || "1".equals(t)) {
+            return true;
+        }
+        if (!("off".equalsIgnoreCase(t) || "false".equalsIgnoreCase(t) || "0".equals(t))) {
+            System.err.println("[SIM] WARN: SIM_REQUIRE_IDENTITY='" + v
+                    + "' not recognized - treating as OFF. Use true/on/1 or false/off/0.");
+        }
+        return false;
+    }
+
+    /** {@code SIM_GOVERNED_THUMBPRINT} — the one certificate thumbprint permitted to write. */
+    static String resolveGovernedThumbprint(Map<String, String> env) {
+        String v = env.get("SIM_GOVERNED_THUMBPRINT");
+        return (v == null || v.isBlank()) ? null : v.trim();
     }
 
     private SimMain() {}

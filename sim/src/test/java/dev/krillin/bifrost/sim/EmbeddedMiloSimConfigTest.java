@@ -27,4 +27,25 @@ class EmbeddedMiloSimConfigTest {
         assertEquals("localhost", SimMain.resolveHost(Map.of()));
         assertEquals("127.0.0.1", SimMain.resolveHost(Map.of("SIM_BIND_HOST", "127.0.0.1")));
     }
+
+    // ----- R3: the two security toggles, which must not be the only untested ones -----
+
+    @Test void simMain_requireIdentity_defaultsOff() {
+        assertFalse(SimMain.resolveRequireIdentity(Map.of()));
+        assertTrue(SimMain.resolveRequireIdentity(Map.of("SIM_REQUIRE_IDENTITY", "on")));
+        assertTrue(SimMain.resolveRequireIdentity(Map.of("SIM_REQUIRE_IDENTITY", "true")));
+        assertTrue(SimMain.resolveRequireIdentity(Map.of("SIM_REQUIRE_IDENTITY", "1")));
+        assertFalse(SimMain.resolveRequireIdentity(Map.of("SIM_REQUIRE_IDENTITY", "off")));
+    }
+
+    /** A typo must not silently mean "off" without saying so — same rule as heimdall's flag(). */
+    @Test void simMain_requireIdentity_unrecognisedFallsOff() {
+        assertFalse(SimMain.resolveRequireIdentity(Map.of("SIM_REQUIRE_IDENTITY", "yes-please")));
+    }
+
+    @Test void simMain_resolvesGovernedThumbprint() {
+        assertNull(SimMain.resolveGovernedThumbprint(Map.of()));
+        assertNull(SimMain.resolveGovernedThumbprint(Map.of("SIM_GOVERNED_THUMBPRINT", "   ")));
+        assertEquals("aabb", SimMain.resolveGovernedThumbprint(Map.of("SIM_GOVERNED_THUMBPRINT", " aabb ")));
+    }
 }
