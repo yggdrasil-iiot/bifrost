@@ -9,8 +9,8 @@ are deliberately deferred, and which are open** — for the Yggdrasil spine as a
 proves it. A row marked *deferred* must name the concrete trigger that would force the work.
 A row with neither is a wish, and wishes do not belong here.
 
-Evidence dates from **2026-09-08**, when all 18 gates were last run green (Docker 26.1.4) and
-the suites measured 425 tests in Bifrost and 242 in Huginn.
+Evidence dates from **2026-09-08**, when all 19 gates were last run green (Docker 26.1.4) and
+the suites measured 451 tests in Bifrost and 242 in Huginn.
 
 ---
 
@@ -42,14 +42,14 @@ what is and is not answered; read the rows for why.
 | 1 | Multi-site authority, site specialization | **built** | `run-federation-gate.sh` F1 · `run-template-conformance-gate.sh` (site ⊨ enterprise, 3 adapters ≡ native) |
 | 2 | Governance propagation to a site | **built, with a boundary** | F2 — `git pull`, then effective at that site's **next Heimdall restart** ([why](#2-propagation-is-restart-scoped-on-purpose)) |
 | 3 | Site keeps running while disconnected | **built** | F4 — offline serving, reconcile on reconnect |
-| 4 | Tamper-evidence, insider rollback | **built** | LN1–LN4 · I1–I7 · AN1–AN8 · F5 (cross-domain anchor) |
+| 4 | Tamper-evidence, insider rollback | **built** | LN1–LN4 · I1–I7 · AN1–AN8 · F5 (cross-domain anchor) — that is the **activation** ledger, at T7. The **command** ledger added in `run-command-ledger-gate.sh` D1–D8 is chained only, so it is **T4 for commands: an edit, a mid-list deletion or a reorder is caught; truncation is not** |
 | 5 | **Conduit inventory (IEC 62443 SR 6.2)** | **partial** | Huginn produces the *observed* list and reconciles it; frequency, ownership and non-TCP conduits are missing ([detail](#5-conduit-inventory)) |
 | 6 | **Identity lifecycle** | **deferred, with a path** | Trigger: the second site on real hardware, or the first certificate expiry ([detail](#6-identity-lifecycle)) |
 | 7 | **Supply chain / EU CRA** | **partial** | Ledger, provenance manifest and a CycloneDX SBOM exist; **no vulnerability-handling process, and the ledger does not reach the build** ([detail](#7-supply-chain-and-the-cra)) |
 | 8 | Brownfield vendor heterogeneity | **partial** | 3 `TemplateAdapter` implementations (inbound only — see row 13); the vendor-front gateway posture is designed, not built |
 | 9 | AAS alignment → conformance | **deferred** | Trigger: a customer asking for an IDTA submodel template by number |
 | 10 | Certificate expiry, key rotation | **open** | No mechanism. Trigger: any deployment that outlives its first certificate |
-| 11 | Audit query at scale | **measured** | `scripts/bench-ledger.sh` — growth is exactly 434 B/entry (645 signed); signature verification costs ~8× the chain walk, and anchoring is free on top of it ([detail](#11-audit-query-at-scale)) |
+| 11 | Audit query at scale | **measured** | `scripts/bench-ledger.sh` — growth is exactly 434 B/entry (645 signed); signature verification costs ~8× the chain walk, and anchoring is free on top of it ([detail](#11-audit-query-at-scale)). **Those numbers are for the activation ledger at roughly ten events a day. The command ledger is a different volume class — two entries per applied command — and is unmeasured** |
 | 12 | **Write-path exclusivity** | **partial** | `run-write-exclusivity-gate.sh` X1–X6 — the edge presents an X.509 identity and a server told to require it refuses a second client's write with `Bad_UserAccessDenied` while still serving its reads. Proved against the bundled sim on the OPC-UA surface only; **Modbus is untouched, and a plant's own server still has to be configured** ([detail](#12-write-path-exclusivity)) |
 | 13 | **Governed model vs vendor runtime** | **open** | Adapters read a vendor's model *in*; nothing reads a vendor's live configuration *back*. Vendor APIs checked 2026-09-07: all three read and write, but Kepware and Ignition are per-object and ThingWorx is a whole-entity blob ([detail](#13-governed-model-vs-vendor-runtime)) |
 
@@ -566,9 +566,23 @@ experience, and says so.
   which is a caller and an output where there was neither. No broker enforces it: `hivemq-ce` is the
   shared broker for twelve gates and runs an allow-all extension deliberately, and the projected
   entries carry no MQTT username mapping.
-- **Commands still leave no tamper-evident record.** The verified subject reaches a log line and the
-  NDATA response. `NcmdOpcUaBridge` holds no ledger reference, so the ladder that makes model
-  activation auditable does not yet cover the commands that move the plant.
+- **Commands leave a chained record, at T4 and no higher — and the limits are specific.** The edge
+  writes an **intent** entry before the applier touches the plant and an **outcome** entry after,
+  because `applied` is only knowable once the plant has already moved; `run-command-ledger-gate.sh`
+  proves both, and with `REQUIRE_COMMAND_LEDGER` on a command whose intent cannot be written is
+  refused before the applier runs. What the chain catches is an edit, a mid-list deletion or a
+  reorder. **It does not catch truncation**: deleting the last N entries leaves genesis, every
+  self-hash and every prev-link satisfied, and that is the cheap attack rather than the expensive
+  one. Nothing signs the entries, so a segment can also be rewritten end to end. Closing either
+  needs the signed head and external anchor the activation ladder has and this does not.
+- **The command record names a requester only with `REQUIRE_SIGNED_COMMAND` on, and that bar is off
+  by default.** In a default deployment it is a tamper-evident record of *what was decided*, not of
+  *who asked* — which is half of the sentence at the top of this document, not all of it.
+- **Three more things the command ledger does not cover.** An overloaded edge refuses without an
+  entry, because that refusal happens on the broker callback thread where a blocking append does not
+  belong. Reads leave nothing, by the same boundary that keeps them out of authorization. And the
+  requester gets no receipt: the NDATA response carries no entry hash, so nobody outside the edge
+  can check their command was recorded. Growth is unmeasured and retention unsolved.
 - **F5's rollback resistance is topological, not cryptographic.** It holds because the enterprise
   anchor lives in a repository the site never rewrites. Real closure needs a tamper-resistant
   off-box witness.
@@ -593,7 +607,7 @@ experience, and says so.
 ## How to falsify this document
 
 Every *built* row above names a script. Clone, run it, and read the exit code — five of the
-eighteen need no broker at all. If a row's gate does not prove what the row claims, the row is
+nineteen need no broker at all. If a row's gate does not prove what the row claims, the row is
 wrong and should be reported as a bug in this document, not excused.
 
 ---

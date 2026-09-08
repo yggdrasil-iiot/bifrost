@@ -170,6 +170,17 @@ container in `heimdall/Dockerfile` is built but exercised by no gate.
 **Narrow the scope to one edge.** `SPB_GROUP` and `SPB_EDGE` are per-edge, so the first deployment
 covers one line or one cell and the blast radius is that one.
 
+**Record what the edge did.** `COMMAND_LEDGER_PATH` makes the edge write a chained record of every
+command: an intent entry before the applier touches the plant, an outcome entry after. With
+`REQUIRE_COMMAND_LEDGER` on, a command whose intent cannot be written is refused before the applier
+runs — so a phase-4 edge cannot move the plant unrecorded. Like the other bars it is opt-in and
+reversible by a restart, and like the signature bar it is **not** shadowed by log-only.
+
+**What it is worth planning around.** The chain catches an edit, a mid-list deletion or a reorder;
+it does **not** catch truncation, and nothing signs the entries. Two entries per applied command is
+a different volume class from the activation ledger, and neither growth nor retention has been
+measured — decide the archival story before this runs for a year.
+
 **Know which operator issued the command.** `REQUIRE_SIGNED_COMMAND` makes the edge verify an
 Ed25519 envelope on every write command and match it against the principal the rule names, so
 "which operator issued this setpoint" has an answer. Opt-in and off by default, like the other bars

@@ -15,12 +15,16 @@ import org.eclipse.tahu.message.model.PropertyValue;
 import org.eclipse.tahu.message.model.SparkplugBPayload;
 import org.eclipse.tahu.message.model.SparkplugBPayload.SparkplugBPayloadBuilder;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.security.KeyPair;
 import java.security.PublicKey;
 
 import dev.krillin.bifrost.core.acl.AclMapperFactory;
 import dev.krillin.bifrost.core.acl.CommandEnvelope;
+import dev.krillin.bifrost.core.command.CommandChain;
+import dev.krillin.bifrost.core.command.CommandLedger;
+import dev.krillin.bifrost.core.command.CommandLedgerEntry;
 import dev.krillin.bifrost.core.acl.CommandPolicy;
 import dev.krillin.bifrost.core.acl.Constraint;
 import dev.krillin.bifrost.core.acl.Rule;
@@ -234,6 +238,117 @@ class NcmdOpcUaBridgeTest {
         assertFalse(fake.writeCalled, "an above-envelope write must NOT reach the applier");
         assertFalse(r.ok());
         assertTrue(r.detail().contains("above-max"), r.detail());
+    }
+
+    // ----- R2: the command ledger -----
+
+    private CommandLedger ledgerAt(java.nio.file.Path dir) {
+        return new CommandLedger(dir, java.time.Clock.systemUTC());
+    }
+
+    private NcmdOpcUaBridge recording(Applier applier, CommandLedger ledger, boolean logOnly,
+                                      boolean requireLedger) throws Exception {
+        return new NcmdOpcUaBridge(GROUP, EDGE, policy(), applier, null, null, null, logOnly,
+                new EdgeHealth(), 4, 64, false, 64, null, ledger, requireLedger);
+    }
+
+    private java.util.List<CommandLedgerEntry> entries(CommandLedger l) throws Exception {
+        return l.readCurrent(GROUP, EDGE);
+    }
+
+    @Test void an_applied_command_leaves_intent_then_outcome(@TempDir java.nio.file.Path dir) throws Exception {
+        CommandLedger l = ledgerAt(dir);
+        NcmdResponse r = recording(new FakeApplier(), l, false, false).handle(NCMD_TOPIC,
+                cmd("l-1", "write", "ns=2;s=Recipe/Rpm", 1500.0, MetricDataType.Double, null, null));
+        assertTrue(r.ok());
+        var es = entries(l);
+        assertEquals(2, es.size(), "an applied command is two facts, not one");
+        assertEquals("intent", es.get(0).event().phase());
+        assertEquals("pending", es.get(0).event().outcome());
+        assertEquals("outcome", es.get(1).event().phase());
+        assertEquals("applied", es.get(1).event().outcome());
+        assertTrue(CommandChain.verify(es, CommandChain.GENESIS).intact());
+    }
+
+    @Test void a_denied_command_leaves_one_entry(@TempDir java.nio.file.Path dir) throws Exception {
+        CommandLedger l = ledgerAt(dir);
+        NcmdResponse r = recording(new FakeApplier(), l, false, false).handle(NCMD_TOPIC,
+                cmd("l-2", "write", "ns=2;s=Nope", 1.0, MetricDataType.Double, null, null));
+        assertFalse(r.ok());
+        var es = entries(l);
+        assertEquals(1, es.size(), "a refusal never reaches the applier, so there is no outcome");
+        assertEquals("denied", es.get(0).event().outcome());
+    }
+
+    /**
+     * Log-only makes a command BOTH would-denied and applied — they are not alternatives. Two
+     * entries carry both facts, which is what actually happened.
+     */
+    @Test void a_log_only_shadowed_command_records_the_reason_and_the_apply(@TempDir java.nio.file.Path dir)
+            throws Exception {
+        CommandLedger l = ledgerAt(dir);
+        FakeApplier fake = new FakeApplier();
+        NcmdResponse r = recording(fake, l, true, false).handle(NCMD_TOPIC,
+                cmd("l-3", "write", "ns=2;s=Nope", 1.0, MetricDataType.Double, null, null));
+        assertTrue(r.ok(), "log-only applies what it would have denied");
+        assertTrue(fake.writeCalled);
+        var es = entries(l);
+        assertEquals(2, es.size());
+        assertEquals("intent", es.get(0).event().phase());
+        assertNotNull(es.get(0).event().reason(), "the intent must carry the would-deny reason");
+        assertEquals("applied", es.get(1).event().outcome());
+    }
+
+    /**
+     * THE guarantee this round buys: with the bar on, a command whose intent cannot be recorded is
+     * refused and the plant is never touched. The applier must not have been called.
+     */
+    @Test void an_unwritable_ledger_refuses_before_the_applier(@TempDir java.nio.file.Path dir) throws Exception {
+        // Occupy the directory path the segment needs with a regular file, so createDirectories
+        // fails on every platform - chmod on a directory does not reliably deny a JVM on Windows.
+        java.nio.file.Path blocked = dir.resolve("blocked");
+        java.nio.file.Files.writeString(blocked, "not a directory");
+        CommandLedger l = new CommandLedger(blocked, java.time.Clock.systemUTC());
+        FakeApplier fake = new FakeApplier();
+        NcmdResponse r = recording(fake, l, false, true).handle(NCMD_TOPIC,
+                cmd("l-4", "write", "ns=2;s=Recipe/Rpm", 1500.0, MetricDataType.Double, null, null));
+        assertFalse(r.ok());
+        assertTrue(r.detail().contains("command.ledger.unwritable"), r.detail());
+        assertFalse(fake.writeCalled, "the plant was touched without a record");
+    }
+
+    /** Same reasoning as R1's bar: log-only inverts verdicts, and this is not a verdict. */
+    @Test void an_unwritable_ledger_plus_log_only_still_refuses(@TempDir java.nio.file.Path dir) throws Exception {
+        java.nio.file.Path blocked = dir.resolve("blocked");
+        java.nio.file.Files.writeString(blocked, "not a directory");
+        FakeApplier fake = new FakeApplier();
+        NcmdResponse r = recording(fake, new CommandLedger(blocked, java.time.Clock.systemUTC()), true, true)
+                .handle(NCMD_TOPIC,
+                        cmd("l-5", "write", "ns=2;s=Recipe/Rpm", 1500.0, MetricDataType.Double, null, null));
+        assertFalse(r.ok(), "log-only must not shadow an unwritable ledger: " + r.detail());
+        assertFalse(fake.writeCalled);
+    }
+
+    /** Bar off: the same unwritable ledger applies the command, proving the refusal is the bar's. */
+    @Test void an_unwritable_ledger_with_the_bar_off_still_applies(@TempDir java.nio.file.Path dir)
+            throws Exception {
+        java.nio.file.Path blocked = dir.resolve("blocked");
+        java.nio.file.Files.writeString(blocked, "not a directory");
+        FakeApplier fake = new FakeApplier();
+        NcmdResponse r = recording(fake, new CommandLedger(blocked, java.time.Clock.systemUTC()), false, false)
+                .handle(NCMD_TOPIC,
+                        cmd("l-6", "write", "ns=2;s=Recipe/Rpm", 1500.0, MetricDataType.Double, null, null));
+        assertTrue(r.ok(), r.detail());
+        assertTrue(fake.writeCalled);
+    }
+
+    /** No ledger configured is the pre-R2 path, byte for byte. */
+    @Test void no_ledger_configured_changes_nothing() throws Exception {
+        FakeApplier fake = new FakeApplier();
+        NcmdResponse r = bridge(fake).handle(NCMD_TOPIC,
+                cmd("l-7", "write", "ns=2;s=Recipe/Rpm", 1500.0, MetricDataType.Double, null, null));
+        assertTrue(r.ok());
+        assertTrue(fake.writeCalled);
     }
 
     // ----- R1: the signature bar -----

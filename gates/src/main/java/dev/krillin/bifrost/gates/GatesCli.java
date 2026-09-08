@@ -4,7 +4,7 @@ import java.util.Arrays;
 
 /**
  * Single dispatcher entrypoint for the Bifrost CI gate CLIs.
- * Usage: gates &lt;schema|spec|template|adapt-template|policy|provenance|activate|active|activation-log|activation|identity|federation|acl-project&gt; &lt;args...&gt;
+ * Usage: gates &lt;schema|spec|template|adapt-template|policy|provenance|activate|active|activation-log|activation|identity|federation|acl-project|command-log&gt; &lt;args...&gt;
  */
 public final class GatesCli {
 
@@ -12,7 +12,7 @@ public final class GatesCli {
 
     public static int run(String[] args) {
         if (args.length == 0) {
-            System.err.println("Usage: gates <schema|spec|template|adapt-template|policy|provenance|activate|active|activation-log|activation|identity|federation|acl-project> <args...>");
+            System.err.println("Usage: gates <schema|spec|template|adapt-template|policy|provenance|activate|active|activation-log|activation|identity|federation|acl-project|command-log> <args...>");
             return 2;
         }
         String sub = args[0];
@@ -40,6 +40,8 @@ public final class GatesCli {
                 return IdentityGate.run(rest);
             case "acl-project":
                 return AclProjectGate.run(rest);
+            case "command-log":
+                return CommandLogGate.run(rest);
             case "federation":
                 return FederationGate.run(rest);
             default:

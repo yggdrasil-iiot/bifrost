@@ -35,6 +35,9 @@ import dev.krillin.bifrost.core.schema.UdtDefinition;
  *
  *   REQUIRE_SIGNED_COMMAND false     (every NCMD must carry a verified sub/sig; not shadowed by log-only)
  *   HEIMDALL_REPLAY_WINDOW 1024      (recently-seen command ids kept for replay refusal)
+ *
+ *   COMMAND_LEDGER_PATH    (unset)   (root of the chained command record; unset = no record)
+ *   REQUIRE_COMMAND_LEDGER false     (an unwritable INTENT entry refuses the command)
  * </pre>
  *
  * Run: {@code mvn -q compile exec:java -Dexec.mainClass=dev.krillin.bifrost.heimdall.NcmdOpcUaBridgeMain}
@@ -55,7 +58,8 @@ public final class NcmdOpcUaBridgeMain {
                   String registryPath, String conformancePath, String activationPath, String activationTarget,
                   boolean requireSignedActivation, boolean requireAnchoredActivation, String anchorStore,
                   String anchorDir, boolean enforcementLogOnly, int healthPort, int applyThreads, String identityDir,
-                  boolean requireSignedCommand, int replayWindow) {}
+                  boolean requireSignedCommand, int replayWindow,
+                  String commandLedgerPath, boolean requireCommandLedger) {}
 
     /**
      * Tri-state flag parse shared by every boolean env toggle. {@code true/on/1} and {@code false/off/0}
@@ -101,9 +105,12 @@ public final class NcmdOpcUaBridgeMain {
         String identityDir = env(getenv, "HEIMDALL_IDENTITY_DIR", null);
         boolean requireSignedCommand = flag(getenv, "REQUIRE_SIGNED_COMMAND", "");
         int replayWindow = intEnv(getenv, "HEIMDALL_REPLAY_WINDOW", 1024);
+        String commandLedgerPath = env(getenv, "COMMAND_LEDGER_PATH", null);
+        boolean requireCommandLedger = flag(getenv, "REQUIRE_COMMAND_LEDGER", "");
         return new Config(broker, opcua, group, edge, policyPath, registryPath, conformancePath, activationPath,
                 activationTarget, requireSignedEffective, requireAnchored, anchorStore, anchorDir, logOnly,
-                healthPort, applyThreads, identityDir, requireSignedCommand, replayWindow);
+                healthPort, applyThreads, identityDir, requireSignedCommand, replayWindow,
+                commandLedgerPath, requireCommandLedger);
     }
 
     /**
@@ -330,6 +337,14 @@ public final class NcmdOpcUaBridgeMain {
                     + " sub/sig (trust anchor: " + config.registryPath() + "/identity/authorized-keys.jsonl)");
         }
 
+        dev.krillin.bifrost.core.command.CommandLedger commandLedger = null;
+        if (config.commandLedgerPath() != null && !config.commandLedgerPath().isBlank()) {
+            commandLedger = new dev.krillin.bifrost.core.command.CommandLedger(
+                    Path.of(config.commandLedgerPath()), java.time.Clock.systemUTC());
+            System.out.println("[BRIDGE] command ledger at " + config.commandLedgerPath()
+                    + (config.requireCommandLedger() ? " (REQUIRED: an unwritable entry refuses)" : ""));
+        }
+
         OpcUaApplier applier = new OpcUaApplier(config.opcua(), health, identity);
         try {
             applier.connect();
@@ -342,7 +357,8 @@ public final class NcmdOpcUaBridgeMain {
         NcmdOpcUaBridge bridge = new NcmdOpcUaBridge(config.group(), config.edge(), policy, applier,
                 conformance.def(), conformance.policy(), conformance.recipe(), config.enforcementLogOnly(),
                 health, config.applyThreads(), 64,
-                config.requireSignedCommand(), config.replayWindow(), trustAnchor);
+                config.requireSignedCommand(), config.replayWindow(), trustAnchor,
+                commandLedger, config.requireCommandLedger());
         health.startHttp(config.healthPort());
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             try {
