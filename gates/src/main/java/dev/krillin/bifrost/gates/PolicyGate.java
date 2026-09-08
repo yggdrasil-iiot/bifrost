@@ -64,6 +64,15 @@ public final class PolicyGate {
             if (c == null && "*".equals(r.target().group()) && "*".equals(r.target().edge())) {
                 v.add("[lint-4] over-grant (group=* edge=* with no constraint): rule " + r.id());
             }
+            // A rule with no principal (or "*") admits EVERY signed principal once the edge is
+            // matching on it. Without this check the command-identity enforcement is one missing
+            // JSON key away from nothing, and the key is easy to leave out because it was inert
+            // for as long as CommandAuthorizer ignored the field.
+            if (r.principal() == null || r.principal().isBlank() || "*".equals(r.principal())) {
+                v.add("[lint-5] rule must name a principal (got "
+                        + (r.principal() == null ? "none" : "\"" + r.principal() + "\"")
+                        + "): rule " + r.id());
+            }
         }
         return v;
     }

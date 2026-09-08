@@ -62,6 +62,28 @@ class PolicyGateTest {
         assertEquals(1, PolicyGate.run(new String[]{ write(d,"p.json",bad).toString() }));
     }
 
+    // ----- R1: principal is load-bearing now, so a rule without one must not lint clean -----
+
+    /**
+     * Once CommandAuthorizer matches Rule.principal, a rule that omits it admits every SIGNED
+     * principal — the new enforcement would be one missing JSON key away from nothing, and until
+     * now nothing checked for it.
+     */
+    @Test void missingPrincipal_returnsOne(@TempDir Path d) throws Exception {
+        String bad = """
+            {"version":"1.0.0","rules":[
+              {"id":"x","target":{"group":"Acme:Busan:Press","edge":"L1:GW3"},
+               "command":"Node Control/Rebirth"}
+            ],"default":"deny"}""";
+        assertEquals(1, PolicyGate.run(new String[]{ write(d,"p.json",bad).toString() }));
+    }
+
+    /** A wildcard principal is the same fail-open written out loud. */
+    @Test void wildcardPrincipal_returnsOne(@TempDir Path d) throws Exception {
+        String bad = GOOD.replace("\"principal\":\"ops\"", "\"principal\":\"*\"");
+        assertEquals(1, PolicyGate.run(new String[]{ write(d,"p.json",bad).toString() }));
+    }
+
     @Test void unknownField_returnsTwo(@TempDir Path d) throws Exception {  // lint rule: unknown JSON field (parse error)
         String bad = GOOD.substring(0, GOOD.length()-1) + ",\"bogus\":1}";
         assertEquals(2, PolicyGate.run(new String[]{ write(d,"p.json",bad).toString() }));
