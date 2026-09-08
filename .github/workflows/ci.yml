@@ -51,6 +51,11 @@ jobs:
       - name: 'Gate ⑤ git-anchored provenance (verify + tamper)'
         run: bash scripts/run-provenance-gate.sh
 
+      # Broker-free like the five above: the edge's activation bind runs before any network
+      # connect, so B6 and B9 reach the real Heimdall main with no broker and no OPC-UA server.
+      - name: 'Gate ⑥ break-glass (mint four-eyes, derived marking, edge still binds)'
+        run: bash scripts/run-break-glass-gate.sh
+
       - name: Upload SBOM
         uses: actions/upload-artifact@v4
         with:

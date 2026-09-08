@@ -72,7 +72,7 @@ Retire a duty principal by removing its **policy grants**, never by deleting its
 
 **Files:** modify `core/.../activation/ActivationAction.java`, `ActivationService.java`, `ActivationEvent.java` (javadoc only); test `ActivationServiceTest` / a new `BreakGlassTest`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```java
     @Test void a_duty_principal_approving_yields_a_BREAK_GLASS_action() { … }
@@ -83,8 +83,8 @@ Retire a duty principal by removing its **policy grants**, never by deleting its
     @Test void four_eyes_still_requires_a_distinct_approver() { … }           // approvedBy != by, unchanged
 ```
 
-- [ ] **Step 2: Run to verify red** — `mvn -q -pl core test -Dtest=BreakGlassTest -Dsurefire.failIfNoSpecifiedTests=false`
-- [ ] **Step 3: Implement**
+- [x] **Step 2: Run to verify red** — `mvn -q -pl core test -Dtest=BreakGlassTest -Dsurefire.failIfNoSpecifiedTests=false`
+- [x] **Step 3: Implement**
 
 `ActivationAction` gains `BREAK_GLASS_APPROVE`. In `ActivationService`, replace the approve leg:
 
@@ -110,7 +110,7 @@ and the action becomes `breakGlass ? "BREAK_GLASS" : (r.rollback() ? "ROLLBACK" 
 
 **Note the ordering:** `APPROVE` is tried first, so an ordinary approver's path is byte-for-byte what it was and the existing tests are untouched. A rollback approved by a duty key is `BREAK_GLASS`, not `ROLLBACK` — the emergency fact outranks the direction, and the record still carries `priorVersion`.
 
-- [ ] **Step 4: green · Step 5:** `mvn -q test` · **Step 6: commit**
+- [x] **Step 4: green · Step 5:** `mvn -q test` · **Step 6: commit**
 
 ### Task 2: `ActivationPolicy` lint — a duty principal must not hold both
 
@@ -118,7 +118,7 @@ and the action becomes `breakGlass ? "BREAK_GLASS" : (r.rollback() ? "ROLLBACK" 
 
 A principal granted **both** `APPROVE` and `BREAK_GLASS_APPROVE` on the same resource silently defeats decision (a): it could approve normally and never be marked. That is one JSON line away and nothing would catch it.
 
-- [ ] **Step 1: failing test · Step 2: red · Step 3: implement · Step 4: green · Step 5: commit**
+- [x] **Step 1: failing test · Step 2: red · Step 3: implement · Step 4: green · Step 5: commit**
 
 ---
 
@@ -134,7 +134,7 @@ A principal granted **both** `APPROVE` and `BREAK_GLASS_APPROVE` on the same res
 2. generate the duty keypair, write `<principal>.key`/`.pub`, print the `authorized-keys.jsonl` line
 3. print the policy lines the operator must add, and **say plainly that the mint is not itself recorded in the ledger** — the four-eyes here is enforced by requiring two registered keys, not by an audit entry
 
-- [ ] **Step 1: failing test · Step 2: red · Step 3: implement · Step 4: green · Step 5: commit**
+- [x] **Step 1: failing test · Step 2: red · Step 3: implement · Step 4: green · Step 5: commit**
 
 ### Task 4: `run-break-glass-gate.sh`
 
@@ -152,7 +152,7 @@ House idiom: `cygpath`, `fail`, staged registry, fresh dirs, count-based asserti
 | **B8** | Scope holds: a duty key granted on target A cannot approve on target B |
 | **B9** | **Deleting the duty key's line from `authorized-keys.jsonl` breaks the whole ledger** with `identity.key.unregistered` and the edge refuses to start — the landmine, proved rather than asserted, so nobody retires a key that way |
 
-- [ ] **Step 1: write · Step 2: run · Step 3: one deterministic injection per assertion · Step 4: every other gate · Step 5: commit**
+- [x] **Step 1: write · Step 2: run · Step 3: one deterministic injection per assertion · Step 4: every other gate · Step 5: commit**
 
 ---
 
@@ -160,22 +160,22 @@ House idiom: `cygpath`, `fail`, staged registry, fresh dirs, count-based asserti
 
 ### Task 5
 
-- [ ] `ADOPTION.md:165` — **remove "There is still no break-glass"**; say what exists, and that retiring a duty key means removing its policy grants and **never** deleting its key line
-- [ ] `ENTERPRISE.md` limitations — four-eyes **moved earlier in time, not removed**; a duty key is a standing credential until its grants are removed, so sealing, custody and rotation are the whole protection; the marking is derived from policy so it cannot be omitted, but **the edge is not taught** — loudness and the trail are control-plane only; no alerting transport
-- [ ] **Add the revocation landmine to the limitations**: deleting any principal's key retroactively breaks the ledger and stops the edge. Pre-existing, now routine, and B9 proves it
-- [ ] Counts: `ENTERPRISE.md:12` (19→20 gates), the "five of the nineteen" sentence (**it is at `:610`, not `:596`, and the new gate is broker-free so it becomes "six of the twenty"**), `:13` tests; `README.md:6` badge, `:141` per-module split, and the gate list at `:107-125`
-- [ ] **`.github/workflows/ci.yml:40-52` runs exactly the broker-free gates** — a broker-free twentieth gate that is not added there is not run by CI, which would contradict the sentence written in the same commit
+- [x] `ADOPTION.md:165` — **remove "There is still no break-glass"**; say what exists, and that retiring a duty key means removing its policy grants and **never** deleting its key line
+- [x] `ENTERPRISE.md` limitations — four-eyes **moved earlier in time, not removed**; a duty key is a standing credential until its grants are removed, so sealing, custody and rotation are the whole protection; the marking is derived from policy so it cannot be omitted, but **the edge is not taught** — loudness and the trail are control-plane only; no alerting transport
+- [x] **Add the revocation landmine to the limitations**: deleting any principal's key retroactively breaks the ledger and stops the edge. Pre-existing, now routine, and B9 proves it
+- [x] Counts: `ENTERPRISE.md:12` (19→20 gates), the "five of the nineteen" sentence (**it is at `:610`, not `:596`, and the new gate is broker-free so it becomes "six of the twenty"**), `:13` tests; `README.md:6` badge, `:141` per-module split, and the gate list at `:107-125`
+- [x] **`.github/workflows/ci.yml:40-52` runs exactly the broker-free gates** — a broker-free twentieth gate that is not added there is not run by CI, which would contradict the sentence written in the same commit
 
 ---
 
 ## Definition of done
 
-- [ ] `mvn test` green; the existing four-eyes and authz tests unchanged and passing
-- [ ] `run-break-glass-gate.sh` PASS, **every B1–B9 proved by injecting its defect**
-- [ ] **B5 and B6 pass** — the ledger verifies at all three tiers and the edge boots after a break-glass. These are the two the first design would have failed
-- [ ] Every activation-ladder gate still PASS: activation, lineage, identity, activation-authz, anchored, federation
-- [ ] `SignedLedgerVerifier`, `LedgerChain`, `ActivationEvent`'s field list and the preimage are **untouched** — if any changed, decision (b) was violated
-- [ ] The new gate is in CI
+- [x] `mvn test` green; the existing four-eyes and authz tests unchanged and passing
+- [x] `run-break-glass-gate.sh` PASS, **every B1–B9 proved by injecting its defect**
+- [x] **B5 and B6 pass** — the ledger verifies at all three tiers and the edge boots after a break-glass. These are the two the first design would have failed
+- [x] Every activation-ladder gate still PASS: activation, lineage, identity, activation-authz, anchored, federation
+- [x] `SignedLedgerVerifier`, `LedgerChain`, `ActivationEvent`'s field list and the preimage are **untouched** — if any changed, decision (b) was violated
+- [x] The new gate is in CI
 
 ## What R4 explicitly does not fix
 
@@ -183,7 +183,7 @@ House idiom: `cygpath`, `fail`, staged registry, fresh dirs, count-based asserti
 |---|---|
 | A duty key is a standing credential until its grants are removed — sealing, custody and rotation are the whole protection | inherent to any break-glass |
 | **Deleting a key line retroactively breaks the ledger and stops the edge.** Retire by policy, never by deletion | pre-existing; B9 proves it |
-| The edge is not taught: `ActivationLedger.active` ignores the action, so a break-glass version binds like any other and the edge says nothing | later |
+| ~~The edge is not taught~~ | **had to be fixed.** `assertActivationAuthorized` asked only for `APPROVE`, so with `REQUIRE_SIGNED_ACTIVATION=on` the edge fail-closed on exactly the entry an emergency writes — permanently, the ledger being append-only. The approver leg now falls back to `BREAK_GLASS_APPROVE` and announces it. `ActivationLedger.active` still ignores the action, which is fine: the bind is legitimate |
 | No alerting transport — loud is a log line and a ledger action | later |
 | The mint is not recorded in the ledger; its four-eyes is enforced by requiring two registered keys | later |
 | Break-glass covers **activation**, not runtime commands | open |
