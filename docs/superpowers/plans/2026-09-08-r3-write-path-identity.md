@@ -43,12 +43,15 @@ Checked with `javap`/`unzip` against the exact artifacts in `~/.m2`, so a surpri
 |---|---|
 | The client can present a certificate | `OpcUaClientConfigBuilder` has `setCertificate(X509Certificate)`, `setCertificateChain(X509Certificate[])`, `setKeyPair(KeyPair)`, `setIdentityProvider(IdentityProvider)`, `setCertificateValidator(CertificateValidator)` |
 | There is a factory that accepts all of it | `OpcUaClient.create(String endpointUrl, Function<List<EndpointDescription>, Optional<EndpointDescription>> selector, Consumer<OpcTcpClientTransportConfigBuilder>, Consumer<OpcUaClientConfigBuilder>)`. The 1-arg `create(String)` currently used is the anonymous/None path |
-| The server can require an X.509 user token | `X509IdentityValidator(Predicate<X509Certificate>)` in `org.eclipse.milo.opcua.sdk.server.identity`, alongside `AnonymousIdentityValidator` and `UsernameIdentityValidator` |
+| The server can require an X.509 user token | `X509IdentityValidator(Predicate<X509Certificate>)` in `org.eclipse.milo.opcua.sdk.server.identity`. `AbstractX509IdentityValidator` falls back to the channel's security policy when the `UserTokenPolicy` carries a null `securityPolicyUri`, so `new UserTokenPolicy("x509", UserTokenType.Certificate, null, null, null)` on a Basic256Sha256 endpoint is correct |
+| **A secured endpoint needs a certificate group, which the sim has none of** | `EmbeddedMiloSim.java:91-92` builds `new DefaultCertificateManager(new MemoryCertificateQuarantine(), List.of())` — zero groups, with a comment saying it is never consulted. A `Basic256Sha256` endpoint needs `DefaultApplicationGroup.createAndInitialize(TrustListManager, CertificateStore, CertificateFactory, CertificateValidator)`, and `RsaSha256CertificateFactory` is **abstract** (`protected abstract createRsaSha256CertificateChain(KeyPair)`). This is Task 5's real size |
+| The controlled writable nodes are five, not four | `Recipe/Rpm` (`:149`), `Recipe/Temp` (`:160`), `Recipe/ApplyRecipe` (`:175`), `Recipe/ApplyDone` (`:174`), `Weld/WeldCurrent` (`:190`). `Running` is a `typeMember` at access level 1 and is already read-only |
+| A failed endpoint bind is only a WARN | `OpcUaServer.lambda$startup$2` catches `Exception` around `transport.bind(...)` and logs `"Failed to bind endpoint …"`. The sim would still print `OPC-UA sim listening`, so the gate must assert the secure endpoint is actually offered |
 | **A custom `AccessController` cannot be installed** | `OpcUaServer` exposes `getAccessController()` and **no setter**; `OpcUaServerConfig` has no access-control property. The interface exists (`checkWriteAccess(Session, List<WriteValue>)`) but is not pluggable in 1.0. **This is why the design uses `UserAccessLevel`, not an AccessController** |
 | Attribute reads are session-aware | `AttributeFilterContext` has `getSession(): Optional<Session>` and is constructed with the `Session`. `AttributeFilter` is the per-node hook; `AttributeFilters` provides `getValue`/`setValue`/`getSetValue` helpers for the Value attribute, so a `UserAccessLevel` filter is written against `AttributeFilter` directly |
 | The session carries the authenticated identity | `Session.getIdentity(): Identity`, `Session.getIdentityToken(): UserIdentityToken` |
 | Certificates can be generated in-process | `SelfSignedCertificateBuilder` and `SelfSignedCertificateGenerator` in `org.eclipse.milo.opcua.stack.core.util` |
-| The sim's nodes are wide open today | `EmbeddedMiloSim.java:227,240` — `.setAccessLevel(ubyte(3)).setUserAccessLevel(ubyte(3))` on every Boolean and Double node; `:357` uses `1` for the read-only EURange properties |
+| The sim's nodes are wide open today | `EmbeddedMiloSim.java:227,240` — `.setAccessLevel(ubyte(3)).setUserAccessLevel(ubyte(3))` in `makeBooleanNode`/`makeDoubleNode`. `:357` is `typeMember(...)`, which builds the *type and instance* members at `1`; the EURange properties in `attachEuRange` (`:361-373`) set no access level at all |
 | The sim offers exactly one endpoint | `EmbeddedMiloSim.start()` builds a single `EndpointConfig` with `SecurityPolicy.None`, `MessageSecurityMode.None`, one anonymous `UserTokenPolicy`, and `AnonymousIdentityValidator.INSTANCE` |
 
 ### Three decisions locked here — do not re-open during implementation
@@ -282,13 +285,15 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 ---
 
-### Task 3: Configuration
+### Task 3: Configuration and the application URI
 
 **Files:**
 - Modify: `heimdall/src/main/java/dev/krillin/bifrost/heimdall/NcmdOpcUaBridgeMain.java`
 - Test: `heimdall/src/test/java/dev/krillin/bifrost/heimdall/NcmdOpcUaBridgeMainConfigTest.java`
 
-- [ ] **Step 1: Write the failing test**
+**Decision, because the plan previously left it open.** The application URI is derived, not configured: `urn:bifrost:heimdall:<group>:<edge>` with `:`/`/` folded, mirroring R0's client-id decision. Two edges are therefore two principals, which is what a per-edge write permission needs. It must be derived in exactly one place and used for both `EdgeIdentity.loadOrCreate` and `cfg.setApplicationUri(...)`: a mismatch between the certificate's SAN and the announced URI is rejected at connect time with an error that reads like a server fault.
+
+- [ ] **Step 1: Write the failing tests**
 
 ```java
     @Test
@@ -301,38 +306,85 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
         assertEquals("/etc/heimdall/pki", NcmdOpcUaBridgeMain.resolve(
                 k -> "HEIMDALL_IDENTITY_DIR".equals(k) ? "/etc/heimdall/pki" : null).identityDir());
     }
+
+    /** Derived, and per-edge: two edges must be two principals to the server. */
+    @Test
+    void applicationUriIsDerivedFromGroupAndEdge() {
+        assertEquals("urn:bifrost:heimdall:Bifrost-Line1:recipe-edge",
+                NcmdOpcUaBridgeMain.applicationUri("Bifrost:Line1", "recipe-edge"));
+        assertNotEquals(NcmdOpcUaBridgeMain.applicationUri("Bifrost:Line1", "recipe-edge"),
+                        NcmdOpcUaBridgeMain.applicationUri("Bifrost:Line1", "mixer-edge"));
+    }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **Step 2: Run to verify red**
 
 Run: `mvn -q -pl core,heimdall test -Dtest=NcmdOpcUaBridgeMainConfigTest -Dsurefire.failIfNoSpecifiedTests=false`
-Expected: FAIL — no `identityDir()` on the record
+Expected: FAIL — no `identityDir()`, no `applicationUri(String,String)`
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **Step 3: Implement**
 
-Add `String identityDir` to `Config` (default null) via the existing `env(...)` helper. **Three existing tests construct `Config` directly** — `LoadConformanceActivationTest.java:37`, `NcmdOpcUaBridgeMainDefaultsTest.java:67,104` — and adding a record component breaks their arity, exactly as it did in R0. Add `null` to each.
+Add `String identityDir` to `Config` (default null). **Three existing tests construct `Config` directly** — `LoadConformanceActivationTest.java:37`, `NcmdOpcUaBridgeMainDefaultsTest.java:67,104` — and a new record component breaks their arity, exactly as it did in R0. Add `null` to each.
 
-In `main`, when the value is set, build the identity and hand it to the applier; log the thumbprint at startup so an operator can match it against what the server trusts:
+In `main`, when `identityDir` is set, build the identity and pass it to the applier via the three-arg `OpcUaApplier(String, EdgeHealth, EdgeIdentity)` constructor, and print the thumbprint so an operator can match it to what the server trusts:
 
 ```java
-        System.out.println("[BRIDGE] OPC-UA identity " + identity.thumbprint() + " (" + identity.applicationUri() + ")");
+        System.out.println("[BRIDGE] OPC-UA identity " + identity.thumbprint()
+                + " (" + identity.applicationUri() + ")");
 ```
 
-Extend the env javadoc block.
-
-- [ ] **Step 4: Run test to verify it passes**
-
-Run: `mvn -q -pl core,heimdall test`
-Expected: PASS
-
+- [ ] **Step 4: Green, then the whole suite** — `mvn -q -pl core,heimdall test`
 - [ ] **Step 5: Commit**
 
-```bash
-git add heimdall/src/main/java/dev/krillin/bifrost/heimdall/NcmdOpcUaBridgeMain.java heimdall/src/test/java/dev/krillin/bifrost/heimdall/
-git commit -m "feat(heimdall): configure HEIMDALL_IDENTITY_DIR
+---
 
-Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
+### Task 3b: `--print-thumbprint`, so the gate can bootstrap
+
+**Files:**
+- Modify: `heimdall/src/main/java/dev/krillin/bifrost/heimdall/EdgeIdentity.java`
+
+The gate must start the sim with `SIM_GOVERNED_THUMBPRINT=<edge thumbprint>`, and the thumbprint only exists once the identity has been generated. Without this, Task 6 depends on something no earlier task delivers, and the alternative — start the edge against a sim that is not up, scrape its log, then start the sim — leans on R0's cold-start behaviour and the 5s backoff for no reason.
+
+- [ ] **Step 1: Add a `main`**
+
+```java
+    /**
+     * {@code java -cp bifrost-heimdall.jar …EdgeIdentity --print-thumbprint <dir> <applicationUri>}
+     * — generate the identity if absent, then print only the thumbprint. Exists so the write
+     * exclusivity gate can configure the SERVER with the client's thumbprint before either starts.
+     */
+    public static void main(String[] args) throws Exception {
+        if (args.length != 3 || !"--print-thumbprint".equals(args[0])) {
+            System.err.println("usage: EdgeIdentity --print-thumbprint <dir> <applicationUri>");
+            System.exit(2);
+        }
+        System.out.println(loadOrCreate(Path.of(args[1]), args[2]).thumbprint());
+    }
 ```
+
+- [ ] **Step 2: Verify by hand**
+
+```bash
+java -cp heimdall/target/bifrost-heimdall.jar dev.krillin.bifrost.heimdall.EdgeIdentity --print-thumbprint build/gate/pki urn:bifrost:heimdall:test
+```
+Expected: one 40-char lowercase hex line, identical on a second run.
+
+- [ ] **Step 3: Commit**
+
+---
+
+### Task 3c: Decide the no-secure-endpoint behaviour
+
+**Files:**
+- Modify: `heimdall/src/main/java/dev/krillin/bifrost/heimdall/OpcUaApplier.java`
+
+The earlier draft said to *"check the message reads usefully and, if it does not, pre-check"* — conditional prose, where the plan itself calls a silent anonymous fallback "the exact defect this round exists to remove". Decide it.
+
+**Decided:** `createGoverned()` wraps the failure and rethrows a `PlantUnreachableException` naming the cause — `no Basic256Sha256/SignAndEncrypt endpoint at <url>; an identity is configured so the anonymous endpoint is deliberately not used`. The edge refuses to run degraded rather than connecting anonymously. X6 asserts it.
+
+- [ ] **Step 1: Implement the wrap**
+- [ ] **Step 2: Whole suite green**
+- [ ] **Step 3: Commit**
 
 ---
 
@@ -344,11 +396,9 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 - Create: `sim/src/main/java/dev/krillin/bifrost/sim/GovernedWriteFilter.java`
 - Test: `sim/src/test/java/dev/krillin/bifrost/sim/GovernedWriteFilterTest.java`
 
-This is the entire server-side mechanism, and it is small.
-
 - [ ] **Step 1: Write the failing test**
 
-Test the decision function in isolation rather than fighting to construct a `Session`:
+The decision function is tested in isolation rather than fighting to construct a `Session`. **The null-governed-thumbprint case is the one that matters**: `SIM_REQUIRE_IDENTITY=on` with `SIM_GOVERNED_THUMBPRINT` unset must fail CLOSED. An `Objects.equals(null, null)` implementation would hand write access to an unauthenticated session, which is the exact inversion of this round.
 
 ```java
     @Test
@@ -367,18 +417,25 @@ Test the decision function in isolation rather than fighting to construct a `Ses
     void thumbprintComparisonIsCaseInsensitive() {
         assertEquals(3, GovernedWriteFilter.userAccessLevelFor("AABB", "aabb"));
     }
+
+    /** No configured thumbprint means nobody is governed - never everybody. */
+    @Test
+    void anUnconfiguredGovernedThumbprintFailsClosed() {
+        assertEquals(1, GovernedWriteFilter.userAccessLevelFor(null, null));
+        assertEquals(1, GovernedWriteFilter.userAccessLevelFor("aabb", null));
+        assertEquals(1, GovernedWriteFilter.userAccessLevelFor("aabb", "   "));
+    }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **Step 2: Run to verify red**
 
 Run: `mvn -q -pl core,sim test -Dtest=GovernedWriteFilterTest -Dsurefire.failIfNoSpecifiedTests=false`
-Expected: FAIL — `cannot find symbol: class GovernedWriteFilter`
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **Step 3: Implement**
 
-An `AttributeFilter` whose `getAttribute` intercepts `AttributeId.UserAccessLevel`, reads the session's X.509 identity from `ctx.getSession()`, and returns `ubyte(3)` or `ubyte(1)`. Everything else delegates.
+An `AttributeFilter` overriding `getAttribute(AttributeFilterContext, AttributeId)`; intercept `AttributeId.UserAccessLevel` only, read the session's `Identity.X509UserIdentity.getCertificate()`, and return `ubyte(3)` or `ubyte(1)`. Everything else delegates via `ctx.getAttribute(attributeId)`.
 
-The javadoc must record decision (a), because the next reader will look for the `AccessController`:
+The javadoc must record two things the next reader will otherwise undo:
 
 ```java
 /**
@@ -386,61 +443,74 @@ The javadoc must record decision (a), because the next reader will look for the 
  * session. This is the mechanism {@code ENTERPRISE.md} §12 names as "server-side write permission".
  *
  * <p><b>Why a UserAccessLevel filter and not an AccessController.</b> Milo 1.0 has exactly the
- * right interface — {@code AccessController.checkWriteAccess(Session, List&lt;WriteValue&gt;)} — and
- * no way to install one: {@code OpcUaServer} exposes {@code getAccessController()} with no setter
- * and {@code OpcUaServerConfig} has no property for it. What the default controller does consult is
- * the node's {@code UserAccessLevel}, and {@link AttributeFilterContext} carries the {@code Session},
- * so the attribute can be computed per session. Do not go looking for the setter; it is not there.
+ * right interface — {@code AccessController.checkWriteAccess(Session, List<WriteValue>)} — and no
+ * way to install one: {@code OpcUaServer} exposes {@code getAccessController()} with no setter and
+ * {@code OpcUaServerConfig} has no property for it. What the default controller does consult is the
+ * node's {@code UserAccessLevel}, via a session-scoped read that goes through this filter chain.
+ * Do not go looking for the setter; it is not there.
+ *
+ * <p><b>An absent session is an internal read, not an anonymous one.</b> The chain has session-less
+ * overloads and the sim's own {@code setValue(...)} calls take them, so an empty
+ * {@code getSession()} must NOT be treated as deny — that would break the sim writing its own
+ * ApplyDone. Deny applies to a session that is present and not governed.
  *
  * <p>Read stays open to everyone on purpose. A plant needs read-only clients — historians, HMIs —
  * and locking them out is not what write-path exclusivity means.
  */
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
-
-Run: `mvn -q -pl core,sim test -Dtest=GovernedWriteFilterTest -Dsurefire.failIfNoSpecifiedTests=false`
-Expected: PASS, 3 tests
-
+- [ ] **Step 4: Green**
 - [ ] **Step 5: Commit**
-
-```bash
-git add sim/src/main/java/dev/krillin/bifrost/sim/GovernedWriteFilter.java sim/src/test/java/dev/krillin/bifrost/sim/GovernedWriteFilterTest.java
-git commit -m "feat(sim): per-session UserAccessLevel filter for the controlled nodes
-
-Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
-```
 
 ---
 
 ### Task 5: The sim offers a secured endpoint
 
 **Files:**
-- Modify: `sim/src/main/java/dev/krillin/bifrost/sim/EmbeddedMiloSim.java:76-105` (the `start()` config) and the node builders at `:227,240`
+- Modify: `sim/src/main/java/dev/krillin/bifrost/sim/EmbeddedMiloSim.java`, `sim/src/main/java/dev/krillin/bifrost/sim/SimMain.java`
+- Test: `sim/src/test/java/dev/krillin/bifrost/sim/EmbeddedMiloSimConfigTest.java`
 
-- [ ] **Step 1: Add the second endpoint and the validator, behind `SIM_REQUIRE_IDENTITY`**
+**This task is substantially bigger than the earlier draft claimed** ("~20 lines of certificate generation"). A `Basic256Sha256` endpoint requires the server to hold its own key material, and the sim currently has **no certificate groups at all**. What is actually needed:
 
-When the flag is off, `start()` is exactly what it is today. When on:
+- a `MemoryTrustListManager` and a `MemoryCertificateStore`
+- a concrete subclass of the **abstract** `RsaSha256CertificateFactory`, implementing `createRsaSha256CertificateChain(KeyPair)` with `SelfSignedCertificateBuilder`
+- `DefaultApplicationGroup.createAndInitialize(trustList, store, factory, validator)` added to the `DefaultCertificateManager`
 
-- keep the existing `None`/anonymous `EndpointConfig`, and add a second with `SecurityPolicy.Basic256Sha256`, `MessageSecurityMode.SignAndEncrypt`, and a `UserTokenPolicy` of `UserTokenType.Certificate`
-- the server needs its own application-instance certificate — reuse `EdgeIdentity`'s approach; the sim module must not depend on `heimdall`, so either move the generator to a shared place or duplicate the ~20 lines with a comment saying why. **Prefer duplication over a new module dependency here** and say so in the comment: the sim is a test fixture and coupling it to the runtime edge to save twenty lines is the wrong trade.
-- `setIdentityValidator(new X509IdentityValidator(cert -> thumbprintOf(cert).equalsIgnoreCase(governedThumbprint)))`, the thumbprint coming from `SIM_GOVERNED_THUMBPRINT`
-- attach `GovernedWriteFilter` to the Rpm/Temp/Running/Weld nodes
+**A decision the earlier draft never made, and it silently gates two assertions.** That `CertificateValidator` validates *incoming client application certificates*, before any user token is examined. Use `CertificateValidator.InsecureCertificateValidator`, and say why:
 
-- [ ] **Step 2: Verify by hand that the default is unchanged**
+> This round's claim is that the **user identity** decides write permission. A strict `DefaultServerCertificateValidator` over an empty trust list would reject the governed edge's secure channel before its user token was ever looked at — X1 would fail for a reason unrelated to identity, and X4 would pass for a reason unrelated to the thumbprint. Accepting the application certificate and letting the thumbprint predicate be the decision keeps the gate measuring the thing it names. **It is also precisely axis 10's gap:** real trust needs a populated trust list, which is the same missing PKI that has no rotation.
+
+The client needs no matching config: `OpcUaClientConfigBuilder`'s default `certificateValidator` is already `InsecureCertificateValidator`.
+
+**The sim must not depend on `heimdall`** — correct and cheap: `sim` already gets `milo-stack-core` (and BouncyCastle) transitively via `milo-sdk-server`, so `SelfSignedCertificateBuilder` compiles with no POM change, whereas depending on `heimdall` would drag tahu, Paho, Jackson, Chicory and `bifrost-core` into the shaded `bifrost-sim.jar`.
+
+- [ ] **Step 1: Env resolution goes in `SimMain`, per the module's own convention**
+
+`SimMain.java:26-34` already puts env parsing in testable `resolvePort(Map)`/`resolveHost(Map)` statics covered by `EmbeddedMiloSimConfigTest`. Add `resolveRequireIdentity(Map)` and `resolveGovernedThumbprint(Map)` there, warn loudly on an unrecognised flag value the way heimdall's `flag()` does, and pass both into the `EmbeddedMiloSim` constructor. **Write the tests first** — these are the two most security-relevant toggles in the sim and would otherwise be its only untested ones.
+
+- [ ] **Step 2: Add the certificate group and the second endpoint**
+
+Keep the existing `None`/anonymous `EndpointConfig`. When `requireIdentity` is on, add a second with `SecurityPolicy.Basic256Sha256`, `MessageSecurityMode.SignAndEncrypt`, and `new UserTokenPolicy("x509", UserTokenType.Certificate, null, null, null)`, and set `setIdentityValidator(new X509IdentityValidator(cert -> thumbprintOf(cert).equalsIgnoreCase(governedThumbprint)))` — failing closed when `governedThumbprint` is null or blank, matching Task 4.
+
+- [ ] **Step 3: Attach the filter to all FIVE controlled nodes**
+
+`Recipe/Rpm` (`:149`), `Recipe/Temp` (`:160`), `Recipe/ApplyRecipe` (`:175`), `Recipe/ApplyDone` (`:174`), `Weld/WeldCurrent` (`:190`) — via `node.getFilterChain().addFirst(filter)`.
+
+**`Recipe/ApplyRecipe` is the one the earlier draft missed, and it is not incidental**: it is the Boolean activate trigger that `OpcUaApplier.call()` writes. An anonymous client able to fire a recipe apply, while the round claims write-path exclusivity, would be a hole in the claim itself. `ApplyDone` is included for the mirror-image reason — a client writing it fakes a confirmation. `Running` needs nothing; `typeMember` already builds it at access level 1.
+
+- [ ] **Step 4: Print a line the gate can assert on**
+
+A failed endpoint bind is only a WARN inside `OpcUaServer.startup`, so the sim would still print `OPC-UA sim listening` with no secure endpoint at all. After startup succeeds, print `[SIM] secured endpoint Basic256Sha256/SignAndEncrypt, governed thumbprint <thumb>` and have the gate require it.
+
+- [ ] **Step 5: Verify the default is unchanged by hand**
 
 ```bash
 mvn -q -pl core,heimdall,sim install -DskipTests
 java -jar sim/target/bifrost-sim.jar
 ```
-Expected: `OPC-UA sim listening` and, with `SIM_REQUIRE_IDENTITY` unset, no second endpoint and no behaviour change.
+Expected: `OPC-UA sim listening`, no secure-endpoint line, no behaviour change.
 
-- [ ] **Step 3: Run the sim and heimdall suites**
-
-Run: `mvn -q -pl core,heimdall,sim test`
-Expected: PASS
-
-- [ ] **Step 4: Run the gates that use the sim — this is the regression that matters**
+- [ ] **Step 6: Run every gate that uses the sim — the regression that matters**
 
 ```bash
 timeout 600 bash scripts/run-ncmd-runtime-gate.sh
@@ -448,19 +518,8 @@ timeout 900 bash scripts/run-edge-resilience-gate.sh
 timeout 900 bash scripts/run-yggdrasil-spine-gate.sh
 timeout 900 bash scripts/run-yggdrasil-full-loop-gate.sh
 ```
-Expected: all PASS, all still on the anonymous endpoint.
 
-- [ ] **Step 5: Commit**
-
-```bash
-git add sim/src/main/java/dev/krillin/bifrost/sim/EmbeddedMiloSim.java
-git commit -m "feat(sim): optional secured endpoint requiring a governed X.509 identity
-
-Off by default: the anonymous endpoint stays, so every gate that predates
-R3 still exercises the path it was written against.
-
-Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
-```
+- [ ] **Step 7: Commit**
 
 ---
 
@@ -469,88 +528,84 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 ### Task 6: `run-write-exclusivity-gate.sh`
 
 **Files:**
+- Create: `heimdall/src/main/java/dev/krillin/bifrost/heimdall/AnonymousWriter.java`
 - Create: `scripts/run-write-exclusivity-gate.sh`
 
-Reuse the R0 gate's idiom: `cygpath` shim, `fail()`, `kill_by_jvmarg`/`kill_by_mainclass`, `cleanup`/`trap`, count-based assertions. **Do not grep for a line that also appears at startup, and do not grep an accumulating log without a baseline** — that trap cost three separate fixes in R0.
+Reuse the R0 gate's idiom. **Do not grep a line that also appears at startup, and never grep an accumulating log without a baseline** — that trap cost three separate fixes in R0.
+
+`AnonymousWriter` connects anonymously to the `None` endpoint and, in **one process against one session**, reads the node and then writes it, printing both outcomes with the exact `StatusCode`. One process matters: X3 is what proves the client in X2 was genuinely connected, and a separate process would decouple the guard from the thing it guards.
 
 | | Asserts | Method |
 |---|---|---|
-| **X1** | The governed edge writes | Start the sim with `SIM_REQUIRE_IDENTITY=on` and the edge's thumbprint; start the edge with `HEIMDALL_IDENTITY_DIR`; publish an authorized NCMD; require an APPLY count **increase** and the sim to witness the value |
-| **X2** | **A second client's write is refused by the SERVER** | A small `AnonymousWriter` main connects to the `None` endpoint and writes the same node directly. Require a bad `StatusCode` and require the sim's value to be **unchanged**. This is the row-12 assertion; everything else is setup |
-| **X3** | Read is still open | The same anonymous client reads the node successfully — proving the mechanism is write permission, not a blanket lockout |
-| **X4** | An untrusted certificate cannot get in | Start a second edge with a *different* identity directory; require its session to be rejected and no APPLY to appear |
-| **X5** | The default posture is unchanged | With `SIM_REQUIRE_IDENTITY` unset, the anonymous write succeeds — the same write X2 requires to fail. Without this the gate cannot show that the refusal came from the new configuration rather than from something incidental |
+| **X1** | The governed edge writes | Sim with `SIM_REQUIRE_IDENTITY=on` and the thumbprint from Task 3b; edge with `HEIMDALL_IDENTITY_DIR`; publish an authorized NCMD; require an APPLY **count increase** and the sim to witness the value |
+| **X2** | **A second client's write is refused by the SERVER** | `AnonymousWriter` writes a **distinct value**, against a baseline read taken **between X1 and X2**. Require `Bad_UserAccessDenied` specifically — "a bad StatusCode" also admits `Bad_NodeIdUnknown` from a node-id typo, `Bad_TypeMismatch`, or an outright connect failure — and require the value unchanged from that baseline |
+| **X3** | Read is still open | Same process, same session, reads the node successfully — the mechanism is write permission, not a lockout |
+| **X4** | An untrusted certificate cannot write | A second identity directory; that session must not obtain write access, and the node value must be unchanged |
+| **X5** | The default posture is unchanged | With `SIM_REQUIRE_IDENTITY` unset, the same anonymous write **succeeds** — without this the gate cannot show the refusal came from the new configuration rather than from something incidental |
+| **X6** | No silent downgrade | Sim WITHOUT `SIM_REQUIRE_IDENTITY`, edge WITH an identity: require the edge to refuse with the "no Basic256Sha256/SignAndEncrypt endpoint" message, and require **no** APPLY |
 
-- [ ] **Step 1: Write `AnonymousWriter`** (`heimdall/src/main/java/…/AnonymousWriter.java`), a `RogueNcmd`-shaped main that takes a node id and value, connects anonymously, writes, and prints the resulting `StatusCode` — the second client that row 12 is about.
-
+- [ ] **Step 1: Write `AnonymousWriter`**
 - [ ] **Step 2: Write the gate**
-
-- [ ] **Step 3: Run it**
-
-Run: `timeout 900 bash scripts/run-write-exclusivity-gate.sh`
-Expected: `[GATE] PASS run-write-exclusivity-gate.sh`, exit 0
-
-- [ ] **Step 4: Prove the gate by injecting the defect**
+- [ ] **Step 3: Run it** — expect `[GATE] PASS run-write-exclusivity-gate.sh`, exit 0
+- [ ] **Step 4: Prove the gate by injecting the defect — one row per assertion**
 
 | Injection | Must fail |
 |---|---|
-| `GovernedWriteFilter.userAccessLevelFor` always returns 3 | X2 |
-| The filter returns 1 for everyone | X1 |
+| `userAccessLevelFor` always returns 3 | X2 |
+| `userAccessLevelFor` always returns 1 | X1 |
+| `userAccessLevelFor` returns 0 for unknown sessions | X3 |
 | `X509IdentityValidator` predicate always true | X4 |
-| `OpcUaApplier.isSecure` also accepts `None` | X1 (the edge would connect anonymously and be read-only) |
+| Make the secured endpoint and the filter unconditional (ignore `SIM_REQUIRE_IDENTITY`) | X5 |
+| Make `createGoverned()` fall back to `createAnonymous()` when no secure endpoint is found | X6 |
+
+The earlier draft's *"`isSecure` also accepts `None`"* injection is **removed**: the selector is `findFirst()` over the server's endpoint ordering, so it only breaks X1 if `None` happens to come first. An injection whose outcome depends on ordering proves nothing. The X6 fallback injection is deterministic and tests the same property.
 
 - [ ] **Step 5: Run every other gate**
-
 - [ ] **Step 6: Commit**
 
 ---
 
 ## Chunk 5: Correct the documents
 
-### Task 7: `ENTERPRISE.md` row 12 and §12
+### Task 7: `ENTERPRISE.md` — every place row 12 is called open
 
-- [ ] **Step 1: Board row**
+The board row is not the only claim. **All of these move together, or the document contradicts itself:**
 
-`open` → `partial`, evidence `run-write-exclusivity-gate.sh` X1–X5, and the remaining scope named: proven against the bundled sim on the OPC-UA surface only; Modbus unchanged; a plant's own server still has to be configured.
-
-- [ ] **Step 2: §12**
-
-The sentence *"What closes it is mostly not code"* has to be corrected rather than softened. The honest split:
-
-- **the key is this repository's** — an edge with no identity cannot benefit from a server that requires one, and that was true when the row was written
-- **the lock is the plant's** — the server-side configuration, and the network position for protocols with no identity
-
-Keep the closing consequence, which is still true: an edge without an exclusive write credential governs the cooperating clients and nothing else.
-
-- [ ] **Step 3: Row 10 gets sharper, not closed**
-
-§6/row 10 stay open. Add: R3 makes the trigger concrete — the certificate now exists, is self-signed, and has no rotation path.
-
-- [ ] **Step 4: Commit**
+- [ ] **Step 1:** board row 12 `open` → **partial**, evidence `run-write-exclusivity-gate.sh` X1–X6, remaining scope named
+- [ ] **Step 2:** `:56-57` — *"**Rows 12 and 13 bound everything else on the board**, and both are open"* — now only row 13 is
+- [ ] **Step 3:** `:545-548` limitations bullet — *"**The edge is not an exclusive write path.** … Read every enforcement claim here as scoped to the cooperating client until that is closed"* — the sharpest statement of the thing this round changes. Rewrite to what is now true and what is not
+- [ ] **Step 4:** §12 itself — correct *"What closes it is mostly not code"* rather than soften it. The honest split: **the key is this repository's** (an edge with no identity cannot benefit from a server that requires one), **the lock is the plant's** (server configuration; network position where there is no identity). Keep the closing consequence, which still holds. **State prominently that both halves of the proof are code in this repository** — "the lock is the plant's" is precisely the half R3 does not demonstrate against anything foreign
+- [ ] **Step 5:** row 10 / §6 stay **open**, with a sentence that R3 makes the trigger concrete
+- [ ] **Step 6:** **the board diagram** — `docs/diagrams/readiness-board.svg` **and** `readiness-board.dark.svg` hardcode `PARTIAL · 3` / `OPEN · 3`, place row 12 in the OPEN column, and close with "Five of thirteen are answered… the other eight". The `<img alt>` at `:34` repeats "three partial … three open". Regenerate both files and the alt text, or the figure contradicts the table beneath it
+- [ ] **Step 7:** gate counts — `:12` "all 15 gates", `:558` "five of the fifteen need no broker". `scripts/` already holds **16** (R0 added one without updating these); R3 makes **17**
+- [ ] **Step 8: Commit**
 
 ### Task 8: `ADOPTION.md` and `README.md`
 
-- [ ] **Step 1:** Gap table row 12: replace **"not this project's code to write"** with the two-part statement, and strike through only the half R3 built. The paragraph beginning *"Why the last row is listed anyway"* is now partly wrong and must be rewritten — its point stands, its premise moved.
-- [ ] **Step 2:** Phase 4's *"Make the edge the only way in"* paragraph: the edge can now present an identity; the server config is still the site's.
-- [ ] **Step 3:** `README.md` gate list and test count.
-- [ ] **Step 4: Commit**
+- [ ] **Step 1:** gap table row 12 — replace **"not this project's code to write"** with the two-part statement; strike through only the half R3 built
+- [ ] **Step 2:** `:234` — *"two rows are code this project owes… The last row is not code at all"* — the same claim in miniature, and now wrong
+- [ ] **Step 3:** `:237` — the *"Why the last row is listed anyway"* paragraph: its point stands, its premise moved
+- [ ] **Step 4:** phase 4's *"Make the edge the only way in"* — the edge can now present an identity; the server configuration is still the site's
+- [ ] **Step 5:** `README.md` — gate list, `:19` "All 15 last ran green", and the **`tests-362` badge at `:6`**, which already contradicts "383 tests" at `:138`
+- [ ] **Step 6: Commit**
 
 ---
 
 ## Definition of done
 
 - [ ] `mvn test` green across the reactor
-- [ ] `run-write-exclusivity-gate.sh` PASS, every X1–X5 proved by injecting its defect
-- [ ] All five pre-existing runtime gates still PASS, still on the anonymous endpoint
-- [ ] `ENTERPRISE.md` row 12 reads **partial** with the gate named and the remaining scope stated
-- [ ] `ADOPTION.md` no longer says write-path exclusivity is not this project's code
+- [ ] `run-write-exclusivity-gate.sh` PASS, **every X1–X6 proved by injecting its defect**
+- [ ] All six pre-existing runtime gates still PASS, still on the anonymous endpoint
+- [ ] `ENTERPRISE.md` row 12 reads **partial** — in the table, in both board SVGs, in the alt text, at `:56` and at `:545`
+- [ ] `ADOPTION.md` no longer says write-path exclusivity is not this project's code, at `:234` or in the gap table
+- [ ] Gate counts and the README test badge are current
 - [ ] Row 10 still reads **open** — R3 does not close certificate lifecycle, it makes it bite
 
 ## What R3 explicitly does not fix
 
 | | Round |
 |---|---|
-| Certificate rotation, revocation, expiry, GDS — the identity is self-signed and permanent | R10 / axis 10 |
+| Certificate rotation, revocation, expiry, GDS — the identity is self-signed and permanent, and the sim accepts any application certificate | axis 10 |
 | Modbus/TCP has no identity; exclusivity there is a network position | not code |
 | The command path still has no requester identity — this is the *edge's* identity to the server, not the *operator's* to the edge | R1 |
 | Commands still leave no tamper-evident record | R2 |
