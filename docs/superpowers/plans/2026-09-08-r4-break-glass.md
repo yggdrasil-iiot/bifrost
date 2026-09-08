@@ -1,30 +1,32 @@
-# R4 — Break-Glass Implementation Plan
+# R4 — Break-Glass Implementation Plan (design B: the duty key)
 
 > **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Give the four-eyes activation rule an emergency path that is **recorded, time-boxed, single-use and loud** — so that the first time it is genuinely needed at two in the morning, the site uses the governed route instead of going around the system permanently.
+**Goal:** Give the four-eyes activation rule an emergency path that one person can use at two in the morning, that is **recorded as an emergency by construction rather than by the operator's honesty**, and that requires **no change to the verifier the whole activation ladder rests on**.
 
-**Architecture:** A break-glass **grant**: a four-eyes-signed, expiring, single-use credential minted *in advance* for a named target. Presenting a valid grant lets one person activate alone. The activation is recorded with its own action and grant id, and until it is ratified after the fact, further activations on that target are refused.
-
-**Tech Stack:** Java 17, `core/activation` and `core/identity` (Ed25519, `AuthorizedKeys`), JUnit 5.10.3, Docker.
+**Architecture:** A **duty key** — an Ed25519 keypair minted by two people, registered in `authorized-keys.jsonl` as an ordinary principal, and granted a new `BREAK_GLASS_APPROVE` action instead of `APPROVE`. The on-call person signs with their own key and the duty key. To `SignedLedgerVerifier` this is an ordinary four-eyes line: two signatures, two registered principals, two distinct keys. What makes it an emergency is **which principal approved**, and that is a policy fact the operator cannot restate.
 
 ---
 
-## Why this round exists
+## Why this design, and why not the obvious one
 
-`ADOPTION.md:165` still says it plainly:
+The first draft of this plan used a per-target, single-use **grant** that let one person activate alone. **It would have bricked the edge**, and the check is not subtle:
 
-> There is still no break-glass.
+```java
+// SignedLedgerVerifier.verifyEntries — never looks at action()
+if (en.activatorSig() == null || en.approverSig() == null)   -> identity.sig.missing
+if (aKey.isEmpty() || pKey.isEmpty())                        -> identity.key.unregistered
+if (!verify(activatorSig) || !verify(approverSig))           -> identity.sig.invalid
+if (Arrays.equals(aKey, pKey))                               -> identity.four-eyes.same-key
+```
 
-`ActivationService.activate` requires a distinct approver unconditionally (`activation.approval.missing`, `activation.approval.self`). At two in the morning with one person on site, there is no governed way to activate — so the activation happens **outside the system**, and the moment a bypass works once it becomes the normal path. The governance value of an emergency route is not that it does not exist; it is that **it is recorded and it is noisy.**
+A single-key line fails one of those whatever shape it takes, the ledger is append-only, and the failure is per-entry at a fixed index — so it is **permanent**. Under `REQUIRE_SIGNED_ACTIVATION` the edge then refuses to start with `activation.edge.signed-ledger-broken`. **The emergency route would take the line down instead of restoring it.**
 
-**The load-bearing idea, and the one thing this plan must not fudge:** you cannot both require two people and not require two people. **Break-glass does not remove four-eyes — it moves it earlier in time.** A grant is minted by two people while both are available, and spent by one when only one is. Anything that mints a grant with one signature is not break-glass, it is a hole.
+Teaching the verifier a one-key case was the alternative. It is the change most likely to be wrong and least likely to be noticed in a governance product, because T5, T6 and T7 all rest on that method.
 
-**What this round does NOT claim:**
+And the grant design fails operationally before it fails technically: a grant is bound to `(target, kind, ref)`, so it must be minted **for the target that will fail**. An emergency is by definition the one nobody predicted. A break-glass that only covers foreseen emergencies is a change-management shortcut wearing the name.
 
-- It does not help a site that never minted a grant. That is the deliberate cost of not having a single-signature path that exists on demand
-- A minted grant is a **standing single-signature capability sitting in a drawer**. Its expiry, its single target and its single use are the whole of the protection, and each is stated rather than assumed
-- Ratification is enforced by **refusing later activations**, not by undoing the emergency one. The plant already moved
+**The duty key moves four-eyes earlier in time structurally rather than rhetorically.** Two people mint it; the verifier sees two real registered principals with two distinct keys, because that is what they are.
 
 ---
 
@@ -32,132 +34,156 @@
 
 | Fact | Verified |
 |---|---|
-| Four-eyes is unconditional | `ActivationService.java:22-26` — `approvedBy` must be present and must differ from `by`, before any signing path is considered |
-| The signer binds to the named principals | `:33-38` — the two signing keys must equal the named activator/approver, so a grant cannot simply be "sign twice with one key" |
-| T6 authZ is on the signed path only | `:40-50` — `authZ presupposes authN`, and both principals are authorized separately |
-| The event has an `action` field | `ActivationEvent` — currently `ACTIVATE | ROLLBACK`. A third value is the natural place for this, and it makes every existing verifier see break-glass without being taught to |
-| The ledger append is the same for all actions | `ActivationLedger.append(e, signer)` — so a break-glass event is chained, signed and anchored exactly like any other |
-| `IdentityGate keygen` already mints keys | Prints the `authorized-keys.jsonl` line; R1's gate uses it. Grant minting reuses it rather than inventing key handling |
-| `docs/ADOPTION.md:165` asserts the gap | "There is still no break-glass" — the sentence this round removes |
+| The verifier ignores `action()` and demands two distinct registered keys | `SignedLedgerVerifier.java:64-82` |
+| The signer holds two private key files | `KeyFileLedgerSigner.sign` returns `Signatures(activatorSig, approverSig)` from two `PrivateKey` fields |
+| `preflight` binds each key file to its **registered** principal | `KeyFileLedgerSigner:42-64` — probe-sign against the registered pubkey, then require the two registered pubkeys distinct. A duty key therefore has to be genuinely registered |
+| The approve leg is a policy question already | `ActivationService.java:46-49` — `authz.authorize(policy, approvedBy, APPROVE, target, kind, ref)`, deny-by-default first-match |
+| `ActivationAction` is an enum | So a third action is a type change the compiler polices, not a string convention |
+| `ActivationRule` matches on action + principal + target/kind/ref | `ActivationRule.matches` — a duty principal can be scoped to named targets with existing machinery |
+| **Revoking a principal breaks history** | `verifyEntries` resolves `forPrincipal` for **every** entry, and `AuthorizedKeys`' own javadoc says *"revoking is deleting one"*. Deleting a key retroactively fails every past entry it signed with `identity.key.unregistered`, and the edge then will not start. **Pre-existing, and R4 makes it routine** |
+| `ActivationLedger.active` ignores `action()` | `ActivationLedger.java:86-93` — last match on `(kind, ref)` wins, so a BREAK_GLASS event becomes the bound active pointer silently. The edge is not taught anything by this round |
+| ASCII only in `src/main` string literals | `scripts/check-ascii-output.mjs` fails CI otherwise — no em-dashes in new messages |
 
 ### Decisions locked here
 
-**(a) A grant is minted by two people, in advance, or it is not a grant.**
-`gates activation break-glass-mint` requires **two** signing keys, exactly as an activation does. What it produces is a signed document naming: target, kind, ref, the single principal permitted to spend it, an expiry, and a nonce. The four-eyes has happened; it has simply happened earlier.
+**(a) The emergency marking is derived from policy, never claimed by the operator.**
+This is the load-bearing decision. If break-glass were a flag on the request, the person holding both keys could simply *not set it* and the emergency would look like an ordinary change — which is the failure mode the round exists to prevent. Instead: the duty principal is granted `BREAK_GLASS_APPROVE` and **not** `APPROVE`. The approve leg tries `APPROVE` first; if that is denied and `BREAK_GLASS_APPROVE` is allowed, the action becomes `BREAK_GLASS`. A duty key cannot produce an unmarked activation, because it has no grant that would authorize one.
 
-**(b) Spending a grant is single-use, and the ledger is what enforces it.**
-The nonce is recorded in the break-glass event. A second activation presenting the same nonce is refused `activation.breakglass.spent`. There is no separate state file to lose: **the ledger already is the state.**
+**(b) No change to `SignedLedgerVerifier`, `LedgerChain`, `ActivationEvent`'s fields, or the preimage.**
+The line is an ordinary four-eyes line. If this plan finds itself editing any of those four, the design has drifted and should stop.
 
-**(c) The event action is `BREAK_GLASS`, not `ACTIVATE` with a flag.**
-Every existing reader — `activation-log`, `federation audit`, the edge's bind check — sees the action. Making break-glass a distinct action means none of them has to be taught what a flag means, and none of them can accidentally not notice.
+**(c) Scope is `ActivationPolicy`'s job, not a new mechanism.**
+The narrow blast radius the grant design bought is recoverable here for free: grant the duty principal `BREAK_GLASS_APPROVE` on named targets rather than `*`. That is a policy line, and `PolicyGate`-style linting can say so.
 
-**(d) Loud means loud in the two places an operator actually looks.**
-A `[GATE] BREAK-GLASS` line on stderr with the grant id and the expiry, and the event itself. This round does **not** invent an alerting transport — saying "it pages someone" when nothing pages anyone would be exactly the kind of claim these rounds exist to remove.
+**(d) Rotation is additive. Deleting a key is the landmine.**
+Retire a duty principal by removing its **policy grants**, never by deleting its `authorized-keys.jsonl` line — deletion retroactively breaks every entry it ever signed and stops the edge. This is pre-existing behaviour that R4 makes routine, so **the gate proves it** rather than the docs merely asserting it.
 
-**(e) Ratification refuses the NEXT activation; it does not undo the emergency one.**
-After a break-glass event, an activation on that target is refused `activation.breakglass.unratified` until a `break-glass-ratify` entry naming that nonce is appended by **two** principals. The plant already moved — the leverage is on what happens next, and that is honest about what an after-the-fact control can do.
+**(e) Loud means a log line and a distinguishable ledger action. No alerting transport is claimed.**
+`[GATE] BREAK-GLASS` naming the duty principal, and `action=BREAK_GLASS` in the record. Saying "it pages someone" when nothing pages anyone is the kind of claim these rounds exist to remove.
 
-**(f) The window is a policy input, not a constant.**
-`--ratify-within <hours>`, recorded in the grant. A site that wants a four-hour window and a site that wants a week are both legitimate, and hard-coding either is a claim about someone else's operations.
+**(f) The edge is not taught, and the docs must say so.**
+`ActivationLedger.active` ignores the action, so a BREAK_GLASS event becomes the bound active version like any other and the edge prints its ordinary bind line. The loudness and the audit trail are **control-plane only**. Wiring the edge is a separate round.
 
 ---
 
-## Chunk 1: The grant
+## Chunk 1: The action
 
-### Task 1: `BreakGlassGrant` — shape, preimage, verification
+### Task 1: `BREAK_GLASS_APPROVE` and the derived action
 
-**Files:** create `core/src/main/java/dev/krillin/bifrost/core/activation/BreakGlassGrant.java`; test `BreakGlassGrantTest`.
+**Files:** modify `core/.../activation/ActivationAction.java`, `ActivationService.java`, `ActivationEvent.java` (javadoc only); test `ActivationServiceTest` / a new `BreakGlassTest`.
 
-Fields: `target`, `kind`, `ref`, `spender` (the one principal who may use it), `expiresAtMillis`, `ratifyWithinHours`, `nonce`, `mintedBy`, `mintedApprovedBy`, and two signatures.
+- [ ] **Step 1: Write the failing tests**
 
-Preimage discipline as everywhere else: ordered, delimiter-joined, not JSON.
+```java
+    @Test void a_duty_principal_approving_yields_a_BREAK_GLASS_action() { … }
+    @Test void a_duty_principal_cannot_produce_an_ordinary_ACTIVATE() { … }   // no APPROVE grant
+    @Test void an_ordinary_approver_still_yields_ACTIVATE() { … }             // the regression that matters
+    @Test void a_principal_with_neither_grant_is_still_denied() { … }
+    @Test void the_activator_may_not_be_the_duty_principal() { … }            // duty has no ACTIVATE grant
+    @Test void four_eyes_still_requires_a_distinct_approver() { … }           // approvedBy != by, unchanged
+```
 
-- [ ] **Step 1: failing tests** — a two-signature grant verifies; a grant signed twice by the same key does not (that is the hole this round must not open); an expired grant does not; a grant for another target does not; a grant naming another spender does not; every field participates in the preimage
-- [ ] **Step 2: red** — `mvn -q -pl core test -Dtest=BreakGlassGrantTest -Dsurefire.failIfNoSpecifiedTests=false`
-- [ ] **Step 3: implement · Step 4: green · Step 5: commit**
+- [ ] **Step 2: Run to verify red** — `mvn -q -pl core test -Dtest=BreakGlassTest -Dsurefire.failIfNoSpecifiedTests=false`
+- [ ] **Step 3: Implement**
 
-### Task 2: `gates activation break-glass-mint`
+`ActivationAction` gains `BREAK_GLASS_APPROVE`. In `ActivationService`, replace the approve leg:
 
-**Files:** extend `ActivateGate`; wire into `GatesCli` (**usage string duplicated in two places**).
+```java
+                AuthzDecision app = authz.authorize(p, r.approvedBy(), ActivationAction.APPROVE, …);
+                boolean breakGlass = false;
+                if (!app.allowed()) {
+                    // Derived, never claimed. A duty principal is granted BREAK_GLASS_APPROVE and NOT
+                    // APPROVE, so it cannot produce an unmarked activation - which is the failure this
+                    // whole round exists to prevent, and a request flag could not have prevented it.
+                    AuthzDecision bg = authz.authorize(p, r.approvedBy(),
+                            ActivationAction.BREAK_GLASS_APPROVE, …);
+                    if (!bg.allowed()) {
+                        return refuse("activation.authz.denied", …);   // unchanged wording
+                    }
+                    breakGlass = true;
+                    System.err.println("[GATE] BREAK-GLASS approver=" + r.approvedBy()
+                            + " target=" + r.target() + "/" + r.kind() + "/" + r.ref());
+                }
+```
 
-`break-glass-mint <reg> <target> <kind> <ref> --spender <p> --expires-in <hours> --ratify-within <hours> --by <p> --by-key <f> --approved-by <p> --approved-by-key <f>` → writes the grant, prints its nonce. **Refuses when the two keys are the same**, with the same reason shape `ActivationService` uses for the self-approval case.
+and the action becomes `breakGlass ? "BREAK_GLASS" : (r.rollback() ? "ROLLBACK" : "ACTIVATE")`.
+
+**Note the ordering:** `APPROVE` is tried first, so an ordinary approver's path is byte-for-byte what it was and the existing tests are untouched. A rollback approved by a duty key is `BREAK_GLASS`, not `ROLLBACK` — the emergency fact outranks the direction, and the record still carries `priorVersion`.
+
+- [ ] **Step 4: green · Step 5:** `mvn -q test` · **Step 6: commit**
+
+### Task 2: `ActivationPolicy` lint — a duty principal must not hold both
+
+**Files:** wherever activation policies are linted (mirror `PolicyGate`'s `[lint-N]` idiom); test.
+
+A principal granted **both** `APPROVE` and `BREAK_GLASS_APPROVE` on the same resource silently defeats decision (a): it could approve normally and never be marked. That is one JSON line away and nothing would catch it.
 
 - [ ] **Step 1: failing test · Step 2: red · Step 3: implement · Step 4: green · Step 5: commit**
 
 ---
 
-## Chunk 2: Spending it
+## Chunk 2: Minting and evidence
 
-### Task 3: `ActivationService` accepts a grant
+### Task 3: `gates activation duty-key-mint`
 
-**Files:** modify `ActivationService.java`, `ActivationRequest`; test.
+**Files:** extend `ActivateGate`; wire into `GatesCli`. **The usage string appears in `GatesCli:15`, its switch, `ActivateGate`'s switch, `ActivateGate`'s usage and the class javadoc — five places, not two.**
 
-A new overload `activate(r, signer, policy, grant)`. When a grant is present:
+`duty-key-mint <reg> <principal> --out <dir> --by <p> --by-key <f> --approved-by <p> --approved-by-key <f>`:
 
-1. verify it (two signatures, unexpired, target/kind/ref match, spender equals `r.by()`)
-2. **skip the distinct-approver requirement** — that is the whole point
-3. refuse `activation.breakglass.spent` when the nonce already appears in the ledger
-4. record `action = BREAK_GLASS`, with `approvedBy` set to the grant's nonce-bearing identity so the record shows *which grant* authorised it
+1. `preflight` both minter keys through `KeyFileLedgerSigner`'s existing discipline — registered, bound, distinct
+2. generate the duty keypair, write `<principal>.key`/`.pub`, print the `authorized-keys.jsonl` line
+3. print the policy lines the operator must add, and **say plainly that the mint is not itself recorded in the ledger** — the four-eyes here is enforced by requiring two registered keys, not by an audit entry
 
-**The signer path needs care.** `:33-38` binds two signing keys to the named activator and approver. On the break-glass path there is one person, so the check must become "the activator's key matches `r.by()`", and the approver half is satisfied by the grant's own signatures rather than by a second live key. Getting this wrong in either direction is the round's main risk: too strict and break-glass cannot be signed at all, too loose and a single key can forge a normal activation.
+- [ ] **Step 1: failing test · Step 2: red · Step 3: implement · Step 4: green · Step 5: commit**
 
-- [ ] **Step 1: failing tests** — a valid grant activates with no approver; the same grant twice is `spent`; a grant whose spender differs from `by` is refused; an expired grant is refused; **an ordinary activation with no grant still requires a distinct approver** (the regression that matters); a single signing key still cannot produce a normal four-eyes activation
-- [ ] **Step 2: red · Step 3: implement · Step 4: green · Step 5: whole suite · Step 6: commit**
+### Task 4: `run-break-glass-gate.sh`
 
-### Task 4: Unratified break-glass locks the next activation
-
-**Files:** modify `ActivationService`; add `break-glass-ratify` to `ActivateGate`; test.
-
-- [ ] **Step 1: failing tests** — after a break-glass event, a normal activation on that target is refused `activation.breakglass.unratified`; after a two-principal ratify naming that nonce, it succeeds; a ratify signed by one key is refused; a ratify naming a different nonce does not unlock; **a different target is unaffected** (the lock must not be global)
-- [ ] **Step 2: red · Step 3: implement · Step 4: green · Step 5: commit**
-
----
-
-## Chunk 3: Evidence
-
-### Task 5: `run-break-glass-gate.sh`
-
-House idiom: `cygpath`, `fail`, fresh working dirs, staged registry, count-based assertions.
+House idiom: `cygpath`, `fail`, staged registry, fresh dirs, count-based assertions.
 
 | | Asserts |
 |---|---|
-| **B1** | Without a grant, a single-person activation is refused `activation.approval.missing` — the pre-R4 behaviour, unchanged |
-| **B2** | Minting a grant with the **same key twice** is refused |
-| **B3** | With a valid grant, one person activates alone; the ledger line has `action=BREAK_GLASS` and the grant nonce; `activation verify-chain` is intact |
-| **B4** | The emergency is **loud**: a `BREAK-GLASS` line naming the grant and its expiry |
-| **B5** | The same grant a second time is refused `activation.breakglass.spent` |
-| **B6** | A normal activation on that target is now refused `activation.breakglass.unratified` |
-| **B7** | After a two-principal ratify, that normal activation succeeds |
-| **B8** | A **different target** was never locked |
-| **B9** | An expired grant is refused |
+| **B1** | Minting a duty key with **one key file used twice** is refused — four-eyes at mint is real |
+| **B2** | An ordinary two-person activation still yields `action=ACTIVATE` (the regression that matters) |
+| **B3** | One person signing with their own key **plus the duty key** activates, and the entry reads `action=BREAK_GLASS` with the duty principal as approver |
+| **B4** | It is loud: a `BREAK-GLASS` line naming the duty principal and target |
+| **B5** | **The ledger still verifies at every tier** — `activation verify-chain`, `identity verify-signed` and `verify-anchored`. This is the assertion the first design would have failed |
+| **B6** | **The edge still boots after a break-glass activation** with `REQUIRE_SIGNED_ACTIVATION=on`, then again with `REQUIRE_ANCHORED_ACTIVATION=on`. The emergency must restore the line, not take it down |
+| **B7** | The duty principal **cannot** perform an ordinary activation: used as approver where it holds no `BREAK_GLASS_APPROVE` grant for that target, it is denied |
+| **B8** | Scope holds: a duty key granted on target A cannot approve on target B |
+| **B9** | **Deleting the duty key's line from `authorized-keys.jsonl` breaks the whole ledger** with `identity.key.unregistered` and the edge refuses to start — the landmine, proved rather than asserted, so nobody retires a key that way |
 
 - [ ] **Step 1: write · Step 2: run · Step 3: one deterministic injection per assertion · Step 4: every other gate · Step 5: commit**
 
 ---
 
-## Chunk 4: Documents
+## Chunk 3: Documents
 
-### Task 6
+### Task 5
 
-- [ ] `ADOPTION.md:165` — **remove "There is still no break-glass"**, and say what exists and what it costs: a grant must be minted in advance, so a site that never minted one still has no route
-- [ ] `ENTERPRISE.md` — break-glass in the limitations list, phrased as **four-eyes moved earlier in time, not removed**; a minted grant is a standing single-signature capability whose expiry and single use are the whole protection; ratification refuses the next activation rather than undoing the emergency one; no alerting transport is claimed
-- [ ] Counts: `ENTERPRISE.md:12` (19→20 gates), `:596` (five of the nineteen→twenty), `:13` (tests), `README.md:6` (badge), `:140` (tests + per-module split), and the gate list
+- [ ] `ADOPTION.md:165` — **remove "There is still no break-glass"**; say what exists, and that retiring a duty key means removing its policy grants and **never** deleting its key line
+- [ ] `ENTERPRISE.md` limitations — four-eyes **moved earlier in time, not removed**; a duty key is a standing credential until its grants are removed, so sealing, custody and rotation are the whole protection; the marking is derived from policy so it cannot be omitted, but **the edge is not taught** — loudness and the trail are control-plane only; no alerting transport
+- [ ] **Add the revocation landmine to the limitations**: deleting any principal's key retroactively breaks the ledger and stops the edge. Pre-existing, now routine, and B9 proves it
+- [ ] Counts: `ENTERPRISE.md:12` (19→20 gates), the "five of the nineteen" sentence (**it is at `:610`, not `:596`, and the new gate is broker-free so it becomes "six of the twenty"**), `:13` tests; `README.md:6` badge, `:141` per-module split, and the gate list at `:107-125`
+- [ ] **`.github/workflows/ci.yml:40-52` runs exactly the broker-free gates** — a broker-free twentieth gate that is not added there is not run by CI, which would contradict the sentence written in the same commit
 
 ---
 
 ## Definition of done
 
-- [ ] `mvn test` green; the existing four-eyes tests unchanged and still passing
+- [ ] `mvn test` green; the existing four-eyes and authz tests unchanged and passing
 - [ ] `run-break-glass-gate.sh` PASS, **every B1–B9 proved by injecting its defect**
-- [ ] All eight pre-existing NCMD gates and the activation ladder gates still PASS
-- [ ] `ADOPTION.md` no longer says there is no break-glass, and says what it costs
+- [ ] **B5 and B6 pass** — the ledger verifies at all three tiers and the edge boots after a break-glass. These are the two the first design would have failed
+- [ ] Every activation-ladder gate still PASS: activation, lineage, identity, activation-authz, anchored, federation
+- [ ] `SignedLedgerVerifier`, `LedgerChain`, `ActivationEvent`'s field list and the preimage are **untouched** — if any changed, decision (b) was violated
+- [ ] The new gate is in CI
 
 ## What R4 explicitly does not fix
 
 | | |
 |---|---|
-| A site that never minted a grant still has no emergency route — the deliberate cost | inherent |
-| A minted grant is a standing single-signature capability until it expires | bounded, not removed |
-| Ratification refuses the next activation; it does not undo the emergency one | inherent to after-the-fact control |
-| No alerting transport: loud means a log line and a ledger entry, not a page | later |
-| Break-glass covers **activation**, not runtime commands — a command bar has no emergency path | open |
+| A duty key is a standing credential until its grants are removed — sealing, custody and rotation are the whole protection | inherent to any break-glass |
+| **Deleting a key line retroactively breaks the ledger and stops the edge.** Retire by policy, never by deletion | pre-existing; B9 proves it |
+| The edge is not taught: `ActivationLedger.active` ignores the action, so a break-glass version binds like any other and the edge says nothing | later |
+| No alerting transport — loud is a log line and a ledger action | later |
+| The mint is not recorded in the ledger; its four-eyes is enforced by requiring two registered keys | later |
+| Break-glass covers **activation**, not runtime commands | open |
