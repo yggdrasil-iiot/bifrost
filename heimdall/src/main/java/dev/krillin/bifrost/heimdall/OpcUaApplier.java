@@ -1,5 +1,6 @@
 package dev.krillin.bifrost.heimdall;
 
+import java.security.cert.X509Certificate;
 import java.util.List;
 
 import org.eclipse.milo.opcua.sdk.client.OpcUaClient;
@@ -222,6 +223,11 @@ public final class OpcUaApplier implements Applier {
                     cfg -> cfg
                             .setApplicationUri(identity.applicationUri())
                             .setCertificate(identity.certificate())
+                            // The CHAIN as well as the certificate. Milo's UASC handler asks for the
+                            // chain and fails the secure channel with "no certificate chain
+                            // configured" if only setCertificate was called - a message that names
+                            // neither the client nor the setter that is missing.
+                            .setCertificateChain(new X509Certificate[] { identity.certificate() })
                             .setKeyPair(identity.keyPair())
                             .setIdentityProvider(new X509IdentityProvider(
                                     identity.certificate(), identity.keyPair().getPrivate())));

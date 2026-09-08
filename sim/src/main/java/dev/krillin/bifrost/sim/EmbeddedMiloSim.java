@@ -14,6 +14,7 @@ import org.eclipse.milo.opcua.sdk.server.ManagedNamespaceWithLifecycle;
 import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
 import org.eclipse.milo.opcua.sdk.server.OpcUaServerConfig;
 import org.eclipse.milo.opcua.sdk.server.identity.AnonymousIdentityValidator;
+import org.eclipse.milo.opcua.sdk.server.identity.CompositeValidator;
 import org.eclipse.milo.opcua.sdk.server.identity.X509IdentityValidator;
 import org.eclipse.milo.opcua.sdk.server.items.DataItem;
 import org.eclipse.milo.opcua.sdk.server.items.MonitoredItem;
@@ -202,11 +203,18 @@ final class EmbeddedMiloSim implements AutoCloseable {
                 // endpoint. It fails closed on an unconfigured thumbprint, matching
                 // GovernedWriteFilter: "require an identity" with no identity named must mean
                 // nobody, never everybody.
+                // COMPOSITE, not a replacement. Swapping the anonymous validator out entirely
+                // would refuse anonymous sessions at ACTIVATION - a total lockout rather than
+                // read-only, which is a stronger claim than §12 makes and a worse model of a plant:
+                // historians and HMIs must still be able to read. Anonymous stays valid; presenting
+                // the governed certificate is what unlocks the WRITE bit, via GovernedWriteFilter.
                 .setIdentityValidator(requireIdentity
-                        ? new X509IdentityValidator(cert -> governedThumbprint != null
-                                && !governedThumbprint.isBlank()
-                                && governedThumbprint.trim().equalsIgnoreCase(
-                                        GovernedWriteFilter.thumbprintOf(cert)))
+                        ? new CompositeValidator(
+                                AnonymousIdentityValidator.INSTANCE,
+                                new X509IdentityValidator(cert -> governedThumbprint != null
+                                        && !governedThumbprint.isBlank()
+                                        && governedThumbprint.trim().equalsIgnoreCase(
+                                                GovernedWriteFilter.thumbprintOf(cert))))
                         : AnonymousIdentityValidator.INSTANCE)
                 .build();
 
