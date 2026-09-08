@@ -1,5 +1,6 @@
 package dev.krillin.bifrost.heimdall;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.LinkedHashSet;
@@ -7,7 +8,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
-import org.eclipse.paho.client.mqttv3.MqttCallback;
+import org.eclipse.paho.client.mqttv3.MqttCallbackExtended;
 import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
@@ -50,7 +51,7 @@ import dev.krillin.bifrost.core.schema.UdtDefinition;
  * {@code doneNode}/{@code timeoutMs}, response metrics {@code ok}/{@code value}/{@code good}/
  * {@code detail}.
  */
-public final class NcmdOpcUaBridge implements MqttCallback {
+public final class NcmdOpcUaBridge implements MqttCallbackExtended {
 
     private final String group;
     private final String edge;
@@ -80,9 +81,32 @@ public final class NcmdOpcUaBridge implements MqttCallback {
     private final String queryTopic;
     private final String ndataTopic;
 
+    /**
+     * Bifrost's own liveness topic, carrying a retained "online"/"offline".
+     *
+     * <p>Deliberately NOT the Sparkplug NDEATH topic. In the spine
+     * ({@code scripts/run-yggdrasil-spine-gate.sh}) Muninn is the node that births this
+     * group/edge, and two components birthing one edge is a protocol error rather than a detail.
+     * Deciding who owns the Sparkplug node identity for an edge that Heimdall commands and Muninn
+     * feeds is a larger question than this change. This follows the existing
+     * {@code bifrost/.../QUERY/...} convention and needs no ownership decision.
+     */
+    private final String statusTopic;
+
     private final SparkplugBPayloadEncoder encoder = new SparkplugBPayloadEncoder();
     private final SparkplugBPayloadDecoder decoder = new SparkplugBPayloadDecoder();
     private MqttClient client;
+
+    /** Per-node ordered, bounded dispatch for applies. See {@link CommandExecutor}. */
+    private final CommandExecutor executor;
+
+    /** Counters + the /healthz state. Owned by the caller in production so main can serve it. */
+    private final EdgeHealth health;
+
+    /** Exposed so {@code NcmdOpcUaBridgeMain} can start the HTTP endpoint over the same instance. */
+    public EdgeHealth health() {
+        return health;
+    }
 
     /** Enforcing bridge — the default everywhere except an explicit rollout deployment. */
     public NcmdOpcUaBridge(String group, String edge, CommandPolicy policy, Applier applier,
@@ -93,6 +117,19 @@ public final class NcmdOpcUaBridge implements MqttCallback {
     public NcmdOpcUaBridge(String group, String edge, CommandPolicy policy, Applier applier,
                            UdtDefinition conformanceDef, ConformancePolicy conformancePolicy, MasterSpec activeRecipe,
                            boolean logOnly) {
+        this(group, edge, policy, applier, conformanceDef, conformancePolicy, activeRecipe, logOnly,
+                new EdgeHealth(), 4, 64);
+    }
+
+    /**
+     * The widest constructor; the two above delegate here with the field defaults, so no existing
+     * caller or test had to change when health and the apply stripes were added.
+     */
+    public NcmdOpcUaBridge(String group, String edge, CommandPolicy policy, Applier applier,
+                           UdtDefinition conformanceDef, ConformancePolicy conformancePolicy, MasterSpec activeRecipe,
+                           boolean logOnly, EdgeHealth health, int applyThreads, int applyQueueDepth) {
+        this.health = health;
+        this.executor = new CommandExecutor(applyThreads, applyQueueDepth);
         this.logOnly = logOnly;
         this.group = group;
         this.edge = edge;
@@ -104,6 +141,7 @@ public final class NcmdOpcUaBridge implements MqttCallback {
         this.ncmdTopic = "spBv1.0/" + group + "/NCMD/" + edge;
         this.queryTopic = "bifrost/" + group + "/QUERY/" + edge;
         this.ndataTopic = "spBv1.0/" + group + "/NDATA/" + edge;
+        this.statusTopic = "bifrost/" + group + "/STATUS/" + edge;
     }
 
     // ----- pure core (no broker / no live OPC-UA) -----
@@ -187,6 +225,20 @@ public final class NcmdOpcUaBridge implements MqttCallback {
                         if (refused != null) return refused;
                         if (shadowed == null) shadowed = reason;
                     }
+                } catch (PlantUnreachableException unreachable) {
+                    // NOT a verdict. The plant is not visible, so ② could not be evaluated at all.
+                    // Reported separately so an operator is never sent to look at the model because
+                    // a server restarted, and counted separately so /healthz can go unhealthy.
+                    //
+                    // The log line is printed in BOTH unreachable catches on purpose. Today's
+                    // shipped fixture (registry/conformance/Line1-Mixer/1.0.0.json) has no cross
+                    // constraints, so readDouble is never called there and an outage always lands
+                    // on the apply path below; logging only there would make the resilience gate
+                    // green for a reason unrelated to this branch.
+                    System.out.println("[BRIDGE] UNREACHABLE cmd=" + name + " reason=" + unreachable.getMessage());
+                    health.plantUnreachable();
+                    return NcmdResponse.apply(cmdId, false,
+                            detail(shadowed, "plant-unreachable: " + unreachable.getMessage()));
                 } catch (Exception confEx) {   // fail-closed: any conformance/read error DENIES
                     String reason = "conformance-error: " + confEx.getMessage();
                     NcmdResponse refused = refuse(cmdId, name, value, reason);
@@ -203,8 +255,17 @@ public final class NcmdOpcUaBridge implements MqttCallback {
             } else {
                 r = applier.write(name, ((Number) value).doubleValue());
             }
+            if (r.ok()) {
+                health.applied();
+            }
             System.out.println("[BRIDGE] APPLY cmd=" + name + " ok=" + r.ok());
             return NcmdResponse.apply(cmdId, r.ok(), detail(shadowed, r.detail()));
+        } catch (PlantUnreachableException unreachable) {
+            // Same rule as the ② catch above: a refusal, but never reported as a verdict.
+            System.out.println("[BRIDGE] UNREACHABLE cmd=" + name + " reason=" + unreachable.getMessage());
+            health.plantUnreachable();
+            return NcmdResponse.apply(cmdId, false,
+                    detail(shadowed, "plant-unreachable: " + unreachable.getMessage()));
         } catch (Exception e) {
             System.out.println("[BRIDGE] APPLY cmd=" + name + " ok=false");
             return NcmdResponse.apply(cmdId, false, detail(shadowed, "apply error: " + e.getMessage()));
@@ -223,6 +284,9 @@ public final class NcmdOpcUaBridge implements MqttCallback {
             System.out.println("[BRIDGE] LOG-ONLY would-deny cmd=" + name + " val=" + value + " reason=" + reason);
             return null;
         }
+        // Counted only here, on the enforcing path. A log-only would-deny is not a denial, which is
+        // the same reason the two log tokens above are kept distinct.
+        health.denied();
         System.out.println("[BRIDGE] DENY cmd=" + name + " val=" + value + " reason=" + reason);
         return NcmdResponse.apply(cmdId, false, "denied: " + reason);
     }
@@ -238,43 +302,133 @@ public final class NcmdOpcUaBridge implements MqttCallback {
 
     // ----- Paho shell (exercised only by the live gate) -----
 
+    /**
+     * MQTT client id for this edge. It MUST be per-edge: two bridges sharing an id take each
+     * other's session in a loop, which is exactly what the previous constant caused. ':' and '/'
+     * are folded because a group such as "Bifrost:Line1" carries the Sparkplug topic separator,
+     * which brokers reject inside a client id.
+     *
+     * <p>The result can exceed the 23 characters MQTT 3.1 guaranteed; 3.1.1 removed that limit and
+     * HiveMQ accepts it. If another broker is ever targeted, this is the line to shorten.
+     */
+    static String clientId(String group, String edge) {
+        return ("heimdall-" + group + "-" + edge).replaceAll("[:/]", "-");
+    }
+
     public void connect(String broker) throws Exception {
-        client = new MqttClient(broker, "bifrost-ncmd-bridge", new MemoryPersistence());
+        client = new MqttClient(broker, clientId(group, edge), new MemoryPersistence());
         client.setCallback(this);
         MqttConnectOptions opts = new MqttConnectOptions();
         opts.setCleanSession(true);
+        opts.setAutomaticReconnect(true);
+        // Explicit, because the will's latency IS this value: the broker cannot declare us dead
+        // until the keepalive lapses, and the 60s default makes a death take ~90s to appear.
+        opts.setKeepAliveInterval(20);
+        // The will is the whole liveness story: if this process dies, is partitioned, or hangs past
+        // the keepalive, the BROKER publishes "offline" on our behalf. Nothing else can report a
+        // death that the dying process did not notice. See statusTopic's javadoc for why this is
+        // not Sparkplug NDEATH.
+        opts.setWill(statusTopic, "offline".getBytes(StandardCharsets.UTF_8), 1, true);
         client.connect(opts);
-        client.subscribe(ncmdTopic, 1);
-        client.subscribe(queryTopic, 1);
+        subscribeAll();
+        publishStatus("online");
         System.out.println("[BRIDGE] subscribed NCMD=" + ncmdTopic + " QUERY=" + queryTopic
                 + " (policy rules=" + policy.rules().size() + ")");
     }
 
+    private void subscribeAll() throws Exception {
+        client.subscribe(ncmdTopic, 1);
+        client.subscribe(queryTopic, 1);
+    }
+
+    private void publishStatus(String state) {
+        try {
+            client.publish(statusTopic, state.getBytes(StandardCharsets.UTF_8), 1, true);
+        } catch (Exception e) {
+            System.out.println("[BRIDGE] status publish failed (" + state + "): " + e);
+        }
+    }
+
+    @Override
+    public void connectComplete(boolean reconnect, String serverURI) {
+        health.brokerConnected();
+        if (!reconnect) {
+            return;   // the initial connect already subscribed and announced
+        }
+        // LOAD-BEARING. cleanSession(true) means the broker dropped our subscriptions along with
+        // the session, and automatic reconnect does not restore them. Without this the bridge comes
+        // back CONNECTED and deaf — which reads healthy in the log, and is worse than the outage.
+        //
+        // This runs on Paho's callback thread and both calls below are synchronous, so the callback
+        // is blocked until they ack. That is the standard resubscribe pattern and the window is
+        // bounded, but it is why nothing heavier belongs here.
+        try {
+            subscribeAll();
+            publishStatus("online");
+            System.out.println("[BRIDGE] reconnected to " + serverURI + ", resubscribed");
+        } catch (Exception e) {
+            System.out.println("[BRIDGE] RESUBSCRIBE FAILED after reconnect: " + e);
+        }
+    }
+
     public void close() throws Exception {
+        executor.close();
         if (client != null) {
-            if (client.isConnected()) client.disconnect();
+            if (client.isConnected()) {
+                // An orderly stop is not a death: say so ourselves rather than leaving the will to
+                // report it. A hard kill still leaves the broker to publish "offline" for us.
+                publishStatus("offline");
+                client.disconnect();
+            }
             client.close();
         }
     }
 
     @Override public void connectionLost(Throwable cause) {
-        System.out.println("[BRIDGE] connection lost: " + cause);
+        health.brokerDisconnected();
+        System.out.println("[BRIDGE] connection lost: " + cause + " (auto-reconnect armed)");
     }
 
     @Override public void deliveryComplete(IMqttDeliveryToken token) { }
 
     @Override public void messageArrived(String topic, MqttMessage message) {
-        // Publishing from the MQTT callback thread is not allowed; dispatch off-thread.
+        // Publishing from the MQTT callback thread is not allowed; dispatch off-thread. The stripe
+        // key is the command's node id, so two setpoints for one node keep their arrival order.
         byte[] payload = message.getPayload();
-        new Thread(() -> {
+        final SparkplugBPayload req;
+        try {
+            req = decoder.buildFromByteArray(payload, null);
+        } catch (Exception decodeFailure) {
+            // Previously this threw on a throwaway thread and printed a stack trace with no context.
+            System.out.println("[BRIDGE] DROP undecodable payload on " + topic + ": " + decodeFailure);
+            return;
+        }
+        String stripeKey = (req.getMetrics() == null || req.getMetrics().isEmpty())
+                ? "" : String.valueOf(req.getMetrics().get(0).getName());
+        boolean accepted = executor.submit(stripeKey, () -> {
             try {
-                SparkplugBPayload req = decoder.buildFromByteArray(payload, null);
                 NcmdResponse resp = handle(topic, req);
                 client.publish(ndataTopic, encodeResponse(resp), 1, false);
             } catch (Exception e) {
-                e.printStackTrace();
+                System.out.println("[BRIDGE] response publish failed for " + stripeKey + ": " + e);
             }
-        }).start();
+        });
+        if (!accepted) {
+            System.out.println("[BRIDGE] OVERLOAD cmd=" + stripeKey + " - queue full, command refused");
+            try {
+                client.publish(ndataTopic, encodeResponse(overloaded(req.getUuid())), 1, false);
+            } catch (Exception e) {
+                System.out.println("[BRIDGE] overload response publish failed: " + e);
+            }
+        }
+    }
+
+    /**
+     * The overload refusal, extracted so a unit test can assert its wording without a broker.
+     * A dropped command that nobody is told about is worse than a refused one.
+     */
+    static NcmdResponse overloaded(String cmdId) {
+        return NcmdResponse.apply(cmdId, false, "overloaded: edge queue full");
     }
 
     /** Encode a response payload per Heimdall's response wire contract (metric names/types below). */

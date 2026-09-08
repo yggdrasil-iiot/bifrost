@@ -27,6 +27,9 @@ import dev.krillin.bifrost.core.schema.UdtDefinition;
  *   POLICY_PATH  registry/policy.json
  *
  *   ENFORCEMENT_LOG_ONLY  false      (rollout mode: log what would be denied, apply it anyway)
+ *
+ *   HEALTH_PORT            9090      (/healthz; 0 disables the endpoint)
+ *   HEIMDALL_APPLY_THREADS 4         (per-node ordering stripes for the apply path)
  * </pre>
  *
  * Run: {@code mvn -q compile exec:java -Dexec.mainClass=dev.krillin.bifrost.heimdall.NcmdOpcUaBridgeMain}
@@ -46,7 +49,7 @@ public final class NcmdOpcUaBridgeMain {
     record Config(String broker, String opcua, String group, String edge, String policyPath,
                   String registryPath, String conformancePath, String activationPath, String activationTarget,
                   boolean requireSignedActivation, boolean requireAnchoredActivation, String anchorStore,
-                  String anchorDir, boolean enforcementLogOnly) {}
+                  String anchorDir, boolean enforcementLogOnly, int healthPort, int applyThreads) {}
 
     /**
      * Tri-state flag parse shared by every boolean env toggle. {@code true/on/1} and {@code false/off/0}
@@ -87,8 +90,29 @@ public final class NcmdOpcUaBridgeMain {
         boolean logOnly = flag(getenv, "ENFORCEMENT_LOG_ONLY", "");
         String anchorStore = env(getenv, "ANCHOR_STORE", "file");
         String anchorDir = env(getenv, "ANCHOR_DIR", null);
+        int healthPort = intEnv(getenv, "HEALTH_PORT", 9090);
+        int applyThreads = intEnv(getenv, "HEIMDALL_APPLY_THREADS", 4);
         return new Config(broker, opcua, group, edge, policyPath, registryPath, conformancePath, activationPath,
-                activationTarget, requireSignedEffective, requireAnchored, anchorStore, anchorDir, logOnly);
+                activationTarget, requireSignedEffective, requireAnchored, anchorStore, anchorDir, logOnly,
+                healthPort, applyThreads);
+    }
+
+    /**
+     * Integer env parse sharing the {@link #flag} idiom: an unparseable value falls to the default
+     * with a loud WARN rather than silently becoming something else. A health port that quietly
+     * moves is the same class of bug as a mis-set security toggle — you find out from the symptom.
+     */
+    private static int intEnv(Function<String, String> getenv, String key, int dflt) {
+        String v = env(getenv, key, null);
+        if (v == null || v.isBlank()) {
+            return dflt;
+        }
+        try {
+            return Integer.parseInt(v.strip());
+        } catch (NumberFormatException e) {
+            System.err.println("[BRIDGE] WARN: " + key + "='" + v + "' is not a number - using " + dflt);
+            return dflt;
+        }
     }
 
     /**
@@ -242,11 +266,28 @@ public final class NcmdOpcUaBridgeMain {
 
         Conformance conformance = loadConformance(config);
 
-        OpcUaApplier applier = new OpcUaApplier(config.opcua()).connect();
-        System.out.println("[BRIDGE] OPC-UA connected " + config.opcua());
+        EdgeHealth health = new EdgeHealth();
+
+        // Connect eagerly so a healthy start is still reported as one, but do NOT die if the plant
+        // is down: a site power event restarts the OPC-UA server and this edge together, and an
+        // edge that exits here crash-loops under a restart policy instead of waiting. The applier's
+        // lazy reconnect brings the session up on the first command that needs it.
+        //
+        // This does not weaken the startup ledger-trust checks above. Those still fail closed, and
+        // deliberately so: an invisible machine is transient, an untrustworthy model is not.
+        OpcUaApplier applier = new OpcUaApplier(config.opcua(), health);
+        try {
+            applier.connect();
+            System.out.println("[BRIDGE] OPC-UA connected " + config.opcua());
+        } catch (Exception plantDown) {
+            System.out.println("[BRIDGE] OPC-UA not reachable at start (" + plantDown.getMessage()
+                    + ") - starting anyway, commands will answer plant-unreachable until it returns");
+        }
 
         NcmdOpcUaBridge bridge = new NcmdOpcUaBridge(config.group(), config.edge(), policy, applier,
-                conformance.def(), conformance.policy(), conformance.recipe(), config.enforcementLogOnly());
+                conformance.def(), conformance.policy(), conformance.recipe(), config.enforcementLogOnly(),
+                health, config.applyThreads(), 64);
+        health.startHttp(config.healthPort());
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             try {
                 bridge.close();
@@ -254,6 +295,7 @@ public final class NcmdOpcUaBridgeMain {
                 // best-effort
             }
             applier.close();
+            health.stopHttp();
         }));
 
         bridge.connect(config.broker());

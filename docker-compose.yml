@@ -23,3 +23,29 @@ services:
     environment:
       HIVEMQ_ALLOW_ALL_CLIENTS: "true"
     restart: unless-stopped
+
+  # Not started by default. Every existing gate runs `docker compose up -d hivemq-ce` and must keep
+  # getting only that, so this service sits behind a profile:
+  #   docker compose --profile edge up -d heimdall
+  heimdall:
+    profiles: ["edge"]
+    image: bifrost/heimdall:dev
+    build:
+      context: .
+      dockerfile: heimdall/Dockerfile
+    container_name: bifrost-heimdall
+    depends_on:
+      - hivemq-ce
+    environment:
+      MQTT_URL: "tcp://hivemq-ce:1883"
+      OPCUA_URL: "opc.tcp://host.docker.internal:48400"
+      SPB_GROUP: "Bifrost:Line1"
+      SPB_EDGE: "recipe-edge"
+    # Required for host.docker.internal outside Docker Desktop, harmless on it.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./heimdall/registry:/opt/heimdall/registry:ro
+    ports:
+      - "9090:9090"
+    restart: unless-stopped

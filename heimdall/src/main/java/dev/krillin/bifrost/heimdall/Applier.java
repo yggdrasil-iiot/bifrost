@@ -4,6 +4,10 @@ package dev.krillin.bifrost.heimdall;
  * The physical apply seam the bridge drives after an edge-authorization ALLOW.
  * Implemented by {@link OpcUaApplier} (live Milo client) in production and by a fake in tests,
  * so the bridge core ({@link NcmdOpcUaBridge#handle}) is unit-testable with no live OPC-UA server.
+ *
+ * <p>Any method here may throw {@link PlantUnreachableException} to say the plant was not visible.
+ * That is not a verdict: the bridge answers with a distinct reason code and retries the connection,
+ * rather than reporting it as a policy or conformance refusal.
  */
 public interface Applier {
 

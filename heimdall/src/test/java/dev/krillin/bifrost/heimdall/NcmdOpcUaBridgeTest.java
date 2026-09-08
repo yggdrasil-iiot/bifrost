@@ -231,6 +231,52 @@ class NcmdOpcUaBridgeTest {
         assertTrue(r.detail().contains("above-max"), r.detail());
     }
 
+    // ----- R0: an unreachable plant is a refusal, but never a verdict -----
+
+    @Test void unreachable_plant_on_the_apply_path_is_not_reported_as_a_denial() throws Exception {
+        FakeApplier fake = new FakeApplier();
+        fake.writeUnreachable = true;
+        // Rpm=1500 is ALLOWED by registry/policy.json, so any refusal here is about reachability.
+        NcmdResponse r = bridge(fake).handle(NCMD_TOPIC,
+                cmd("u-1", "write", "ns=2;s=Recipe/Rpm", 1500.0, MetricDataType.Double, null, null));
+
+        assertFalse(r.ok(), "the edge must not claim success for a write it could not make");
+        assertTrue(r.detail().contains("plant-unreachable"), r.detail());
+        assertFalse(r.detail().contains("denied:"), "not a policy denial: " + r.detail());
+    }
+
+    @Test void unreachable_plant_on_the_conformance_path_is_not_reported_as_conformance_error()
+            throws Exception {
+        FakeApplier fake = new FakeApplier();
+        fake.readDoubleUnreachable = true;   // the cross-member sibling read is what fails
+        NcmdResponse r = weldBridge(fake).handle(NCMD_TOPIC,
+                cmd("u-2", "write", WELD_NODE, 5.0, MetricDataType.Double, null, null));
+
+        assertFalse(r.ok());
+        assertTrue(r.detail().contains("plant-unreachable"), r.detail());
+        assertFalse(r.detail().contains("conformance-error"),
+                "an outage must not send the operator to look at the model: " + r.detail());
+    }
+
+    // ----- R0: dispatch and counters -----
+
+    @Test void overload_refusal_is_a_refusal_and_says_why() {
+        NcmdResponse r = NcmdOpcUaBridge.overloaded("c-9");
+        assertFalse(r.ok(), "an overloaded edge must not report success for a command it never ran");
+        assertEquals("c-9", r.cmdId(), "the refusal must correlate, or the caller cannot match it");
+        assertTrue(r.detail().contains("overloaded"), r.detail());
+    }
+
+    @Test void counters_separate_applied_from_denied() throws Exception {
+        EdgeHealth h = new EdgeHealth();
+        NcmdOpcUaBridge b = new NcmdOpcUaBridge(GROUP, EDGE, policy(), new FakeApplier(),
+                null, null, null, false, h, 4, 64);
+        b.handle(NCMD_TOPIC, cmd("c-1", "write", "ns=2;s=Recipe/Rpm", 1500.0, MetricDataType.Double, null, null));
+        b.handle(NCMD_TOPIC, cmd("c-2", "write", "ns=2;s=Nope", 1.0, MetricDataType.Double, null, null));
+        assertEquals(1, h.appliedCount());
+        assertEquals(1, h.deniedCount());
+    }
+
     /** Records interactions and returns programmed results. */
     static final class FakeApplier implements Applier {
         boolean writeCalled, callCalled, readCalled;
@@ -241,6 +287,10 @@ class NcmdOpcUaBridgeTest {
         String lastReadDoubleNode;
         double readDoubleResult = 0.0;
         String throwOnReadDoubleNode;   // if set, readDouble(node) throws (simulates a bad-quality/failed read)
+        // The two below are a DIFFERENT failure from the one above: not a bad read, but no visible
+        // plant at all. The bridge must tell them apart, which is what R0's unreachable tests assert.
+        boolean readDoubleUnreachable;
+        boolean writeUnreachable;
         Result writeResult = new Result(true, "written+confirmed");
         Result callResult = new Result(true, "rising-edge confirmed");
         ReadBack readResult = new ReadBack("1500.0", true);
@@ -251,12 +301,18 @@ class NcmdOpcUaBridgeTest {
         }
         @Override public double readDouble(String nodeId) throws Exception {
             lastReadDoubleNode = nodeId;
+            if (readDoubleUnreachable) {
+                throw new PlantUnreachableException("session closed");
+            }
             if (nodeId.equals(throwOnReadDoubleNode)) {
                 throw new Exception("readDouble bad quality " + nodeId);
             }
             return readDoubleResult;
         }
-        @Override public Result write(String nodeId, double value) {
+        @Override public Result write(String nodeId, double value) throws Exception {
+            if (writeUnreachable) {
+                throw new PlantUnreachableException("session closed");
+            }
             writeCalled = true;
             lastWriteNode = nodeId;
             lastWriteValue = value;

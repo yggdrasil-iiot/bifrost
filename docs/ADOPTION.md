@@ -146,6 +146,25 @@ model it is checking against should not start rather than wave traffic past. The
 `[BRIDGE] enforcement = LOG-ONLY …` prints in both states, so which mode an edge is in is always
 readable from its log.
 
+**The edge also has to survive the night it is not being watched.** Log-only inverts *refusal*; it
+does nothing about *unavailability*, and this phase's rule is about the line stopping for any
+reason. Four paths that could stop it have been closed, and `run-edge-resilience-gate.sh` proves
+each by killing something and requiring recovery with no human action: the edge now starts even
+when its OPC-UA server is down (it used to exit, and would crash-loop under a restart policy),
+reconnects to the broker **and resubscribes** (an automatic reconnect without the resubscribe comes
+back connected and deaf, which reads healthy in the log), rebuilds a lost OPC-UA session by itself,
+and answers a command it cannot apply with `plant-unreachable` rather than `conformance-error` —
+an outage used to send the operator to look at the model. A retained will on
+`bifrost/{group}/STATUS/{edge}` lets the broker announce a death the process never noticed, and
+`/healthz` reports both legs, so an edge that is connected to the broker but blind to the plant
+reads unhealthy. Every assertion in that gate was checked by injecting its defect; two of them were
+found to be vacuous that way and fixed.
+
+**What this does not change.** The startup ledger-trust checks still fail closed: a bridge that
+cannot trust the model it checks against still refuses to start, and that is deliberate — an
+invisible machine is transient, an untrustworthy model is not. There is still no break-glass. The
+container in `heimdall/Dockerfile` is built but exercised by no gate.
+
 **Then the two that were always part of the plan.**
 
 **Narrow the scope to one edge.** `SPB_GROUP` and `SPB_EDGE` are per-edge, so the first deployment
