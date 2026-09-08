@@ -59,7 +59,7 @@ public final class NcmdOpcUaBridgeMain {
                   boolean requireSignedActivation, boolean requireAnchoredActivation, String anchorStore,
                   String anchorDir, boolean enforcementLogOnly, int healthPort, int applyThreads, String identityDir,
                   boolean requireSignedCommand, int replayWindow,
-                  String commandLedgerPath, boolean requireCommandLedger) {}
+                  String commandLedgerPath, boolean requireCommandLedger, int certWarnDays) {}
 
     /**
      * Tri-state flag parse shared by every boolean env toggle. {@code true/on/1} and {@code false/off/0}
@@ -102,6 +102,7 @@ public final class NcmdOpcUaBridgeMain {
         String anchorDir = env(getenv, "ANCHOR_DIR", null);
         int healthPort = intEnv(getenv, "HEALTH_PORT", 9090);
         int applyThreads = intEnv(getenv, "HEIMDALL_APPLY_THREADS", 4);
+        int certWarnDays = intEnv(getenv, "HEIMDALL_CERT_WARN_DAYS", 30);
         String identityDir = env(getenv, "HEIMDALL_IDENTITY_DIR", null);
         boolean requireSignedCommand = flag(getenv, "REQUIRE_SIGNED_COMMAND", "");
         int replayWindow = intEnv(getenv, "HEIMDALL_REPLAY_WINDOW", 1024);
@@ -110,7 +111,7 @@ public final class NcmdOpcUaBridgeMain {
         return new Config(broker, opcua, group, edge, policyPath, registryPath, conformancePath, activationPath,
                 activationTarget, requireSignedEffective, requireAnchored, anchorStore, anchorDir, logOnly,
                 healthPort, applyThreads, identityDir, requireSignedCommand, replayWindow,
-                commandLedgerPath, requireCommandLedger);
+                commandLedgerPath, requireCommandLedger, certWarnDays);
     }
 
     /**
@@ -310,6 +311,39 @@ public final class NcmdOpcUaBridgeMain {
                 + (breakGlass ? ", BREAK-GLASS" : "") + ")");
     }
 
+    /**
+     * Say how long the edge's certificate has left, and say it in plain words when it is short or gone.
+     *
+     * <p>THE DECISION THIS RECORDS: an expired certificate does NOT stop the edge. The startup
+     * ledger-trust checks above still fail closed and deliberately so -- an untrustworthy model is a
+     * governance fault. A lapsed transport credential is an operational one, the same class as the
+     * unreachable plant R0 already decided not to die on, and refusing to start here would turn a
+     * missed renewal into a stopped line. ENTERPRISE.md 6 asks for exactly this to be decided in
+     * advance rather than discovered; this is the decision.
+     *
+     * <p>What the edge owes instead is a precise diagnosis. Without it the symptom is a Milo connect
+     * failure that reads like a server fault, and an operator goes looking at the wrong machine.
+     */
+    static void reportCertificateLifetime(EdgeIdentity identity, EdgeHealth health, int warnDays,
+                                          java.time.Clock clock) {
+        long days = identity.daysUntilExpiry(clock);
+        health.certDaysRemaining(days);
+        if (identity.expired(clock)) {
+            System.err.println("[BRIDGE] identity.cert.expired notAfter=" + identity.notAfter()
+                    + " daysAgo=" + (-days) + " - the OPC-UA server will refuse this certificate."
+                    + " Renew with: java -cp bifrost-heimdall.jar"
+                    + " dev.krillin.bifrost.heimdall.EdgeIdentity renew <dir> <applicationUri>");
+        } else if (days <= warnDays) {
+            System.err.println("[BRIDGE] WARN identity.cert.expiring days=" + days
+                    + " notAfter=" + identity.notAfter()
+                    + " - renew, add the new thumbprint to the server trust list, then restart");
+        } else {
+            // Printed on every healthy boot too, so the number is in the log before anyone needs it.
+            System.out.println("[BRIDGE] identity.cert.ok days=" + days
+                    + " notAfter=" + identity.notAfter());
+        }
+    }
+
     public static void main(String[] args) throws Exception {
         Config config = resolve(System::getenv);
 
@@ -345,6 +379,7 @@ public final class NcmdOpcUaBridgeMain {
             // Without it, a thumbprint mismatch looks like an ordinary connection failure.
             System.out.println("[BRIDGE] OPC-UA identity " + identity.thumbprint()
                     + " (" + identity.applicationUri() + ")");
+            reportCertificateLifetime(identity, health, config.certWarnDays(), java.time.Clock.systemUTC());
         }
 
         // Loaded ONCE, like the policy and the ledger above it: revocation latency is therefore the
