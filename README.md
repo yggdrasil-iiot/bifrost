@@ -3,7 +3,7 @@
 [![CI](https://github.com/yggdrasil-iiot/bifrost/actions/workflows/ci.yml/badge.svg)](https://github.com/yggdrasil-iiot/bifrost/actions/workflows/ci.yml)
 ![Java](https://img.shields.io/badge/Java-17-orange?logo=openjdk&logoColor=white)
 ![Build](https://img.shields.io/badge/build-Maven%20multi--module-blue)
-![Tests](https://img.shields.io/badge/tests-425-brightgreen)
+![Tests](https://img.shields.io/badge/tests-451-brightgreen)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache_2.0-blue.svg)](LICENSE)
 
 **The governance core of the [Yggdrasil](https://github.com/yggdrasil-iiot) IIoT spine — the "IAM" for the OT governance boundary.**
@@ -16,7 +16,7 @@ Bifrost decides *what is allowed to cross the OT/IT boundary*. Nothing — no eq
 |---|---|
 | **[docs/ENTERPRISE.md](docs/ENTERPRISE.md)** | Thirteen axes of taking this to an enterprise, each marked *built · deferred · open · measured*. A **built** row names the gate that proves it; a **deferred** row names the trigger that would force it. Ledger growth, verification cost and audit-at-scale are measured — and the measurements that came out unusable are reported as failures rather than quietly dropped. |
 | **[docs/ADOPTION.md](docs/ADOPTION.md)** | The order any of this could go into a plant that is **already running** — six phases, each with an exit criterion and an abort criterion, and the phase where it stops being risk-free. Derived from the code's constraints rather than from experience, and it says so. |
-| **[Executable gates](#executable-gates)** | Every claim below is backed by a gate you can run, not by a unit test. All 18 last ran green on **2026-09-08** (Docker 26.1.4), with no leg skipped. |
+| **[Executable gates](#executable-gates)** | Every claim below is backed by a gate you can run, not by a unit test. All 19 last ran green on **2026-09-08** (Docker 26.1.4), with no leg skipped. |
 
 ## What it governs
 
@@ -114,6 +114,7 @@ scripts/run-ncmd-runtime-gate.sh           # Heimdall edge authz over a live bro
 scripts/run-edge-resilience-gate.sh        # edge survives broker/OPC-UA loss, boots without a plant, announces its own death
 scripts/run-write-exclusivity-gate.sh      # the edge presents an X.509 identity; a second client's write is refused by the server
 scripts/run-command-identity-gate.sh       # a command carries a verified requester; the rule's principal is enforced
+scripts/run-command-ledger-gate.sh         # commands leave a chained record: intent before the plant is touched, outcome after
 scripts/run-activation-gate.sh             # T3 — four-eyes SoD, content seal, rollback, edge bind
 scripts/run-lineage-gate.sh                # T4 — tamper-evident hash chain, edge fail-close
 scripts/run-identity-gate.sh               # T5 — dual-signed activation, signed head, edge fail-close
@@ -137,7 +138,7 @@ sim/       an embedded Eclipse Milo OPC-UA server the gates drive end-to-end.
 ## Build & test
 
 ```bash
-mvn install     # Java 17 · 425 tests (core 236 · heimdall 90 · gates 81 · sim 18)
+mvn install     # Java 17 · 451 tests (core 250 · heimdall 97 · gates 86 · sim 18)
                 # also writes target/bifrost-sbom.{json,xml} — one CycloneDX 1.6 SBOM
                 # for the whole reactor (40 components, licences resolved)
 ```
