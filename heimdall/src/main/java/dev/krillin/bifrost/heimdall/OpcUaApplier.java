@@ -1,15 +1,20 @@
 package dev.krillin.bifrost.heimdall;
 
+import java.security.cert.X509Certificate;
 import java.util.List;
 
 import org.eclipse.milo.opcua.sdk.client.OpcUaClient;
+import org.eclipse.milo.opcua.sdk.client.identity.X509IdentityProvider;
 import org.eclipse.milo.opcua.stack.core.StatusCodes;
 import org.eclipse.milo.opcua.stack.core.UaException;
+import org.eclipse.milo.opcua.stack.core.security.SecurityPolicy;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DataValue;
 import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
 import org.eclipse.milo.opcua.stack.core.types.builtin.StatusCode;
 import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
+import org.eclipse.milo.opcua.stack.core.types.enumerated.MessageSecurityMode;
 import org.eclipse.milo.opcua.stack.core.types.enumerated.TimestampsToReturn;
+import org.eclipse.milo.opcua.stack.core.types.structured.EndpointDescription;
 
 /**
  * Milo 1.0.0 OPC-UA client implementation of {@link Applier} — the write leg the lab lacked.
@@ -49,16 +54,29 @@ public final class OpcUaApplier implements Applier {
     private volatile boolean connected;
     private volatile long nextRetryAt;
 
+    /**
+     * The edge's OPC-UA identity, or null for the anonymous {@code SecurityPolicy.None} path.
+     *
+     * <p>Null is the default and every gate written before R3 runs that way, which is what keeps
+     * those gates meaningful: this round adds a capability, it does not change the posture.
+     */
+    private final EdgeIdentity identity;
+
     public OpcUaApplier(String endpoint) {
-        this(endpoint, null);
+        this(endpoint, null, null);
     }
 
     public OpcUaApplier(String endpoint, EdgeHealth health) {
-        this.endpoint = endpoint;
-        this.health = health;
+        this(endpoint, health, null);
     }
 
-    /** Connect a SecurityPolicy.None, anonymous client (synchronous 1.0.0 API). */
+    public OpcUaApplier(String endpoint, EdgeHealth health, EdgeIdentity identity) {
+        this.endpoint = endpoint;
+        this.health = health;
+        this.identity = identity;
+    }
+
+    /** Connect — anonymous on SecurityPolicy.None, or with the edge's certificate if one is set. */
     public OpcUaApplier connect() throws Exception {
         ensureConnected();
         return this;
@@ -86,6 +104,24 @@ public final class OpcUaApplier implements Applier {
                 || v == StatusCodes.Bad_NotConnected
                 || v == StatusCodes.Bad_SecureChannelClosed
                 || v == StatusCodes.Bad_Timeout;
+    }
+
+    /**
+     * Is this endpoint one the edge may present its identity on?
+     *
+     * <p>The failure this guards is a <b>silent downgrade</b>. If an anonymous {@code None}
+     * endpoint were acceptable, an edge configured with an identity would connect happily without
+     * presenting it, and row 12's whole claim would be lost behind a green log line. So the answer
+     * is yes only for {@code Basic256Sha256} with {@code SignAndEncrypt}: signing alone leaves the
+     * command values on the wire in clear, which is not what this round claims to establish.
+     */
+    static boolean isSecure(String securityPolicyUri, MessageSecurityMode mode) {
+        return SecurityPolicy.Basic256Sha256.getUri().equals(securityPolicyUri)
+                && MessageSecurityMode.SignAndEncrypt.equals(mode);
+    }
+
+    static boolean isSecure(EndpointDescription e) {
+        return e != null && isSecure(e.getSecurityPolicyUri(), e.getSecurityMode());
     }
 
     /**
@@ -148,7 +184,7 @@ public final class OpcUaApplier implements Applier {
                     // best-effort: we are replacing it regardless
                 }
             }
-            client = OpcUaClient.create(endpoint);
+            client = identity == null ? createAnonymous() : createGoverned();
             client.connect();
             connected = true;
             if (health != null) {
@@ -160,6 +196,51 @@ public final class OpcUaApplier implements Applier {
             nextRetryAt = now + BACKOFF_MS;
             throw new PlantUnreachableException(
                     "OPC-UA connect to " + endpoint + " failed: " + e.getMessage(), e);
+        }
+    }
+
+    /** The pre-R3 path, unchanged: anonymous, {@code SecurityPolicy.None}. */
+    private OpcUaClient createAnonymous() throws UaException {
+        return OpcUaClient.create(endpoint);
+    }
+
+    /**
+     * Connect presenting the edge's certificate, on a {@code Basic256Sha256}/{@code SignAndEncrypt}
+     * endpoint, with an X.509 user identity token.
+     *
+     * <p>The endpoint selector is deliberately strict and the empty case is turned into a message
+     * that names the cause. Milo's own failure for "no endpoint matched" is opaque, and the reading
+     * an operator would take from it — that the server is down — is precisely wrong: the server is
+     * up and is not offering a secured endpoint. An edge that quietly fell back to the anonymous
+     * endpoint instead would defeat the entire round.
+     */
+    private OpcUaClient createGoverned() throws Exception {
+        try {
+            return OpcUaClient.create(
+                    endpoint,
+                    endpoints -> endpoints.stream().filter(OpcUaApplier::isSecure).findFirst(),
+                    transport -> { },
+                    cfg -> cfg
+                            .setApplicationUri(identity.applicationUri())
+                            .setCertificate(identity.certificate())
+                            // The CHAIN as well as the certificate. Milo's UASC handler asks for the
+                            // chain and fails the secure channel with "no certificate chain
+                            // configured" if only setCertificate was called - a message that names
+                            // neither the client nor the setter that is missing.
+                            .setCertificateChain(new X509Certificate[] { identity.certificate() })
+                            .setKeyPair(identity.keyPair())
+                            .setIdentityProvider(new X509IdentityProvider(
+                                    identity.certificate(), identity.keyPair().getPrivate())));
+        } catch (Exception e) {
+            // Decided behaviour, not a fallback. When no secure endpoint is offered, the edge
+            // REFUSES rather than quietly using the anonymous one: an edge holding an identity and
+            // not presenting it is the exact defect this round exists to remove, and it would look
+            // green in every log. Milo's own message for "no endpoint matched" is opaque and reads
+            // like the server is down, when in fact the server is up and offering nothing secure.
+            throw new PlantUnreachableException(
+                    "no Basic256Sha256/SignAndEncrypt endpoint at " + endpoint
+                            + "; an identity is configured so the anonymous endpoint is deliberately"
+                            + " not used (" + e.getMessage() + ")", e);
         }
     }
 

@@ -5,6 +5,31 @@ import org.junit.jupiter.api.Test;
 
 class NcmdOpcUaBridgeMainConfigTest {
 
+    // ----- R3: OPC-UA identity -----
+
+    @Test
+    void identityDirDefaultsToUnset() {
+        assertNull(NcmdOpcUaBridgeMain.resolve(k -> null).identityDir());
+    }
+
+    @Test
+    void identityDirIsReadFromTheEnvironment() {
+        assertEquals("/etc/heimdall/pki", NcmdOpcUaBridgeMain.resolve(
+                k -> "HEIMDALL_IDENTITY_DIR".equals(k) ? "/etc/heimdall/pki" : null).identityDir());
+    }
+
+    /**
+     * Derived, and per-edge: two edges must be two principals to the server, or a per-edge write
+     * permission cannot mean anything.
+     */
+    @Test
+    void applicationUriIsDerivedFromGroupAndEdge() {
+        assertEquals("urn:bifrost:heimdall:Bifrost-Line1:recipe-edge",
+                NcmdOpcUaBridgeMain.applicationUri("Bifrost:Line1", "recipe-edge"));
+        assertNotEquals(NcmdOpcUaBridgeMain.applicationUri("Bifrost:Line1", "recipe-edge"),
+                        NcmdOpcUaBridgeMain.applicationUri("Bifrost:Line1", "mixer-edge"));
+    }
+
     // ----- R0: health endpoint + apply stripes -----
 
     @Test

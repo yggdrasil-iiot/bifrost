@@ -30,6 +30,8 @@ import dev.krillin.bifrost.core.schema.UdtDefinition;
  *
  *   HEALTH_PORT            9090      (/healthz; 0 disables the endpoint)
  *   HEIMDALL_APPLY_THREADS 4         (per-node ordering stripes for the apply path)
+ *
+ *   HEIMDALL_IDENTITY_DIR  (unset)   (OPC-UA keypair + certificate dir; unset = anonymous/None)
  * </pre>
  *
  * Run: {@code mvn -q compile exec:java -Dexec.mainClass=dev.krillin.bifrost.heimdall.NcmdOpcUaBridgeMain}
@@ -49,7 +51,7 @@ public final class NcmdOpcUaBridgeMain {
     record Config(String broker, String opcua, String group, String edge, String policyPath,
                   String registryPath, String conformancePath, String activationPath, String activationTarget,
                   boolean requireSignedActivation, boolean requireAnchoredActivation, String anchorStore,
-                  String anchorDir, boolean enforcementLogOnly, int healthPort, int applyThreads) {}
+                  String anchorDir, boolean enforcementLogOnly, int healthPort, int applyThreads, String identityDir) {}
 
     /**
      * Tri-state flag parse shared by every boolean env toggle. {@code true/on/1} and {@code false/off/0}
@@ -92,9 +94,31 @@ public final class NcmdOpcUaBridgeMain {
         String anchorDir = env(getenv, "ANCHOR_DIR", null);
         int healthPort = intEnv(getenv, "HEALTH_PORT", 9090);
         int applyThreads = intEnv(getenv, "HEIMDALL_APPLY_THREADS", 4);
+        String identityDir = env(getenv, "HEIMDALL_IDENTITY_DIR", null);
         return new Config(broker, opcua, group, edge, policyPath, registryPath, conformancePath, activationPath,
                 activationTarget, requireSignedEffective, requireAnchored, anchorStore, anchorDir, logOnly,
-                healthPort, applyThreads);
+                healthPort, applyThreads, identityDir);
+    }
+
+    /**
+     * The OPC-UA application URI this edge announces, derived rather than configured.
+     *
+     * <p>Per-edge on purpose: two edges must be two principals to the server, or a per-edge write
+     * permission cannot mean anything. Separators are folded for the same reason they are in
+     * {@code NcmdOpcUaBridge.clientId}.
+     *
+     * <p>It is derived in exactly one place because the same value has to reach BOTH the
+     * certificate's subjectAltName and the announced application URI. A mismatch between the two is
+     * rejected at connect time with an error that reads like a server fault.
+     */
+    static String applicationUri(String group, String edge) {
+        // Fold each segment BEFORE joining: a group such as "Bifrost:Line1" carries the same
+        // separator this URI uses, so folding the joined string would be ambiguous.
+        return "urn:bifrost:heimdall:" + foldSegment(group) + ":" + foldSegment(edge);
+    }
+
+    private static String foldSegment(String s) {
+        return s == null ? "" : s.replaceAll("[:/]", "-");
     }
 
     /**
@@ -275,7 +299,19 @@ public final class NcmdOpcUaBridgeMain {
         //
         // This does not weaken the startup ledger-trust checks above. Those still fail closed, and
         // deliberately so: an invisible machine is transient, an untrustworthy model is not.
-        OpcUaApplier applier = new OpcUaApplier(config.opcua(), health);
+        // The edge's OPC-UA identity, when one is configured. Derived URI, so the certificate's
+        // subjectAltName and the announced application URI can never disagree.
+        EdgeIdentity identity = null;
+        if (config.identityDir() != null && !config.identityDir().isBlank()) {
+            identity = EdgeIdentity.loadOrCreate(Path.of(config.identityDir()),
+                    applicationUri(config.group(), config.edge()));
+            // Printed so an operator can match this against what the server has been told to trust.
+            // Without it, a thumbprint mismatch looks like an ordinary connection failure.
+            System.out.println("[BRIDGE] OPC-UA identity " + identity.thumbprint()
+                    + " (" + identity.applicationUri() + ")");
+        }
+
+        OpcUaApplier applier = new OpcUaApplier(config.opcua(), health, identity);
         try {
             applier.connect();
             System.out.println("[BRIDGE] OPC-UA connected " + config.opcua());
