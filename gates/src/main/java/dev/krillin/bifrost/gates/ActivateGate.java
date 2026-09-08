@@ -10,7 +10,9 @@ import dev.krillin.bifrost.core.schema.Violation;
  *            [--anchor-store file|git] [--anchor-dir <dir>] [--rollback]                    (0 ok / 1 refused / 2 usage)
  *   active   <reg> <target> <kind> <ref>                                                    (prints active version+sha or none)
  *   activation-log <reg> <target>                                                           (prints the audit trail)
- *   activation verify-chain <reg> <target>                                                  (0 intact / 1 tampered / 2 no such target) */
+ *   activation verify-chain <reg> <target>                                                  (0 intact / 1 tampered / 2 no such target)
+ *   activation duty-key-mint <reg> <principal> --out <dir> --by <p> --by-key <f> --approved-by <p> --approved-by-key <f>
+ *            two registered people mint a break-glass duty key                              (0 minted / 1 refused / 2 usage) */
 public final class ActivateGate {
     public static void main(String[] args) { System.exit(run(args)); }
 
@@ -116,7 +118,97 @@ public final class ActivateGate {
     }
 
     private static int activation(String[] a) throws Exception {
-        if (a.length < 3 || !"verify-chain".equals(a[0])) {
+        if (a.length == 0) { usage(); return 2; }
+        switch (a[0]) {
+            case "verify-chain": return verifyChain(a);
+            case "duty-key-mint": return dutyKeyMint(Arrays.copyOfRange(a, 1, a.length));
+            default:
+                System.err.println("Usage: activation <verify-chain|duty-key-mint> ...");
+                return 2;
+        }
+    }
+
+    private static final String MINT_USAGE = "Usage: activation duty-key-mint <reg> <principal> --out <dir>"
+            + " --by <p> --by-key <f> --approved-by <p> --approved-by-key <f>";
+
+    /**
+     * Mint a break-glass duty key: an Ed25519 keypair whose principal is granted BREAK_GLASS_APPROVE and
+     * never APPROVE, so one person holding it can activate in an emergency and the record is marked as one.
+     *
+     * <p>The four-eyes of that later emergency happens HERE, ahead of it: two registered people must each
+     * present a key file bound to their own registered public key. That is the same preflight an activation
+     * runs, so a duty key cannot be conjured by one person. The mint writes no ledger entry -- the two-person
+     * rule is enforced by demanding two bound keys, not by an audit trail -- and the command says so.
+     */
+    private static int dutyKeyMint(String[] a) throws Exception {
+        String out = null, by = null, byKey = null, approvedBy = null, approvedByKey = null;
+        List<String> pos = new ArrayList<>();
+        for (int i = 0; i < a.length; i++) {
+            switch (a[i]) {
+                case "--out" -> out = (++i < a.length) ? a[i] : null;
+                case "--by" -> by = (++i < a.length) ? a[i] : null;
+                case "--by-key" -> byKey = (++i < a.length) ? a[i] : null;
+                case "--approved-by" -> approvedBy = (++i < a.length) ? a[i] : null;
+                case "--approved-by-key" -> approvedByKey = (++i < a.length) ? a[i] : null;
+                default -> pos.add(a[i]);
+            }
+        }
+        if (pos.size() < 2 || out == null || by == null || byKey == null
+                || approvedBy == null || approvedByKey == null) {
+            System.err.println(MINT_USAGE);
+            return 2;
+        }
+        Path reg = Path.of(pos.get(0));
+        String principal = pos.get(1);
+        if (!IdentityGate.isSafePrincipal(principal)) {
+            System.err.println("[GATE] duty-key-mint: invalid principal (allowed [A-Za-z0-9_.-], 1-64): " + principal);
+            return 2;
+        }
+        dev.krillin.bifrost.core.identity.AuthorizedKeys authorized =
+                dev.krillin.bifrost.core.identity.AuthorizedKeys.load(reg);
+        // Refuse BEFORE minting. A second line for an already-registered principal makes AuthorizedKeys.load
+        // throw on a duplicate-principal-different-key, which stops every verification and the edge with it.
+        if (authorized.forPrincipal(principal).isPresent()) {
+            return refusedMint(List.of(new Violation("identity.principal.already-registered",
+                    "'" + principal + "' already has a key line; mint a new duty principal rather than"
+                    + " adding a second line for this one")));
+        }
+        // Four-eyes at mint time: each key file must bind to its claimed principal's REGISTERED key, and the
+        // two must resolve to different keys. Identical discipline to a signed activation, reused verbatim.
+        List<Violation> pf = dev.krillin.bifrost.core.identity.KeyFileLedgerSigner.create(
+                by, Path.of(byKey), approvedBy, Path.of(approvedByKey), authorized).preflight();
+        if (!pf.isEmpty()) return refusedMint(pf);
+
+        String pub = IdentityGate.writeKeyPair(principal, Path.of(out));
+        Path dir = Path.of(out);
+        System.err.println("[GATE] duty-key-mint principal=" + principal + " minted-by=" + by
+                + " approved-by=" + approvedBy + " -> " + dir.resolve(principal + ".key")
+                + " , " + dir.resolve(principal + ".pub"));
+        System.out.println("[GATE] duty-key-mint principal=" + principal + " => MINTED");
+        System.out.println("Append this line to " + reg.resolve("identity").resolve("authorized-keys.jsonl") + ":");
+        System.out.println(IdentityGate.authorizedKeysLine(principal, pub));
+        System.out.println("Then grant it BREAK_GLASS_APPROVE -- and never APPROVE -- in "
+                + reg.resolve("identity").resolve("activation-policy.json")
+                + ", one rule per target it may cover:");
+        System.out.println("  {\"id\":\"r-bg-" + principal + "\",\"principal\":\"" + principal
+                + "\",\"action\":\"break_glass_approve\",\"target\":\"<target>\",\"kind\":\"<kind>\",\"ref\":\"<ref>\"}");
+        System.out.println("A principal holding both roles over overlapping resources is refused at policy load,"
+                + " because it could approve normally and the emergency would never be recorded as one.");
+        System.out.println("This mint is NOT recorded in the ledger. Its two-person rule is enforced by requiring"
+                + " two registered, bound keys here -- there is no audit entry to point at afterwards.");
+        System.out.println("Retire this key by REMOVING ITS POLICY GRANTS. Deleting its authorized-keys line"
+                + " retroactively breaks every ledger entry it signed and the edge stops.");
+        return 0;
+    }
+
+    private static int refusedMint(List<Violation> violations) {
+        System.out.println("[GATE] REFUSED:");
+        for (Violation v : violations) System.out.println("  - [" + v.rule() + "] " + v.detail());
+        return 1;
+    }
+
+    private static int verifyChain(String[] a) throws Exception {
+        if (a.length < 3) {
             System.err.println("Usage: activation verify-chain <reg> <target>");
             return 2;
         }
@@ -135,5 +227,8 @@ public final class ActivateGate {
         return 1;
     }
 
-    private static void usage() { System.err.println("Usage: <activate|active|activation-log|activation> ..."); }
+    private static void usage() {
+        System.err.println("Usage: <activate|active|activation-log|activation> ...");
+        System.err.println("       activation <verify-chain|duty-key-mint> ...");
+    }
 }

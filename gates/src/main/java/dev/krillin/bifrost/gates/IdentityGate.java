@@ -47,23 +47,41 @@ public final class IdentityGate {
         if (principal == null || out == null) {
             System.err.println("Usage: identity keygen <principal> --out <dir>"); return 2;
         }
-        if (!principal.matches("[A-Za-z0-9_.-]{1,64}")) {   // principal names a file — deny path escape / odd chars
+        if (!isSafePrincipal(principal)) {
             System.err.println("[GATE] keygen: invalid principal (allowed [A-Za-z0-9_.-], 1-64): " + principal);
             return 2;
         }
-        KeyPair kp = Ed25519Keys.generate();
         Path dir = Path.of(out);
+        String pub = writeKeyPair(principal, dir);
+        System.out.println(authorizedKeysLine(principal, pub));
+        System.err.println("[GATE] keygen principal=" + principal + " -> " + dir.resolve(principal + ".key")
+                + " , " + dir.resolve(principal + ".pub"));
+        return 0;
+    }
+
+    /** A principal names a file — deny path escape / odd chars. */
+    static boolean isSafePrincipal(String principal) {
+        return principal.matches("[A-Za-z0-9_.-]{1,64}");
+    }
+
+    /** Generate an Ed25519 keypair into {@code dir} as {@code <principal>.key} (PKCS8 b64) and
+     *  {@code <principal>.pub} (X.509 b64); returns the base64 public key. Shared with
+     *  {@code activation duty-key-mint} so a duty key is written under exactly the same custody rules. */
+    static String writeKeyPair(String principal, Path dir) throws Exception {
+        KeyPair kp = Ed25519Keys.generate();
         Files.createDirectories(dir);
         Path keyFile = dir.resolve(principal + ".key");
         Files.deleteIfExists(keyFile);                      // avoid inheriting a pre-existing file's permissions
         createOwnerOnly(keyFile);                           // 0600-intent BEFORE any secret bytes land
         Files.writeString(keyFile, Ed25519Keys.privateKeyB64(kp.getPrivate()));
-        Files.writeString(dir.resolve(principal + ".pub"), Ed25519Keys.publicKeyB64(kp.getPublic()));
-        System.out.println("{\"principal\":\"" + principal + "\",\"publicKey\":\""
-                + Ed25519Keys.publicKeyB64(kp.getPublic()) + "\"}");
-        System.err.println("[GATE] keygen principal=" + principal + " -> " + keyFile
-                + " , " + dir.resolve(principal + ".pub"));
-        return 0;
+        String pub = Ed25519Keys.publicKeyB64(kp.getPublic());
+        Files.writeString(dir.resolve(principal + ".pub"), pub);
+        return pub;
+    }
+
+    /** The one line an operator appends to {@code identity/authorized-keys.jsonl}. */
+    static String authorizedKeysLine(String principal, String publicKeyB64) {
+        return "{\"principal\":\"" + principal + "\",\"publicKey\":\"" + publicKeyB64 + "\"}";
     }
 
     /** Create an empty file readable/writable by the owner only. POSIX: rw-------; non-POSIX (Windows):
