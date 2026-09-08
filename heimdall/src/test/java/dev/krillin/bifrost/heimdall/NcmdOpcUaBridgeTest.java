@@ -16,12 +16,17 @@ import org.eclipse.tahu.message.model.SparkplugBPayload;
 import org.eclipse.tahu.message.model.SparkplugBPayload.SparkplugBPayloadBuilder;
 import org.junit.jupiter.api.Test;
 
+import java.security.KeyPair;
+import java.security.PublicKey;
+
 import dev.krillin.bifrost.core.acl.AclMapperFactory;
+import dev.krillin.bifrost.core.acl.CommandEnvelope;
 import dev.krillin.bifrost.core.acl.CommandPolicy;
 import dev.krillin.bifrost.core.acl.Constraint;
 import dev.krillin.bifrost.core.acl.Rule;
 import dev.krillin.bifrost.core.acl.Target;
 import dev.krillin.bifrost.core.conformance.ConformancePolicy;
+import dev.krillin.bifrost.core.identity.Ed25519Keys;
 import dev.krillin.bifrost.core.conformance.CrossConstraint;
 import dev.krillin.bifrost.core.conformance.NodeBinding;
 import dev.krillin.bifrost.core.schema.Member;
@@ -229,6 +234,124 @@ class NcmdOpcUaBridgeTest {
         assertFalse(fake.writeCalled, "an above-envelope write must NOT reach the applier");
         assertFalse(r.ok());
         assertTrue(r.detail().contains("above-max"), r.detail());
+    }
+
+    // ----- R1: the signature bar -----
+
+    private static final String P = "recipe-writer";
+
+    /** A payload carrying sub/sig metric properties, signed over the canonical preimage. */
+    private SparkplugBPayload signedCmd(String cmdId, String node, Object value, String subject,
+                                        java.security.PrivateKey key) throws Exception {
+        String sig = CommandEnvelope.sign(GROUP, EDGE, cmdId, node, value, "Double", key);
+        PropertySetBuilder pb = new PropertySetBuilder()
+                .addProperty("op", new PropertyValue(PropertyDataType.String, "write"))
+                .addProperty("sub", new PropertyValue(PropertyDataType.String, subject))
+                .addProperty("sig", new PropertyValue(PropertyDataType.String, sig));
+        return new SparkplugBPayloadBuilder().setUuid(cmdId).setTimestamp(new Date())
+                .addMetric(new MetricBuilder(node, MetricDataType.Double, value)
+                        .properties(pb.createPropertySet()).createMetric())
+                .createPayload();
+    }
+
+    /** Bar ON, with a one-principal trust anchor. */
+    private NcmdOpcUaBridge barred(Applier applier, String principal, PublicKey pk) throws Exception {
+        return new NcmdOpcUaBridge(GROUP, EDGE, policy(), applier, null, null, null, false,
+                new EdgeHealth(), 4, 64, true, 64, name -> principal.equals(name) ? pk : null);
+    }
+
+    @Test void bar_on_a_correctly_signed_command_is_applied() throws Exception {
+        KeyPair kp = Ed25519Keys.generate();
+        FakeApplier fake = new FakeApplier();
+        NcmdResponse r = barred(fake, P, kp.getPublic())
+                .handle(NCMD_TOPIC, signedCmd("s-1", "ns=2;s=Recipe/Rpm", 1500.0, P, kp.getPrivate()));
+        assertTrue(r.ok(), r.detail());
+        assertTrue(fake.writeCalled);
+    }
+
+    @Test void bar_on_an_unsigned_command_is_refused() throws Exception {
+        FakeApplier fake = new FakeApplier();
+        NcmdResponse r = barred(fake, P, Ed25519Keys.generate().getPublic())
+                .handle(NCMD_TOPIC, cmd("s-2", "write", "ns=2;s=Recipe/Rpm", 1500.0, MetricDataType.Double, null, null));
+        assertFalse(r.ok());
+        assertTrue(r.detail().contains("command.unsigned"), r.detail());
+        assertFalse(fake.writeCalled, "an unsigned command must not reach the applier");
+    }
+
+    @Test void bar_on_a_bad_signature_is_refused() throws Exception {
+        KeyPair kp = Ed25519Keys.generate();
+        FakeApplier fake = new FakeApplier();
+        // Signed over 1500, submitted as 9999.
+        String sig = CommandEnvelope.sign(GROUP, EDGE, "s-3", "ns=2;s=Recipe/Rpm", 1500.0, "Double", kp.getPrivate());
+        PropertySetBuilder pb = new PropertySetBuilder()
+                .addProperty("op", new PropertyValue(PropertyDataType.String, "write"))
+                .addProperty("sub", new PropertyValue(PropertyDataType.String, P))
+                .addProperty("sig", new PropertyValue(PropertyDataType.String, sig));
+        SparkplugBPayload tampered = new SparkplugBPayloadBuilder().setUuid("s-3").setTimestamp(new Date())
+                .addMetric(new MetricBuilder("ns=2;s=Recipe/Rpm", MetricDataType.Double, 9999.0)
+                        .properties(pb.createPropertySet()).createMetric())
+                .createPayload();
+        NcmdResponse r = barred(fake, P, kp.getPublic()).handle(NCMD_TOPIC, tampered);
+        assertFalse(r.ok());
+        assertTrue(r.detail().contains("command.sig.invalid"), r.detail());
+        assertFalse(fake.writeCalled);
+    }
+
+    @Test void bar_on_an_unknown_principal_is_refused() throws Exception {
+        KeyPair kp = Ed25519Keys.generate();
+        FakeApplier fake = new FakeApplier();
+        NcmdResponse r = barred(fake, P, kp.getPublic())
+                .handle(NCMD_TOPIC, signedCmd("s-4", "ns=2;s=Recipe/Rpm", 1500.0, "nobody", kp.getPrivate()));
+        assertFalse(r.ok());
+        assertTrue(r.detail().contains("command.principal.unknown"), r.detail());
+    }
+
+    @Test void bar_on_a_replayed_cmdId_is_refused() throws Exception {
+        KeyPair kp = Ed25519Keys.generate();
+        FakeApplier fake = new FakeApplier();
+        NcmdOpcUaBridge b = barred(fake, P, kp.getPublic());
+        SparkplugBPayload once = signedCmd("s-5", "ns=2;s=Recipe/Rpm", 1500.0, P, kp.getPrivate());
+        assertTrue(b.handle(NCMD_TOPIC, once).ok());
+        NcmdResponse again = b.handle(NCMD_TOPIC, once);
+        assertFalse(again.ok());
+        assertTrue(again.detail().contains("command.replay"), again.detail());
+    }
+
+    /** A null cmdId leaves nothing for a signature to bind, so it is itself a refusal. */
+    @Test void bar_on_a_missing_cmdId_is_refused() throws Exception {
+        KeyPair kp = Ed25519Keys.generate();
+        NcmdResponse r = barred(new FakeApplier(), P, kp.getPublic())
+                .handle(NCMD_TOPIC, signedCmd(null, "ns=2;s=Recipe/Rpm", 1500.0, P, kp.getPrivate()));
+        assertFalse(r.ok());
+        assertTrue(r.detail().contains("command.unsigned"), r.detail());
+    }
+
+    /**
+     * THE decision-(a) test. {@code refuse()} returns null under log-only and its caller falls
+     * through and applies. If the signature refusals went through it, an unsigned command with both
+     * flags on would be logged would-deny and then APPLIED, reaching authorize() with a null subject
+     * that skips the principal check. The bar is an authentication question, not a policy verdict,
+     * and log-only inverts verdicts.
+     */
+    @Test void bar_on_plus_log_only_still_refuses_an_unsigned_command() throws Exception {
+        FakeApplier fake = new FakeApplier();
+        PublicKey pk = Ed25519Keys.generate().getPublic();
+        NcmdOpcUaBridge logOnlyBarred = new NcmdOpcUaBridge(GROUP, EDGE, policy(), fake, null, null, null,
+                true, new EdgeHealth(), 4, 64, true, 64, name -> P.equals(name) ? pk : null);
+        NcmdResponse r = logOnlyBarred.handle(NCMD_TOPIC,
+                cmd("s-6", "write", "ns=2;s=Recipe/Rpm", 1500.0, MetricDataType.Double, null, null));
+        assertFalse(r.ok(), "log-only must not shadow the signature bar: " + r.detail());
+        assertTrue(r.detail().contains("command.unsigned"), r.detail());
+        assertFalse(fake.writeCalled, "log-only applied an unsigned command");
+    }
+
+    /** Bar OFF is the pre-R1 path — which is what keeps the seven existing NCMD gates meaningful. */
+    @Test void bar_off_an_unsigned_command_is_applied_as_before() throws Exception {
+        FakeApplier fake = new FakeApplier();
+        NcmdResponse r = bridge(fake).handle(NCMD_TOPIC,
+                cmd("s-7", "write", "ns=2;s=Recipe/Rpm", 1500.0, MetricDataType.Double, null, null));
+        assertTrue(r.ok(), r.detail());
+        assertTrue(fake.writeCalled);
     }
 
     // ----- R0: an unreachable plant is a refusal, but never a verdict -----
