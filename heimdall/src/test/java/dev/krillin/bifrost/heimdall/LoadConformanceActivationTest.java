@@ -36,7 +36,7 @@ class LoadConformanceActivationTest {
     NcmdOpcUaBridgeMain.Config cfg() {
         return new NcmdOpcUaBridgeMain.Config("tcp://x","opc.tcp://x","g","e","p",
             reg.toString(), confFile.toString(), reg.toString(), "Line1", false, false, "file", null, false,
-            0, 4, null, false, 1024);
+            0, 4, null, false, 1024, null, false);
     }
 
     @Test void bindsLedgerActiveVersionNotDial() throws Exception {

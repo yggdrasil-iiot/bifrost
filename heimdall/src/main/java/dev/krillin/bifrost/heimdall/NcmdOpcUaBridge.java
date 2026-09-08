@@ -127,6 +127,19 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
      */
     private final java.util.Map<String, Boolean> seenCmdIds;
 
+    /**
+     * R2: the tamper-evident record of commands. Null means no record, which is the pre-R2
+     * behaviour and the default.
+     */
+    private final dev.krillin.bifrost.core.command.CommandLedger commandLedger;
+
+    /**
+     * When on, an unwritable INTENT entry refuses the command rather than letting it reach the plant
+     * unrecorded. A failed OUTCOME entry cannot refuse anything — the plant has already moved — so it
+     * is logged loudly and counted instead. That asymmetry is inherent, not an oversight.
+     */
+    private final boolean requireCommandLedger;
+
     /** Exposed so {@code NcmdOpcUaBridgeMain} can start the HTTP endpoint over the same instance. */
     public EdgeHealth health() {
         return health;
@@ -171,6 +184,25 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
                            boolean logOnly, EdgeHealth health, int applyThreads, int applyQueueDepth,
                            boolean requireSignedCommand, int replayWindow,
                            java.util.function.Function<String, java.security.PublicKey> trustAnchor) {
+        this(group, edge, policy, applier, conformanceDef, conformancePolicy, activeRecipe, logOnly,
+                health, applyThreads, applyQueueDepth, requireSignedCommand, replayWindow, trustAnchor,
+                null, false);
+    }
+
+    /**
+     * The widest constructor. {@code commandLedger} is nullable — null is the pre-R2 behaviour, no
+     * record at all. {@code requireCommandLedger} decides what an unwritable INTENT entry means: with
+     * it on, the command is refused and the plant is never touched.
+     */
+    public NcmdOpcUaBridge(String group, String edge, CommandPolicy policy, Applier applier,
+                           UdtDefinition conformanceDef, ConformancePolicy conformancePolicy, MasterSpec activeRecipe,
+                           boolean logOnly, EdgeHealth health, int applyThreads, int applyQueueDepth,
+                           boolean requireSignedCommand, int replayWindow,
+                           java.util.function.Function<String, java.security.PublicKey> trustAnchor,
+                           dev.krillin.bifrost.core.command.CommandLedger commandLedger,
+                           boolean requireCommandLedger) {
+        this.commandLedger = commandLedger;
+        this.requireCommandLedger = requireCommandLedger;
         this.requireSignedCommand = requireSignedCommand;
         this.trustAnchor = trustAnchor;
         this.seenCmdIds = java.util.Collections.synchronizedMap(
@@ -206,6 +238,7 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
         String cmdId = req.getUuid();
         if (req.getMetrics() == null || req.getMetrics().isEmpty()) {
             // Fail-closed: a malformed payload carrying no command metric is rejected, not crashed.
+            record(cmdId, null, null, null, null, "intent", "malformed", "no command metric");
             return new NcmdResponse(cmdId, false, null, false, "no command metric");
         }
         Metric m = req.getMetrics().get(0);
@@ -270,7 +303,10 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
         Decision d = authorizer.authorize(policy, cr);
         if (!d.allowed()) {
             NcmdResponse refused = refuse(cmdId, name, value, d.reason());
-            if (refused != null) return refused;
+            if (refused != null) {
+                record(cmdId, subject, name, value, dataType, "intent", "denied", d.reason());
+                return refused;
+            }
             shadowed = d.reason();
             // fall through to ② as well: in log-only the point is to learn every reason, not the first.
         }
@@ -307,7 +343,10 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
                     if (!cv.ok()) {
                         String reason = cv.violations().get(0).rule() + ": " + cv.violations().get(0).detail();
                         NcmdResponse refused = refuse(cmdId, name, value, reason);
-                        if (refused != null) return refused;
+                        if (refused != null) {
+                            record(cmdId, subject, name, value, dataType, "intent", "denied", reason);
+                            return refused;
+                        }
                         if (shadowed == null) shadowed = reason;
                     }
                 } catch (PlantUnreachableException unreachable) {
@@ -321,16 +360,30 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
                     // on the apply path below; logging only there would make the resilience gate
                     // green for a reason unrelated to this branch.
                     System.out.println("[BRIDGE] UNREACHABLE cmd=" + name + " reason=" + unreachable.getMessage());
+                    record(cmdId, subject, name, value, dataType, "intent", "unreachable",
+                            unreachable.getMessage());
                     health.plantUnreachable();
                     return NcmdResponse.apply(cmdId, false,
                             detail(shadowed, "plant-unreachable: " + unreachable.getMessage()));
                 } catch (Exception confEx) {   // fail-closed: any conformance/read error DENIES
                     String reason = "conformance-error: " + confEx.getMessage();
                     NcmdResponse refused = refuse(cmdId, name, value, reason);
-                    if (refused != null) return NcmdResponse.apply(cmdId, false, "denied: conformance-error");
+                    if (refused != null) {
+                        record(cmdId, subject, name, value, dataType, "intent", "denied", reason);
+                        return NcmdResponse.apply(cmdId, false, "denied: conformance-error");
+                    }
                     if (shadowed == null) shadowed = reason;
                 }
             }
+        }
+
+        // THE intent entry. Written before the applier so that "no command reaches the plant
+        // without a record" is a claim this code can keep. With REQUIRE_COMMAND_LEDGER on, a failed
+        // append refuses here - and refuses DIRECTLY, not through refuse(), for the same reason R1's
+        // signature bar does: log-only inverts verdicts, and "I could not record this" is not one.
+        if (!record(cmdId, subject, name, value, dataType, "intent", "pending", shadowed)
+                && requireCommandLedger) {
+            return refuseUnverified(cmdId, name, value, "command.ledger.unwritable");
         }
 
         try {
@@ -343,15 +396,20 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
             if (r.ok()) {
                 health.applied();
             }
+            // The outcome cannot refuse anything: the plant has already moved.
+            record(cmdId, subject, name, value, dataType, "outcome",
+                    r.ok() ? "applied" : "apply-failed", r.ok() ? null : r.detail());
             System.out.println("[BRIDGE] APPLY cmd=" + name + " ok=" + r.ok());
             return NcmdResponse.apply(cmdId, r.ok(), detail(shadowed, r.detail()));
         } catch (PlantUnreachableException unreachable) {
             // Same rule as the ② catch above: a refusal, but never reported as a verdict.
             System.out.println("[BRIDGE] UNREACHABLE cmd=" + name + " reason=" + unreachable.getMessage());
+            record(cmdId, subject, name, value, dataType, "outcome", "unreachable", unreachable.getMessage());
             health.plantUnreachable();
             return NcmdResponse.apply(cmdId, false,
                     detail(shadowed, "plant-unreachable: " + unreachable.getMessage()));
         } catch (Exception e) {
+            record(cmdId, subject, name, value, dataType, "outcome", "apply-error", e.getMessage());
             System.out.println("[BRIDGE] APPLY cmd=" + name + " ok=false");
             return NcmdResponse.apply(cmdId, false, detail(shadowed, "apply error: " + e.getMessage()));
         }
@@ -372,7 +430,36 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
      * here. There is no identity to judge, so there is no verdict to shadow. Same reason the
      * malformed-payload rejection sits outside log-only.
      */
+    /**
+     * Append one fact to the command ledger.
+     *
+     * <p>Recording is scattered across {@code handle()}'s return sites rather than centralised,
+     * because the outcomes are not alternatives: under log-only a command is BOTH would-denied and
+     * applied, and {@code applied} is only knowable after the applier has already moved the plant.
+     * Two entries per applied command is the price of both facts being true.
+     *
+     * @return false when the append failed, so an intent site can refuse before touching the plant
+     */
+    private boolean record(String cmdId, String subject, String name, Object value, String dataType,
+                           String phase, String outcome, String reason) {
+        if (commandLedger == null) {
+            return true;
+        }
+        try {
+            commandLedger.append(new dev.krillin.bifrost.core.command.CommandEvent(
+                    group, edge, cmdId, subject, name,
+                    value == null ? null : String.valueOf(value), dataType,
+                    phase, outcome, reason, java.time.Instant.now().toString()));
+            return true;
+        } catch (Exception e) {
+            System.out.println("[BRIDGE] LEDGER-WRITE-FAILED phase=" + phase + " cmd=" + name + ": " + e);
+            return false;
+        }
+    }
+
     private NcmdResponse refuseUnverified(String cmdId, String name, Object value, String reason) {
+        // No subject: that is what "unverified" means here.
+        record(cmdId, null, name, value, null, "intent", "unverified", reason);
         health.denied();
         System.out.println("[BRIDGE] DENY cmd=" + name + " val=" + value + " reason=" + reason);
         return NcmdResponse.apply(cmdId, false, "denied: " + reason);
