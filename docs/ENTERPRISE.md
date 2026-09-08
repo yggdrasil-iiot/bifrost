@@ -9,8 +9,8 @@ are deliberately deferred, and which are open** — for the Yggdrasil spine as a
 proves it. A row marked *deferred* must name the concrete trigger that would force the work.
 A row with neither is a wish, and wishes do not belong here.
 
-Evidence dates from **2026-09-08**, when all 19 gates were last run green (Docker 26.1.4) and
-the suites measured 451 tests in Bifrost and 242 in Huginn.
+Evidence dates from **2026-09-08**, when all 20 gates were last run green (Docker 26.1.4) and
+the suites measured 475 tests in Bifrost and 242 in Huginn.
 
 ---
 
@@ -583,6 +583,28 @@ experience, and says so.
   belong. Reads leave nothing, by the same boundary that keeps them out of authorization. And the
   requester gets no receipt: the NDATA response carries no entry hash, so nobody outside the edge
   can check their command was recorded. Growth is unmeasured and retention unsolved.
+- **Break-glass moves four-eyes earlier in time; it does not remove it, and it is not free.** Two
+  registered people mint a duty key ahead of the emergency (`gates activation duty-key-mint`, and
+  `run-break-glass-gate.sh` B1 proves one key file cannot stand for two people), after which one
+  person can activate alone by signing with their own key plus the duty key. The marking is
+  **derived from policy, not claimed**: a duty principal is granted `break_glass_approve` and never
+  `approve`, and a policy giving one principal both over overlapping resources is refused at load,
+  so there is no unmarked activation to produce. Nothing in the ledger format changed — to
+  `SignedLedgerVerifier` this is an ordinary two-signature, two-principal, two-key entry, which is
+  why T4, T5 and T7 all still verify and the edge still binds (B5, B6). What it costs: **a duty key
+  is a standing credential from the moment it is minted until its grants are removed**, so sealing,
+  custody and rotation are the entire protection, and this repository provides none of the three.
+  The mint itself writes **no ledger entry** — its two-person rule is enforced by requiring two
+  bound keys, not by an audit trail — so there is nothing to point at afterwards showing when a duty
+  key came into existence. And "loud" means a log line at the gate, a log line at the edge, and the
+  recorded action. **There is no alerting transport**, so nobody is woken by it.
+- **Deleting a principal's key line retroactively breaks the ledger and stops every edge bound to
+  that target.** `SignedLedgerVerifier` resolves `forPrincipal` for every historical entry, so a
+  principal removed from `authorized-keys.jsonl` turns entries it signed years ago into
+  `identity.key.unregistered`, and the ledger is append-only, so re-adding a different key does not
+  repair it. This is pre-existing, and break-glass makes it **routine** — a duty key is exactly the
+  credential an operator will want to revoke. Retire one by removing its **policy grants**; B9
+  proves the deletion path rather than merely warning about it.
 - **F5's rollback resistance is topological, not cryptographic.** It holds because the enterprise
   anchor lives in a repository the site never rewrites. Real closure needs a tamper-resistant
   off-box witness.
@@ -606,8 +628,8 @@ experience, and says so.
 
 ## How to falsify this document
 
-Every *built* row above names a script. Clone, run it, and read the exit code — five of the
-nineteen need no broker at all. If a row's gate does not prove what the row claims, the row is
+Every *built* row above names a script. Clone, run it, and read the exit code — six of the
+twenty need no broker at all. If a row's gate does not prove what the row claims, the row is
 wrong and should be reported as a bug in this document, not excused.
 
 ---

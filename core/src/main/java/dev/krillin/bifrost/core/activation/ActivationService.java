@@ -16,6 +16,7 @@ public final class ActivationService {
     public ActivationVerdict activate(ActivationRequest r) { return activate(r, null, null); }
 
     public ActivationVerdict activate(ActivationRequest r, LedgerSigner signer, ActivationPolicy policy) {
+        boolean breakGlass = false;
         try {
             var resolved = resolver.resolve(r.kind(), r.ref(), r.version());
             if (resolved.isEmpty()) return refuse("activation.artifact.unresolved",
@@ -44,14 +45,29 @@ public final class ActivationService {
                     return refuse("activation.authz.denied", "activator '" + r.by() + "' not permitted to ACTIVATE "
                             + r.target() + "/" + r.kind() + "/" + r.ref() + " [" + act.reason() + "]");
                 AuthzDecision app = authz.authorize(p, r.approvedBy(), ActivationAction.APPROVE, r.target(), r.kind(), r.ref());
-                if (!app.allowed())
-                    return refuse("activation.authz.denied", "approver '" + r.approvedBy() + "' not permitted to APPROVE "
-                            + r.target() + "/" + r.kind() + "/" + r.ref() + " [" + app.reason() + "]");
+                if (!app.allowed()) {
+                    // The emergency path, DERIVED from policy and never claimed by the caller. A duty
+                    // principal is granted BREAK_GLASS_APPROVE and not APPROVE, so the one person
+                    // holding a duty key cannot write an unmarked activation - which is the failure
+                    // this exists to prevent, and a request flag could not have prevented it.
+                    //
+                    // APPROVE is tried FIRST, so an ordinary approver's path is unchanged.
+                    AuthzDecision bg = authz.authorize(p, r.approvedBy(),
+                            ActivationAction.BREAK_GLASS_APPROVE, r.target(), r.kind(), r.ref());
+                    if (!bg.allowed())
+                        return refuse("activation.authz.denied", "approver '" + r.approvedBy() + "' not permitted to APPROVE "
+                                + r.target() + "/" + r.kind() + "/" + r.ref() + " [" + app.reason() + "]");
+                    breakGlass = true;
+                    // Loud, in the one place the control plane looks. No alerting transport is
+                    // claimed here, and none exists.
+                    System.err.println("[GATE] BREAK-GLASS approver=" + r.approvedBy()
+                            + " activator=" + r.by() + " target=" + r.target() + "/" + r.kind() + "/" + r.ref());
+                }
             }
             String prior = ledger.active(r.target(), r.kind(), r.ref()).map(ActivationEvent::version).orElse(null);
             ActivationEvent e = new ActivationEvent(r.target(), r.kind(), r.ref(), r.version(),
                     resolved.get().sha256(), r.by(), r.approvedBy(), clock.millis(), prior,
-                    r.rollback() ? "ROLLBACK" : "ACTIVATE");
+                    breakGlass ? "BREAK_GLASS" : (r.rollback() ? "ROLLBACK" : "ACTIVATE"));
             ledger.append(e, signer);
             return new ActivationVerdict(true, e, List.of());
         } catch (Exception ex) {

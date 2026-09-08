@@ -109,15 +109,36 @@ wait_ready() {  # $1=log
   for i in $(seq 1 45); do grep -q "\[BRIDGE\] ready" "$1" 2>/dev/null && { ok=1; break; }; sleep 2; done
   [ "$ok" = "1" ]
 }
-start_heimdall() {  # $1=logfile $2=mqtt $3=opcua $4=group $5=regBash  -> sets REPLY to the pid
+# $6 is the health port, with no default on purpose: two federated edges run side by side here and
+# EdgeHealth binds eagerly, so a shared port kills the SECOND edge at startup with a BindException that
+# reads like a federation fault. Every call site names its own port.
+start_heimdall() {  # $1=logfile $2=mqtt $3=opcua $4=group $5=regBash $6=healthPort -> sets REPLY to the pid
   local reg_win; reg_win="$(cygpath -m "$(pwd)/$5")"
   : > "$1"
-  MQTT_URL="$2" OPCUA_URL="$3" SPB_GROUP="$4" SPB_EDGE="recipe-edge" \
+  MQTT_URL="$2" OPCUA_URL="$3" SPB_GROUP="$4" SPB_EDGE="recipe-edge" HEALTH_PORT="$6" \
   POLICY_PATH="$reg_win/policy.json" REGISTRY_PATH="$reg_win" \
   CONFORMANCE_PATH="$reg_win/conformance/Line1-Mixer/recipe.json" \
   ACTIVATION_PATH="$reg_win" ACTIVATION_TARGET="Line1" \
     java -jar "$HEIMDALL_JAR_WIN" >"$1" 2>&1 &
   REPLY=$!
+}
+# taskkill returns as soon as the kill is signalled, not when the JVM is gone, and EdgeHealth binds its
+# port eagerly at startup. Restarting an edge without waiting therefore fails with a BindException that
+# reads like a policy fault. Wait for the port to actually close.
+stop_heimdall() {  # $1=pid $2=healthPort
+  [ -n "$1" ] && { taskkill //F //T //PID "$1" >/dev/null 2>&1 || kill -9 "$1" >/dev/null 2>&1 || true; }
+  # The shell's job pid is not always the JVM's Windows pid, and killing by main class is not an option
+  # here: the OTHER site's edge is the same jar and must stay up for F4. The health port is the one
+  # unambiguous handle -- whoever is LISTENING on it IS this edge.
+  local t=0 owner
+  while [ "$t" -lt 20 ]; do
+    bash -c "echo > /dev/tcp/localhost/$2" >/dev/null 2>&1 || return 0
+    owner="$( { netstat -ano 2>/dev/null || true; } | grep LISTENING | grep -E "[:.]$2[[:space:]]" \
+              | awk '{print $NF}' | head -1 )"
+    [ -n "$owner" ] && { taskkill //F //T //PID "$owner" >/dev/null 2>&1 || kill -9 "$owner" >/dev/null 2>&1 || true; }
+    sleep 1; t=$((t+1))
+  done
+  fail "edge on health port $2 did not release it after being killed"
 }
 pub() {  # $1=mqtt $2=group $3=node $4=val $5=type
   MQTT_URL="$1" SPB_GROUP="$2" SPB_EDGE="recipe-edge" \
@@ -131,9 +152,9 @@ RPM="ns=2;s=Recipe/Rpm"; SECRET="ns=2;s=Recipe/Secret"
 # ===========================================================================
 echo "[FED] ===== F3: per-site independent activation + enforcement ====="
 # start serially (busan ready before ulsan) so a startup race can't cross the two edges.
-start_heimdall "$BLOG_A" "tcp://localhost:1883" "opc.tcp://localhost:48400" "Bifrost:busan" "$WORK/rt-busan"; BRIDGE_A_PID=$REPLY
+start_heimdall "$BLOG_A" "tcp://localhost:1883" "opc.tcp://localhost:48400" "Bifrost:busan" "$WORK/rt-busan" 9090; BRIDGE_A_PID=$REPLY
 wait_ready "$BLOG_A" || fail "busan Heimdall not ready"
-start_heimdall "$BLOG_B" "tcp://localhost:1884" "opc.tcp://localhost:48401" "Bifrost:ulsan" "$WORK/rt-ulsan"; BRIDGE_B_PID=$REPLY
+start_heimdall "$BLOG_B" "tcp://localhost:1884" "opc.tcp://localhost:48401" "Bifrost:ulsan" "$WORK/rt-ulsan" 9091; BRIDGE_B_PID=$REPLY
 wait_ready "$BLOG_B" || fail "ulsan Heimdall not ready"
 grep -q "activation bound mix-recipe@1.0.0" "$BLOG_A" || fail "F3 busan did not bind mix-recipe@1.0.0"
 grep -q "activation bound mix-recipe@1.1.0" "$BLOG_B" || fail "F3 ulsan did not bind mix-recipe@1.1.0"
@@ -170,8 +191,8 @@ git -C "$WORK/rt-busan" pull -q --no-edit || fail "F2 busan git pull failed"
 grep -q "busan-rpm" "$WORK/rt-busan/policy.json" && fail "F2 pull did not remove busan-rpm from the clone" || true
 echo "[FED] F2: enterprise revoked busan Rpm; busan pulled the change"
 # restart busan Heimdall (Heimdall reads policy once at start — the change takes effect on RESTART).
-[ -n "$BRIDGE_A_PID" ] && taskkill //F //T //PID "$BRIDGE_A_PID" >/dev/null 2>&1 || true
-start_heimdall "$BLOG_A" "tcp://localhost:1883" "opc.tcp://localhost:48400" "Bifrost:busan" "$WORK/rt-busan"; BRIDGE_A_PID=$REPLY
+stop_heimdall "$BRIDGE_A_PID" 9090
+start_heimdall "$BLOG_A" "tcp://localhost:1883" "opc.tcp://localhost:48400" "Bifrost:busan" "$WORK/rt-busan" 9090; BRIDGE_A_PID=$REPLY
 wait_ready "$BLOG_A" || fail "F2 busan Heimdall did not restart"
 # now the SAME Rpm command is DENIED (propagated revocation in force).
 pub "tcp://localhost:1883" "Bifrost:busan" "$RPM" 1500 Double

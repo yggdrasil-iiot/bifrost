@@ -162,8 +162,8 @@ found to be vacuous that way and fixed.
 
 **What this does not change.** The startup ledger-trust checks still fail closed: a bridge that
 cannot trust the model it checks against still refuses to start, and that is deliberate — an
-invisible machine is transient, an untrustworthy model is not. There is still no break-glass. The
-container in `heimdall/Dockerfile` is built but exercised by no gate.
+invisible machine is transient, an untrustworthy model is not. The container in
+`heimdall/Dockerfile` is built but exercised by no gate.
 
 **Then the two that were always part of the plan.**
 
@@ -237,6 +237,26 @@ otherwise stall this phase: anchoring costs nothing on top of signing, and the e
 the `git` anchor store (about half a second, on activation) lands on an event that happens ten
 times a day, while the check that runs at every edge bind is the cheap one. **Performance is not a
 reason to defer either tier.**
+
+**Mint the break-glass duty key before you need it.** Four-eyes is what phase 3 bought, and at 03:00
+with one person on site it is also what stops the line from coming back. The answer is not to
+weaken it but to **move it earlier in time**: `gates activation duty-key-mint` has two registered
+people mint a duty key ahead of the emergency, and afterwards one person can activate alone by
+signing with their own key plus the duty key. Grant that principal `break_glass_approve` and
+**never** `approve` — a policy that gives it both over overlapping resources is refused at load,
+because a principal holding both could simply approve normally and the emergency would never be
+recorded as one. The marking is therefore derived from policy rather than claimed by whoever ran
+it, and the entry says `BREAK_GLASS` in the ledger, on the control-plane console and in the edge's
+own log at bind time. `scripts/run-break-glass-gate.sh` proves it, including that the ledger still
+verifies at all three tiers afterwards and that the edge still binds — an emergency that leaves the
+line unable to start is not a break-glass.
+
+**Retire a duty key by removing its policy grants — never by deleting its key line.** Deleting a
+principal's line from `authorized-keys.jsonl` retroactively breaks every ledger entry it ever
+signed, `identity verify-signed` reports `identity.key.unregistered`, and every edge bound to that
+target refuses to start. The ledger is append-only, so this is not recoverable by re-adding a new
+key. Removing the grants leaves the history verifiable and stops the key being usable, which is what
+revocation actually needs to mean here. B9 in that gate exists to prove this rather than assert it.
 
 ### 6 — Second site
 

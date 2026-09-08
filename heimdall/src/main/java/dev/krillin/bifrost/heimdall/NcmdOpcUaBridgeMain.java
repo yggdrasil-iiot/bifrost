@@ -272,6 +272,11 @@ public final class NcmdOpcUaBridgeMain {
      * Fail-closed activation authZ re-check at the edge (only meaningful with an authenticated subject, i.e.
      * requireSigned). Throws activation.edge.authz-denied on a deny; prints an audit line on pass. No-op when
      * requireSigned is false (authZ presupposes authN).
+     *
+     * <p>The approver leg accepts APPROVE or, failing that, BREAK_GLASS_APPROVE, and says which -- see the
+     * comment at that fallback for why an emergency entry would otherwise stop the edge it was meant to
+     * restore. The activator leg is unchanged: a break-glass moves the four-eyes to mint time, it does not
+     * relax who may activate.
      */
     static void assertActivationAuthorized(java.nio.file.Path ledgerDir, String target, String kind, String ref,
                                            String activatedBy, String approvedBy, boolean requireSigned) {
@@ -282,9 +287,27 @@ public final class NcmdOpcUaBridgeMain {
         if (!a.allowed())
             throw new IllegalStateException("activation.edge.authz-denied: " + activatedBy + " activate [" + a.reason() + "]");
         var p = authz.authorize(policy, approvedBy, dev.krillin.bifrost.core.activation.ActivationAction.APPROVE, target, kind, ref);
-        if (!p.allowed())
-            throw new IllegalStateException("activation.edge.authz-denied: " + approvedBy + " approve [" + p.reason() + "]");
-        System.out.println("[BRIDGE] activation authz = ok (by " + activatedBy + "/" + approvedBy + ")");
+        boolean breakGlass = false;
+        if (!p.allowed()) {
+            // A break-glass approver holds BREAK_GLASS_APPROVE and -- by ActivationPolicyStore's dual-role
+            // rule -- never APPROVE. Asking only for APPROVE would therefore fail-close on exactly the entry
+            // written during an emergency, and the edge that the emergency was meant to restore would not
+            // start. This is a second grant, not a hole: a principal holding neither role is still denied,
+            // and the scope on the duty rule binds the same way.
+            var bg = authz.authorize(policy, approvedBy,
+                    dev.krillin.bifrost.core.activation.ActivationAction.BREAK_GLASS_APPROVE, target, kind, ref);
+            if (!bg.allowed())
+                throw new IllegalStateException("activation.edge.authz-denied: " + approvedBy + " approve ["
+                        + p.reason() + "]");
+            breakGlass = true;
+        }
+        if (breakGlass)
+            // Loud at the edge, for the same reason it is loud at the gate: the marking is derived from which
+            // role authorized the approval, so this line cannot be omitted by whoever ran the emergency.
+            System.out.println("[BRIDGE] BREAK-GLASS activation bound: " + target + " " + kind + "/" + ref
+                    + " approved by duty principal " + approvedBy + " (activated by " + activatedBy + ")");
+        System.out.println("[BRIDGE] activation authz = ok (by " + activatedBy + "/" + approvedBy
+                + (breakGlass ? ", BREAK-GLASS" : "") + ")");
     }
 
     public static void main(String[] args) throws Exception {
