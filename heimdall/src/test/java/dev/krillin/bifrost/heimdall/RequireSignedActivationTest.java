@@ -78,6 +78,46 @@ class RequireSignedActivationTest {
         assertTrue(ex.getMessage().contains("activation.edge.authz-denied"), ex.getMessage());
     }
 
+    /**
+     * A break-glass activation must RESTORE the line, not take it down. Its approver holds
+     * BREAK_GLASS_APPROVE and -- by the dual-role rule in ActivationPolicyStore -- never APPROVE, so an
+     * edge that only ever asks for APPROVE fail-closes on exactly the entry written during an emergency.
+     */
+    @Test void edge_authz_accepts_a_break_glass_approver(@TempDir Path root) throws Exception {
+        writeBreakGlassPolicy(root);
+        assertDoesNotThrow(() -> NcmdOpcUaBridgeMain.assertActivationAuthorized(
+                root, "Line1", "recipe", "mix", "alice", "breakglass-duty", true));
+    }
+
+    /** The fallback is a second grant, not a hole: a principal holding neither role is still denied. */
+    @Test void edge_authz_still_denies_an_approver_holding_neither_role(@TempDir Path root) throws Exception {
+        writeBreakGlassPolicy(root);
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> NcmdOpcUaBridgeMain.assertActivationAuthorized(
+                        root, "Line1", "recipe", "mix", "alice", "stranger", true));
+        assertTrue(ex.getMessage().contains("activation.edge.authz-denied"), ex.getMessage());
+    }
+
+    /** Scope still binds: a duty grant on one target does not admit an entry on another. */
+    @Test void edge_authz_denies_a_break_glass_approver_out_of_scope(@TempDir Path root) throws Exception {
+        writeBreakGlassPolicy(root);
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> NcmdOpcUaBridgeMain.assertActivationAuthorized(
+                        root, "Line1", "recipe", "other", "alice", "breakglass-duty", true));
+        assertTrue(ex.getMessage().contains("activation.edge.authz-denied"), ex.getMessage());
+    }
+
+    /** alice ACTIVATE + breakglass-duty BREAK_GLASS_APPROVE; nobody holds APPROVE. */
+    private void writeBreakGlassPolicy(Path root) throws Exception {
+        Path f = root.resolve("identity").resolve("activation-policy.json");
+        Files.createDirectories(f.getParent());
+        Files.writeString(f, "{\"version\":\"1\",\"default\":\"deny\",\"rules\":["
+                + "{\"id\":\"r-act\",\"principal\":\"alice\",\"action\":\"activate\","
+                + "\"target\":\"Line1\",\"kind\":\"recipe\",\"ref\":\"mix\"},"
+                + "{\"id\":\"r-bg\",\"principal\":\"breakglass-duty\",\"action\":\"break_glass_approve\","
+                + "\"target\":\"Line1\",\"kind\":\"recipe\",\"ref\":\"mix\"}]}");
+    }
+
     @Test void edge_authz_is_noop_when_require_signed_off(@TempDir Path root) throws Exception {
         // no policy at all; require-signed off => skip (authZ presupposes authN)
         assertDoesNotThrow(() -> NcmdOpcUaBridgeMain.assertActivationAuthorized(root, "Line1","recipe","mix","alice","bob", false));
