@@ -24,7 +24,7 @@
   <text x="44" y="502" font-size="12.5" font-weight="600" fill="#1f2328">11 · Audit query at scale</text>
   <text x="44" y="536" font-size="10.5" fill="#57606a">measured: 434 B per entry</text>
 
-  <text x="268" y="112" font-size="13" font-weight="700" fill="#9a6700" letter-spacing="1">PARTIAL · 3</text>
+  <text x="268" y="112" font-size="13" font-weight="700" fill="#9a6700" letter-spacing="1">PARTIAL · 4</text>
   <text x="268" y="131" font-size="11" fill="#57606a">built in part, gap named</text>
   <rect x="268" y="150" width="224" height="70" rx="6" fill="#f6f8fa" stroke="#9a6700"/>
   <text x="282" y="174" font-size="12.5" font-weight="600" fill="#1f2328">5 · Conduit inventory</text>
@@ -38,6 +38,11 @@
   <text x="282" y="355" font-size="12.5" font-weight="600" fill="#1f2328">heterogeneity</text>
   <text x="282" y="372" font-size="10.5" fill="#57606a">adapters read inbound only</text>
 
+  <rect x="268" y="396" width="224" height="70" rx="6" fill="#f6f8fa" stroke="#9a6700"/>
+  <text x="282" y="420" font-size="12.5" font-weight="600" fill="#1f2328">12 · Write-path exclusivity</text>
+  <text x="282" y="437" font-size="12.5" font-weight="600" fill="#1f2328">on OPC-UA</text>
+  <text x="282" y="454" font-size="10.5" fill="#57606a">sim only; Modbus untouched</text>
+
   <text x="506" y="112" font-size="13" font-weight="700" fill="#57606a" letter-spacing="1">DEFERRED · 2</text>
   <text x="506" y="131" font-size="11" fill="#57606a">not built, trigger named</text>
   <rect x="506" y="150" width="224" height="70" rx="6" fill="#f6f8fa" stroke="#d0d7de"/>
@@ -47,19 +52,16 @@
   <text x="520" y="256" font-size="12.5" font-weight="600" fill="#1f2328">9 · AAS alignment</text>
   <text x="520" y="290" font-size="10.5" fill="#57606a">trigger: an IDTA submodel ask</text>
 
-  <text x="744" y="112" font-size="13" font-weight="700" fill="#cf222e" letter-spacing="1">OPEN · 3</text>
+  <text x="744" y="112" font-size="13" font-weight="700" fill="#cf222e" letter-spacing="1">OPEN · 2</text>
   <text x="744" y="131" font-size="11" fill="#57606a">no mechanism at all</text>
   <rect x="744" y="150" width="224" height="70" rx="6" fill="#ffebe9" stroke="#cf222e"/>
   <text x="758" y="174" font-size="12.5" font-weight="600" fill="#1f2328">10 · Certificate expiry</text>
   <text x="758" y="191" font-size="12.5" font-weight="600" fill="#1f2328">and rotation</text>
   <text x="758" y="208" font-size="10.5" fill="#57606a">trigger: first cert expiry</text>
   <rect x="744" y="232" width="224" height="70" rx="6" fill="#ffebe9" stroke="#cf222e"/>
-  <text x="758" y="256" font-size="12.5" font-weight="600" fill="#1f2328">12 · Write-path exclusivity</text>
-  <text x="758" y="290" font-size="10.5" fill="#57606a">the edge is not the only way in</text>
-  <rect x="744" y="314" width="224" height="70" rx="6" fill="#ffebe9" stroke="#cf222e"/>
-  <text x="758" y="338" font-size="12.5" font-weight="600" fill="#1f2328">13 · Model vs vendor</text>
-  <text x="758" y="355" font-size="12.5" font-weight="600" fill="#1f2328">runtime</text>
-  <text x="758" y="372" font-size="10.5" fill="#57606a">no read-back of live config</text>
+  <text x="758" y="256" font-size="12.5" font-weight="600" fill="#1f2328">13 · Model vs vendor</text>
+  <text x="758" y="273" font-size="12.5" font-weight="600" fill="#1f2328">runtime</text>
+  <text x="758" y="290" font-size="10.5" fill="#57606a">no read-back of live config</text>
 
-  <text x="30" y="572" font-size="12.5" fill="#1f2328">Five of thirteen are answered. Each of the other eight names either the gap it leaves or the event that will force it.</text>
+  <text x="30" y="572" font-size="12.5" fill="#1f2328">Five of thirteen are answered and four more in part. Each of the rest names either the gap it leaves or the event that will force it.</text>
 </svg>

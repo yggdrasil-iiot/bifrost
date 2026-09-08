@@ -171,11 +171,16 @@ container in `heimdall/Dockerfile` is built but exercised by no gate.
 covers one line or one cell and the blast radius is that one.
 
 **Make the edge the only way in.** Until the controlled nodes are writable *only* by the governed
-identity, the edge governs the clients that choose to use it and nothing else — see
-[`ENTERPRISE.md` §12](ENTERPRISE.md#12-write-path-exclusivity), which is open, and which is where
-the certificate-lifecycle gap actually bites. An edge deployed without this is worth having, because
-the plant's own tooling is the client that matters, but it is not yet a boundary and should not be
-described as one.
+identity, the edge governs the clients that choose to use it and nothing else. Both halves of that
+now exist to be turned on: the edge presents an X.509 identity when `HEIMDALL_IDENTITY_DIR` is set,
+and a server told to require it refuses another client's write while still serving its reads —
+`run-write-exclusivity-gate.sh` proves the pair end to end. **Configuring the site's own server is
+still the site's work**, and it is untested here against anything but this repository's sim; on
+Modbus/TCP nothing changed, because there is no identity to present. See
+[`ENTERPRISE.md` §12](ENTERPRISE.md#12-write-path-exclusivity), now partial, and where the
+certificate-lifecycle gap bites hardest: that identity is self-signed and cannot be rotated. An edge
+deployed without any of this is still worth having, because the plant's own tooling is the client
+that matters, but it is not a boundary and should not be described as one.
 
 **Derive the initial policy from what phase 2 observed — after its findings are resolved.** This is
 the reason phase 2 is not skippable: an allowlist derived straight from observation encodes whatever
@@ -227,21 +232,25 @@ support: **this shortens the governance part of a site rollout, not the rollout.
 | Vendor-side verification (governed model vs vendor's copy) | phase 2 | [row 13](ENTERPRISE.md#13-governed-model-vs-vendor-runtime): not built |
 | ~~Heimdall shadow / log-only mode~~ | phase 4 | **built** — `ENFORCEMENT_LOG_ONLY`, 10 tests |
 | Certificate expiry and key rotation | phase 4–5 | [axis 10](ENTERPRISE.md#the-board): open, no mechanism |
-| **Write-path exclusivity** — the edge is a chokepoint by convention | phase 4 | [row 12](ENTERPRISE.md#12-write-path-exclusivity): open, and **not this project's code to write**; itself blocked on the row above |
+| ~~Write-path exclusivity — the edge has no identity to present~~ | phase 4 | **built** — `EdgeIdentity` + `run-write-exclusivity-gate.sh`. The other half, the server configuration, is still the site's ([row 12](ENTERPRISE.md#12-write-path-exclusivity): partial) |
 
-The middle row was named here as the one worth building first for adoption's sake, and it has
-since been built — it was the smallest of the three and it is what turned phase 4 from a cliff into
-a step. Of what is left, two rows are code this project owes and has not started. The last row is
-not code at all.
+The log-only row was named here as the one worth building first for adoption's sake, and it has
+since been built — it was the smallest and it is what turned phase 4 from a cliff into a step. Two
+rows are still code this project owes and has not started.
 
-**Why the last row is listed anyway.** Every other gap here is something this repository has to
-build. Write-path exclusivity is not. What closes it is server-side write permission on the
-controlled nodes, and — for protocols with no identity to authenticate — a network position, which
-is what 62443 zones and conduits are for ([§12](ENTERPRISE.md#12-write-path-exclusivity)). No
-amount of code here makes the governed edge exclusive. It belongs in this table because phase 4
-installs a gate, and whether that gate is a gate is settled by the plant rather than by the gate.
-It is also the clearest case of the general point: an adoption plan that lists only the software
-it owes is not an adoption plan.
+**The last row was listed here as "not this project's code to write", and that was wrong.** The
+reasoning was that what closes it is server-side write permission and — for protocols with no
+identity to authenticate — a network position, which is what 62443 zones and conduits are for. Both
+of those are true and both are still the plant's. What the reasoning missed is that **a lock needs a
+key**: the edge connected anonymously and could not present an identity at all, so a site that
+configured its server exactly as [§12](ENTERPRISE.md#12-write-path-exclusivity) asks would have
+locked out the edge the configuration exists to privilege. That half was always this repository's,
+and it is now built and gated.
+
+The general point the row was making survives intact, and is if anything sharper: phase 4 installs a
+gate, and whether that gate is a gate is settled by the plant rather than by the gate. An adoption
+plan that lists only the software it owes is not an adoption plan — but it must not mistake software
+it owes for someone else's problem either.
 
 The struck-through log-only row meets the standard every *built* row on the
 [`ENTERPRISE.md` board](ENTERPRISE.md#the-board) is held to: it names a script. `run-ncmd-runtime-gate.sh` T4 restarts the edge with

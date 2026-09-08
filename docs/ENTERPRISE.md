@@ -9,8 +9,8 @@ are deliberately deferred, and which are open** — for the Yggdrasil spine as a
 proves it. A row marked *deferred* must name the concrete trigger that would force the work.
 A row with neither is a wish, and wishes do not belong here.
 
-Evidence dates from **2026-09-06**, when all 15 gates were last run green (Docker 26.1.4) and
-the suites measured 352 tests in Bifrost and 242 in Huginn.
+Evidence dates from **2026-09-08**, when all 17 gates were last run green (Docker 26.1.4) and
+the suites measured 399 tests in Bifrost and 242 in Huginn.
 
 ---
 
@@ -31,7 +31,7 @@ it did.**
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="diagrams/readiness-board.dark.svg">
-  <img alt="Thirteen enterprise-readiness axes sorted into four columns: five built, three partial, two deferred with a named trigger, three open with no mechanism" src="diagrams/readiness-board.svg">
+  <img alt="Thirteen enterprise-readiness axes sorted into four columns: five built, four partial, two deferred with a named trigger, two open with no mechanism" src="diagrams/readiness-board.svg">
 </picture>
 
 The table below is the same board with the evidence attached. Read the figure for the shape of
@@ -50,12 +50,14 @@ what is and is not answered; read the rows for why.
 | 9 | AAS alignment → conformance | **deferred** | Trigger: a customer asking for an IDTA submodel template by number |
 | 10 | Certificate expiry, key rotation | **open** | No mechanism. Trigger: any deployment that outlives its first certificate |
 | 11 | Audit query at scale | **measured** | `scripts/bench-ledger.sh` — growth is exactly 434 B/entry (645 signed); signature verification costs ~8× the chain walk, and anchoring is free on top of it ([detail](#11-audit-query-at-scale)) |
-| 12 | **Write-path exclusivity** | **open** | Nothing makes the governed edge the only way in. Trigger: any deployment where a second client can reach the server ([detail](#12-write-path-exclusivity)) |
+| 12 | **Write-path exclusivity** | **partial** | `run-write-exclusivity-gate.sh` X1–X6 — the edge presents an X.509 identity and a server told to require it refuses a second client's write with `Bad_UserAccessDenied` while still serving its reads. Proved against the bundled sim on the OPC-UA surface only; **Modbus is untouched, and a plant's own server still has to be configured** ([detail](#12-write-path-exclusivity)) |
 | 13 | **Governed model vs vendor runtime** | **open** | Adapters read a vendor's model *in*; nothing reads a vendor's live configuration *back*. Vendor APIs checked 2026-09-07: all three read and write, but Kepware and Ignition are per-object and ThingWorx is a whole-entity blob ([detail](#13-governed-model-vs-vendor-runtime)) |
 
-Rows 5, 6 and 7 carry the engineering. **Rows 12 and 13 bound everything else on the board**, and
-both are open: row 12 is whether anything *has* to pass through the governed edge, and row 13 is
-whether the governed model is still the one the vendor tools are actually running. Rows 1–4 are the
+Rows 5, 6 and 7 carry the engineering. **Rows 12 and 13 bound everything else on the board.** Row
+12 is whether anything *has* to pass through the governed edge, and it is now partial: the edge can
+present an identity and a server can be told to require it, demonstrated end to end against the
+bundled sim. Row 13 — whether the governed model is still the one the vendor tools are actually
+running — is still open. Rows 1–4 are the
 easy ones to write because they are done; on their own they would be a feature list.
 
 ---
@@ -375,7 +377,17 @@ anyone who can open a session. **Heimdall is therefore a chokepoint by conventio
 construction**: it governs the commands routed through it, and a second client writing the same
 node is not denied, because nothing is positioned to deny it.
 
-What closes it is mostly not code:
+**What closes it is a key and a lock, and only one of them was ever the plant's.**
+
+The sentence that stood here said closing this row was "mostly not code". That was wrong, and the
+code said so: `OpcUaApplier` connected anonymously with `SecurityPolicy.None` and had no way to
+present a certificate. So the moment a plant did what the first bullet below asks, **the first
+client locked out would have been Heimdall** — the edge the configuration exists to privilege.
+
+The key is this repository's, and it now exists: `EdgeIdentity` mints and persists an
+application-instance certificate, and the edge presents it on a `Basic256Sha256`/`SignAndEncrypt`
+endpoint with an X.509 user token, refusing to run at all if no such endpoint is offered rather than
+quietly falling back to the anonymous one. The lock is still the plant's:
 
 - **Server-side write permission.** Only the governed identity may write the controlled nodes;
   every other session is read-only. This is ordinary OPC-UA server configuration, and it is the
@@ -387,15 +399,23 @@ What closes it is mostly not code:
   are a cycle, not a sequence: you close what you enumerated, then re-observe to find what closing
   it revealed.
 
-**This row is open rather than deferred because it is blocked on another open row.** An exclusive
-write identity is a certificate, and [§6](#6-identity-lifecycle)/row 10 have no rotation
-mechanism. That is the concrete reason row 10's trigger fires *inside* a rollout rather than after
-it (see [`ADOPTION.md`](ADOPTION.md)).
+**This row is partial rather than built, for two reasons worth separating.** The first is scope:
+`run-write-exclusivity-gate.sh` proves the mechanism against `EmbeddedMiloSim`, which is this
+repository's own server. What transfers to a plant is that the edge can present an identity and that
+a server requiring one refuses everyone else — not that any particular vendor's server has been made
+to do it. The second is Modbus/TCP, where there is no identity to present and exclusivity remains a
+network position.
 
-The honest consequence is worth stating plainly, because it bounds every claim above it: **an edge
-in the path without an exclusive write credential governs the cooperating clients and nothing
-else.** That is still worth deploying — the plant's own tooling is the cooperating client, and
-governing it is the point — but it is not yet a boundary.
+**And row 10 now bites rather than blocks.** The certificate exists, so the objection is no longer
+"there is nothing to require"; it is that this certificate is self-signed, permanent, and trusted by
+a fixed thumbprint, with no rotation, no revocation and no GDS ([§6](#6-identity-lifecycle)). The
+sim accepts any *application* certificate and lets the thumbprint predicate decide, which is the
+same missing PKI seen from the other side. That is the concrete reason row 10's trigger fires
+*inside* a rollout rather than after it (see [`ADOPTION.md`](ADOPTION.md)).
+
+The honest consequence still bounds every claim above it: **an edge in the path without an exclusive
+write credential governs the cooperating clients and nothing else** — and that remains the default,
+because both halves are opt-in. Turning them on is now possible; it is not automatic.
 
 ---
 
@@ -542,10 +562,13 @@ experience, and says so.
 - **Huginn is not wired to Bifrost.** It reads its own `CommunicationPolicy`; there is no
   reference to the governed registry in its code. Connecting them is the next real test of the
   seam, and it has not been taken.
-- **The edge is not an exclusive write path.** Row 12. Everything above governs the commands that
-  are routed through the edge; a client that writes the same node without going through it is not
-  denied, because nothing on this board is positioned to deny it. Read every enforcement claim here
-  as scoped to the cooperating client until that is closed.
+- **The edge can now be an exclusive write path, and is not one by default.** Row 12. The edge
+  presents an X.509 identity and the bundled server, told to require it, refuses another client's
+  write while still serving its reads — proved by `run-write-exclusivity-gate.sh`. Two things bound
+  that. It is demonstrated **against this repository's own sim**, not against a Kepware, an Ignition
+  or a real PLC; and it is **opt-in on both sides**, so an edge deployed without
+  `HEIMDALL_IDENTITY_DIR` against a server without the matching configuration governs the
+  cooperating clients and nothing else, exactly as before. On Modbus/TCP nothing changed at all.
 - **Detection is not part of the enforcement, and its scope is the declaration.** Nothing here
   claims to see every write path in a plant, and a claim of that shape would not be governance.
 - **Vendor independence is a claim about the model, the authorization decision and the record —
@@ -555,7 +578,7 @@ experience, and says so.
 ## How to falsify this document
 
 Every *built* row above names a script. Clone, run it, and read the exit code — five of the
-fifteen need no broker at all. If a row's gate does not prove what the row claims, the row is
+seventeen need no broker at all. If a row's gate does not prove what the row claims, the row is
 wrong and should be reported as a bug in this document, not excused.
 
 ---
