@@ -170,6 +170,18 @@ container in `heimdall/Dockerfile` is built but exercised by no gate.
 **Narrow the scope to one edge.** `SPB_GROUP` and `SPB_EDGE` are per-edge, so the first deployment
 covers one line or one cell and the blast radius is that one.
 
+**Know which operator issued the command.** `REQUIRE_SIGNED_COMMAND` makes the edge verify an
+Ed25519 envelope on every write command and match it against the principal the rule names, so
+"which operator issued this setpoint" has an answer. Opt-in and off by default, like the other bars
+above it, and reversible by a restart in the same way — but **unlike them it is not shadowed by
+log-only**, because it asks whether there is an identity to judge rather than rendering a verdict on
+one. Rolling it out means minting a key per writer into the registry's `identity/` anchor first;
+until every writer has one, turning the bar on refuses them all.
+
+**Two limits to plan around.** Reads are not covered — observation short-circuits before
+authorization. And the verified subject reaches a log line, not a ledger: the tamper-evident record
+still covers model activation and not the commands themselves.
+
 **Make the edge the only way in.** Until the controlled nodes are writable *only* by the governed
 identity, the edge governs the clients that choose to use it and nothing else. Both halves of that
 now exist to be turned on: the edge presents an X.509 identity when `HEIMDALL_IDENTITY_DIR` is set,

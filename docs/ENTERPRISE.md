@@ -9,8 +9,8 @@ are deliberately deferred, and which are open** — for the Yggdrasil spine as a
 proves it. A row marked *deferred* must name the concrete trigger that would force the work.
 A row with neither is a wish, and wishes do not belong here.
 
-Evidence dates from **2026-09-08**, when all 17 gates were last run green (Docker 26.1.4) and
-the suites measured 399 tests in Bifrost and 242 in Huginn.
+Evidence dates from **2026-09-08**, when all 18 gates were last run green (Docker 26.1.4) and
+the suites measured 425 tests in Bifrost and 242 in Huginn.
 
 ---
 
@@ -554,6 +554,21 @@ experience, and says so.
   fail-closes on an unsigned ledger" are true only once you turn it on.
 - **Authorization is direct principal grants**, not roles or attributes, and the policy file is
   plaintext with change control out of band.
+- **A command's requester is verified only with the bar on, only on the write path, and the record
+  of it is not durable.** `REQUIRE_SIGNED_COMMAND` makes the edge verify an Ed25519 envelope against
+  the same plaintext trust anchor the activation ladder uses, and `CommandAuthorizer` then matches
+  the rule's principal — `run-command-identity-gate.sh` C1–C8. Three limits, all real. The bar is
+  **opt-in and off by default**. **Reads bypass it**: `handle()` short-circuits observation before
+  authorization, so the claim is about commands that write. And replay is refused from a **bounded
+  window** that a bridge restart empties — durable freshness needs a timestamp and a clock the site
+  trusts, and OT sites frequently have neither.
+- **The broker half is projected, not enforced.** `gates acl-project` emits the ACL a policy implies,
+  which is a caller and an output where there was neither. No broker enforces it: `hivemq-ce` is the
+  shared broker for twelve gates and runs an allow-all extension deliberately, and the projected
+  entries carry no MQTT username mapping.
+- **Commands still leave no tamper-evident record.** The verified subject reaches a log line and the
+  NDATA response. `NcmdOpcUaBridge` holds no ledger reference, so the ladder that makes model
+  activation auditable does not yet cover the commands that move the plant.
 - **F5's rollback resistance is topological, not cryptographic.** It holds because the enterprise
   anchor lives in a repository the site never rewrites. Real closure needs a tamper-resistant
   off-box witness.
@@ -578,7 +593,7 @@ experience, and says so.
 ## How to falsify this document
 
 Every *built* row above names a script. Clone, run it, and read the exit code — five of the
-seventeen need no broker at all. If a row's gate does not prove what the row claims, the row is
+eighteen need no broker at all. If a row's gate does not prove what the row claims, the row is
 wrong and should be reported as a bug in this document, not excused.
 
 ---

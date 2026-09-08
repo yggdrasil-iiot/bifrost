@@ -32,6 +32,9 @@ import dev.krillin.bifrost.core.schema.UdtDefinition;
  *   HEIMDALL_APPLY_THREADS 4         (per-node ordering stripes for the apply path)
  *
  *   HEIMDALL_IDENTITY_DIR  (unset)   (OPC-UA keypair + certificate dir; unset = anonymous/None)
+ *
+ *   REQUIRE_SIGNED_COMMAND false     (every NCMD must carry a verified sub/sig; not shadowed by log-only)
+ *   HEIMDALL_REPLAY_WINDOW 1024      (recently-seen command ids kept for replay refusal)
  * </pre>
  *
  * Run: {@code mvn -q compile exec:java -Dexec.mainClass=dev.krillin.bifrost.heimdall.NcmdOpcUaBridgeMain}
@@ -51,7 +54,8 @@ public final class NcmdOpcUaBridgeMain {
     record Config(String broker, String opcua, String group, String edge, String policyPath,
                   String registryPath, String conformancePath, String activationPath, String activationTarget,
                   boolean requireSignedActivation, boolean requireAnchoredActivation, String anchorStore,
-                  String anchorDir, boolean enforcementLogOnly, int healthPort, int applyThreads, String identityDir) {}
+                  String anchorDir, boolean enforcementLogOnly, int healthPort, int applyThreads, String identityDir,
+                  boolean requireSignedCommand, int replayWindow) {}
 
     /**
      * Tri-state flag parse shared by every boolean env toggle. {@code true/on/1} and {@code false/off/0}
@@ -95,9 +99,11 @@ public final class NcmdOpcUaBridgeMain {
         int healthPort = intEnv(getenv, "HEALTH_PORT", 9090);
         int applyThreads = intEnv(getenv, "HEIMDALL_APPLY_THREADS", 4);
         String identityDir = env(getenv, "HEIMDALL_IDENTITY_DIR", null);
+        boolean requireSignedCommand = flag(getenv, "REQUIRE_SIGNED_COMMAND", "");
+        int replayWindow = intEnv(getenv, "HEIMDALL_REPLAY_WINDOW", 1024);
         return new Config(broker, opcua, group, edge, policyPath, registryPath, conformancePath, activationPath,
                 activationTarget, requireSignedEffective, requireAnchored, anchorStore, anchorDir, logOnly,
-                healthPort, applyThreads, identityDir);
+                healthPort, applyThreads, identityDir, requireSignedCommand, replayWindow);
     }
 
     /**
@@ -311,6 +317,19 @@ public final class NcmdOpcUaBridgeMain {
                     + " (" + identity.applicationUri() + ")");
         }
 
+        // Loaded ONCE, like the policy and the ledger above it: revocation latency is therefore the
+        // next edge restart, which is the boundary ENTERPRISE.md §2 already documents rather than a
+        // second, quieter rule invented here. Reading the file per command would also make the write
+        // path depend on the filesystem at command time.
+        final dev.krillin.bifrost.core.identity.AuthorizedKeys keys =
+                dev.krillin.bifrost.core.identity.AuthorizedKeys.load(Path.of(config.registryPath()));
+        java.util.function.Function<String, java.security.PublicKey> trustAnchor =
+                name -> keys.forPrincipal(name).orElse(null);
+        if (config.requireSignedCommand()) {
+            System.out.println("[BRIDGE] REQUIRE_SIGNED_COMMAND on - every command must carry a verified"
+                    + " sub/sig (trust anchor: " + config.registryPath() + "/identity/authorized-keys.jsonl)");
+        }
+
         OpcUaApplier applier = new OpcUaApplier(config.opcua(), health, identity);
         try {
             applier.connect();
@@ -322,7 +341,8 @@ public final class NcmdOpcUaBridgeMain {
 
         NcmdOpcUaBridge bridge = new NcmdOpcUaBridge(config.group(), config.edge(), policy, applier,
                 conformance.def(), conformance.policy(), conformance.recipe(), config.enforcementLogOnly(),
-                health, config.applyThreads(), 64);
+                health, config.applyThreads(), 64,
+                config.requireSignedCommand(), config.replayWindow(), trustAnchor);
         health.startHttp(config.healthPort());
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             try {

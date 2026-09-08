@@ -24,6 +24,7 @@ import org.eclipse.tahu.message.model.SparkplugBPayload;
 import org.eclipse.tahu.message.model.SparkplugBPayload.SparkplugBPayloadBuilder;
 
 import dev.krillin.bifrost.core.acl.CommandAuthorizer;
+import dev.krillin.bifrost.core.acl.CommandEnvelope;
 import dev.krillin.bifrost.core.acl.CommandPolicy;
 import dev.krillin.bifrost.core.acl.CommandRequest;
 import dev.krillin.bifrost.core.acl.Decision;
@@ -103,6 +104,29 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
     /** Counters + the /healthz state. Owned by the caller in production so main can serve it. */
     private final EdgeHealth health;
 
+    /**
+     * R1: require every command to carry a verified signature (env {@code REQUIRE_SIGNED_COMMAND},
+     * default OFF). OFF is the pre-R1 path exactly, which is what keeps the seven existing NCMD
+     * gates meaningful.
+     */
+    private final boolean requireSignedCommand;
+
+    /** Principal name to registered public key, or null for an unregistered name. */
+    private final java.util.function.Function<String, java.security.PublicKey> trustAnchor;
+
+    /**
+     * Recently-seen command ids, for replay refusal. Consulted only when the bar is on.
+     *
+     * <p><b>Synchronized because the apply path is striped.</b> Commands for different nodes run on
+     * different {@link CommandExecutor} threads, so this map is genuinely written concurrently.
+     *
+     * <p><b>This is a window, not a proof.</b> An attacker who waits until an id has aged out can
+     * replay; a bridge restart empties it entirely; and it does nothing for a payload with no
+     * command id, which is why a blank one is refused outright instead. Durable freshness needs a
+     * timestamp and a clock the site trusts, and OT sites frequently have neither.
+     */
+    private final java.util.Map<String, Boolean> seenCmdIds;
+
     /** Exposed so {@code NcmdOpcUaBridgeMain} can start the HTTP endpoint over the same instance. */
     public EdgeHealth health() {
         return health;
@@ -128,6 +152,33 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
     public NcmdOpcUaBridge(String group, String edge, CommandPolicy policy, Applier applier,
                            UdtDefinition conformanceDef, ConformancePolicy conformancePolicy, MasterSpec activeRecipe,
                            boolean logOnly, EdgeHealth health, int applyThreads, int applyQueueDepth) {
+        this(group, edge, policy, applier, conformanceDef, conformancePolicy, activeRecipe, logOnly,
+                health, applyThreads, applyQueueDepth, false, 1024, null);
+    }
+
+    /**
+     * The widest constructor. {@code requireSignedCommand} is the R1 bar; {@code trustAnchor} maps a
+     * principal name to its registered Ed25519 public key, or null when it is not registered.
+     *
+     * <p>The anchor is a function rather than an {@code AuthorizedKeys} because that is the shape
+     * {@code CommandEnvelope.verify} wants, and because it keeps the resolution decision with the
+     * caller: {@code NcmdOpcUaBridgeMain} loads the file ONCE at startup, so revocation latency is
+     * the next edge restart. That is the boundary {@code ENTERPRISE.md} section 2 already documents
+     * for policy and the ledger, rather than a second and quieter rule invented here.
+     */
+    public NcmdOpcUaBridge(String group, String edge, CommandPolicy policy, Applier applier,
+                           UdtDefinition conformanceDef, ConformancePolicy conformancePolicy, MasterSpec activeRecipe,
+                           boolean logOnly, EdgeHealth health, int applyThreads, int applyQueueDepth,
+                           boolean requireSignedCommand, int replayWindow,
+                           java.util.function.Function<String, java.security.PublicKey> trustAnchor) {
+        this.requireSignedCommand = requireSignedCommand;
+        this.trustAnchor = trustAnchor;
+        this.seenCmdIds = java.util.Collections.synchronizedMap(
+                new java.util.LinkedHashMap<String, Boolean>(16, 0.75f, true) {
+                    @Override protected boolean removeEldestEntry(java.util.Map.Entry<String, Boolean> e) {
+                        return size() > Math.max(1, replayWindow);
+                    }
+                });
         this.health = health;
         this.executor = new CommandExecutor(applyThreads, applyQueueDepth);
         this.logOnly = logOnly;
@@ -177,11 +228,45 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
             }
         }
 
+        // ----- R1: the signature bar, before any verdict is formed -----
+        //
+        // Every refusal below returns DIRECTLY and must never be routed through refuse(). Under
+        // ENFORCEMENT_LOG_ONLY, refuse() returns null and its caller falls through and APPLIES, so a
+        // shadowed unsigned command would reach authorize() with a null subject and skip the
+        // principal check entirely. That is not what log-only is for: log-only inverts policy
+        // VERDICTS so a rollout cannot stop the line, and this bar is an authentication question --
+        // whether there is an identity to judge at all. It is the same orthogonality that
+        // NcmdOpcUaBridgeMain already documents for the REQUIRE_*_ACTIVATION bars, and the same
+        // reasoning that keeps the malformed-payload rejection above outside log-only.
+        String subject = null;
+        if (requireSignedCommand) {
+            String sub = propString(props, "sub");
+            String sig = propString(props, "sig");
+            if (cmdId == null || cmdId.isBlank() || sub == null || sub.isBlank() || sig == null || sig.isBlank()) {
+                // A blank cmdId is refused here too: with nothing to bind, one signature would be
+                // valid for every other id-less payload - a replay hole, not an inconvenience.
+                return refuseUnverified(cmdId, name, value, "command.unsigned");
+            }
+            if (seenCmdIds.putIfAbsent(cmdId, Boolean.TRUE) != null) {
+                return refuseUnverified(cmdId, name, value, "command.replay");
+            }
+            CommandEnvelope.Verdict v = CommandEnvelope.verify(
+                    trustAnchor == null ? n -> null : trustAnchor,
+                    sub, sig, group, edge, cmdId, name, value, dataType);
+            if (v == CommandEnvelope.Verdict.UNKNOWN_PRINCIPAL) {
+                return refuseUnverified(cmdId, name, value, "command.principal.unknown");
+            }
+            if (v != CommandEnvelope.Verdict.OK) {
+                return refuseUnverified(cmdId, name, value, "command.sig.invalid");
+            }
+            subject = sub;
+        }
+
         // The first reason this command WOULD have been refused, when log-only let it through anyway.
         // Null in the normal enforcing case, which is what keeps the response identical to before.
         String shadowed = null;
 
-        CommandRequest cr = new CommandRequest(new Target(group, edge, null), name, value, dataType);
+        CommandRequest cr = new CommandRequest(new Target(group, edge, null), name, value, dataType, subject);
         Decision d = authorizer.authorize(policy, cr);
         if (!d.allowed()) {
             NcmdResponse refused = refuse(cmdId, name, value, d.reason());
@@ -279,6 +364,20 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
      *
      * @return the refusal response, or {@code null} when the caller should carry on and apply.
      */
+    /**
+     * Refuse a command that could not be authenticated. <b>Never shadowed by log-only.</b>
+     *
+     * <p>Deliberately not {@link #refuse}: that one returns null under log-only so the caller
+     * applies the command anyway, which is right for a policy verdict during a rollout and wrong
+     * here. There is no identity to judge, so there is no verdict to shadow. Same reason the
+     * malformed-payload rejection sits outside log-only.
+     */
+    private NcmdResponse refuseUnverified(String cmdId, String name, Object value, String reason) {
+        health.denied();
+        System.out.println("[BRIDGE] DENY cmd=" + name + " val=" + value + " reason=" + reason);
+        return NcmdResponse.apply(cmdId, false, "denied: " + reason);
+    }
+
     private NcmdResponse refuse(String cmdId, String name, Object value, String reason) {
         if (logOnly) {
             System.out.println("[BRIDGE] LOG-ONLY would-deny cmd=" + name + " val=" + value + " reason=" + reason);
