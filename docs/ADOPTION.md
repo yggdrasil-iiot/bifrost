@@ -408,7 +408,15 @@ One per phase, decided before starting it.
 - **Not validated.** No part of this sequence has been run at a plant. It is derived from the
   code's constraints, which is a weaker thing than experience and should be read as such.
 - **Phases 0–3 are the defensible part.** They need no new enforcement surface and each produces
-  an artifact worth having on its own. Phases 4–6 depend on gaps named above as not built.
+  an artifact worth having on its own.
+- **What phases 4–6 now depend on has changed in kind.** The gap table above no longer has a
+  *not built* row; every remaining item is half-built, and in each case **the missing half is the
+  one this repository cannot build.** The vendor comparison has no live product to fetch from; the
+  certificate work has no CA to enrol against; the Huginn seam has no protocol the two tools share;
+  and write-path exclusivity ends at the plant's own server configuration. Those are not a backlog
+  that more code closes — they are the boundary where a reference implementation stops and a
+  deployment starts, which is the honest reading of how far this sequence can be taken on evidence
+  from one machine.
 
 ---
 

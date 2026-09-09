@@ -35,8 +35,8 @@ reasonable and will not be treated as bad faith.
 Please check these before reporting. They are documented limitations, not undisclosed holes, and
 each is stated in the README's *Honest scope & limitations* or in `docs/ENTERPRISE.md`:
 
-- **The trust anchor is a plaintext registry file** (`authorized-keys.jsonl`). Key bootstrap,
-  distribution and revocation are out of band. There is no PKI, OIDC or CRL.
+- **The trust anchor is a plaintext registry file** (`authorized-keys.jsonl`). Key bootstrap and
+  distribution are out of band. There is no PKI, OIDC or CRL.
 - **The activation policy is plaintext** and unsigned; its change control is out of band.
 - **The edge bars above signing are opt-in.** `REQUIRE_SIGNED_ACTIVATION` and
   `REQUIRE_ANCHORED_ACTIVATION` both default to `false`. Heimdall does not fail closed on an
@@ -45,7 +45,20 @@ each is stated in the README's *Honest scope & limitations* or in `docs/ENTERPRI
   on-box projection that a co-rollback can rewrite; the `GitAnchorStore` only helps if the anchor
   repository is genuinely off-box. The gate says so itself.
 - **Authorization is direct principal grants**, not roles or attributes.
-- **No certificate lifecycle, no key rotation.** See `docs/ENTERPRISE.md` §6 and §10.
+- **Rotation exists; revocation does not.** `identity rotate-key` retires a signing key by stamping
+  `notAfter`, which stops it signing anything new. It goes on authenticating everything it already
+  signed -- deliberately, because a ledger entry carries no key id and its timestamp is
+  self-asserted, so there is no honest way to decide which key was valid when. **A report that a
+  retired key still verifies its own history is not a finding**; a report that it can still sign
+  something new is. Invalidating past signatures needs a trusted time source this project does not
+  have. See `docs/ENTERPRISE.md` §10.
+- **Certificate renewal is manual and self-signed.** `EdgeIdentity renew` mints a successor and
+  keeps the predecessor; the thumbprint changes and must reach the server out of band. There is no
+  CA, no GDS and no enrolment, and an **expired certificate does not stop the edge** -- it is
+  diagnosed and announced, because failing closed on a lapsed transport credential would turn a
+  missed renewal into a stopped line. That is a recorded decision, not an oversight. See §6.
+- **Divergence findings and bypass findings are visibility, not enforcement.** `model-reconcile`
+  and `conduit-project` produce findings with an owner; neither blocks anything.
 
 A report that one of these is exploitable in a specific, non-obvious way is welcome — the point
 is that "the keys are in a plaintext file" on its own is already written down.
