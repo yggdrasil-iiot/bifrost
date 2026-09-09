@@ -30,6 +30,20 @@
 #       the projection exactly one stops being reported. That difference IS the contribution --
 #       the projection exempts the declared edge, and nothing else
 #
+# INJECTION COVERAGE, stated because it is not 8 of 8 and pretending otherwise would be the exact
+# failure this discipline exists to catch. Five rows have an isolating injection -- a defect that
+# flips that row and no earlier one: H1, H3, H5, H6, H7. Three cannot have one, structurally:
+#
+#   H2  cannot be flipped by ANY defect in Bifrost's code. Huginn is deny-by-default over the whole
+#       capture, so the bypass stops being reported only if the policy ALLOWS it -- and the writer
+#       only ever emits rules FROM the edge. Making 10.10.10.30 allowed means declaring it the edge,
+#       which is H5's legitimate behaviour, not a defect. H2 is a precondition, and labelled as one.
+#   H4  its unique claim over H1 is "exit 1, not 0". Exit 0 needs every observed conversation to be
+#       allowed, which two peers and four rules cannot cover. Any contract error trips H1 first.
+#   H8  tests the SAME code property as H3 -- that the declared edge is exempted -- and adds the
+#       control that makes the property attributable rather than a second behaviour. Every defect
+#       that breaks it breaks H3, which runs earlier on the same report.
+#
 # Needs the Huginn repository beside Bifrost (or $HUGINN_HOME). SKIPS cleanly and exits 0 without
 # it, which is why this gate is NOT in CI. No broker, no Docker.
 #
