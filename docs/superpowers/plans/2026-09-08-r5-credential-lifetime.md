@@ -59,7 +59,7 @@
 - Modify: `core/src/main/java/dev/krillin/bifrost/core/identity/AuthorizedKeys.java`
 - Test: `core/src/test/java/dev/krillin/bifrost/core/identity/AuthorizedKeysRotationTest.java` (new)
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Cover, at minimum:
 1. two lines for one principal with different keys **load** (today: `IllegalStateException`)
@@ -69,13 +69,13 @@ Cover, at minimum:
 5. `notBefore`/`notAfter` absent means unbounded, and round-trip through Jackson (a line without them must still parse — every existing registry is such a line)
 6. **order independence**: the successor line before or after the predecessor gives the same result
 
-- [ ] **Step 2: Run to verify red**
+- [x] **Step 2: Run to verify red**
 
 ```bash
 mvn -q -pl core test -Dtest=AuthorizedKeysRotationTest -Dsurefire.failIfNoSpecifiedTests=false
 ```
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 ```java
 public record AuthorizedKey(String principal, String publicKey,
@@ -105,8 +105,8 @@ public List<PublicKey> allForPrincipal(String principal) { ... }
 public List<PublicKey> validForPrincipal(String principal, Instant at) { ... }
 ```
 
-- [ ] **Step 4: Green, then the whole reactor** (many call sites still compile against `forPrincipal` — remove it and fix them in Tasks 2–4; the reactor is expected red until Task 4)
-- [ ] **Step 5: Commit**
+- [x] **Step 4: Green, then the whole reactor** (many call sites still compile against `forPrincipal` — remove it and fix them in Tasks 2–4; the reactor is expected red until Task 4)
+- [x] **Step 5: Commit**
 
 ### Task 2: The ledger verifier resolves by which key actually verified
 
@@ -114,7 +114,7 @@ public List<PublicKey> validForPrincipal(String principal, Instant at) { ... }
 - Modify: `core/src/main/java/dev/krillin/bifrost/core/identity/SignedLedgerVerifier.java`
 - Test: `core/src/test/java/dev/krillin/bifrost/core/identity/SignedLedgerVerifierRotationTest.java` (new)
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 1. **the point of the round**: sign entries with key A, register a successor key B for the same principal, and the old entries **still verify** — `identity.key.unregistered` does not appear
 2. entries signed with the successor verify too, in the same ledger
@@ -125,12 +125,12 @@ public List<PublicKey> validForPrincipal(String principal, Instant at) { ... }
 
 Case 5's second half is the one worth thinking about. Distinctness has always been enforced on *keys*, but its purpose is two *people*. Once one principal can hold two keys, key-distinctness stops implying principal-distinctness. The verifier must compare principals as well.
 
-- [ ] **Step 2: Red** — case 1 fails today
-- [ ] **Step 3: Implement**
+- [x] **Step 2: Red** — case 1 fails today
+- [x] **Step 3: Implement**
 
 `verifyEntries` becomes: resolve `aKey = authorized.verifying(e.activatedBy(), msg, en.activatorSig())`, same for the approver; empty when the principal has no keys at all → `identity.key.unregistered`, else → `identity.sig.invalid`. Then distinctness on **both** the resolved keys and the two principal names.
 
-- [ ] **Step 4: Green** · **Step 5: Commit**
+- [x] **Step 4: Green** · **Step 5: Commit**
 
 ### Task 3: Signing is what the validity window restricts
 
@@ -138,7 +138,7 @@ Case 5's second half is the one worth thinking about. Distinctness has always be
 - Modify: `core/src/main/java/dev/krillin/bifrost/core/identity/KeyFileLedgerSigner.java`
 - Test: `core/src/test/java/dev/krillin/bifrost/core/identity/KeyFileLedgerSignerRotationTest.java` (new)
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 1. a key file bound to a key whose `notAfter` has passed is refused with `identity.key.expired`
 2. a key file bound to a key whose `notBefore` is in the future is refused with `identity.key.not-yet-valid`
@@ -148,7 +148,7 @@ Case 5's second half is the one worth thinking about. Distinctness has always be
 
 `Clock` is injected (constructor overload, `Clock.systemUTC()` default) so tests are deterministic and do not sleep. This matches `ActivationService` and `CommandLedger`.
 
-- [ ] **Step 2: Red** · **Step 3: Implement** — `bindsToPrincipal` returns *which* key the probe verified under, then `preflight` checks that key's window · **Step 4: Green** · **Step 5: Commit**
+- [x] **Step 2: Red** · **Step 3: Implement** — `bindsToPrincipal` returns *which* key the probe verified under, then `preflight` checks that key's window · **Step 4: Green** · **Step 5: Commit**
 
 ### Task 4: The command path resolves the same way
 
@@ -157,19 +157,19 @@ Case 5's second half is the one worth thinking about. Distinctness has always be
 - Modify: `heimdall/src/main/java/dev/krillin/bifrost/heimdall/NcmdOpcUaBridgeMain.java:357`
 - Test: `core/src/test/java/dev/krillin/bifrost/core/acl/CommandEnvelopeRotationTest.java` (new)
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 1. an envelope signed with a rotated-in key verifies when the anchor offers both keys
 2. an envelope signed with the retired key **still verifies** — the same reasoning as the ledger: no key id travels with the command either, and refusing here would break a command in flight across a rotation
 3. an empty key list is `UNKNOWN_PRINCIPAL`, unchanged
 4. a signature none of the keys verify is `BAD_SIGNATURE`, unchanged
 
-- [ ] **Step 2: Red** · **Step 3: Implement**
+- [x] **Step 2: Red** · **Step 3: Implement**
 
 `verify(Function<String, List<PublicKey>> anchor, ...)`. Heimdall wires `name -> keys.allForPrincipal(name)`.
 
-- [ ] **Step 4: Green — and now the FULL reactor must be green** (`mvn -q test`); `forPrincipal` is gone and every site is converted
-- [ ] **Step 5: Commit**
+- [x] **Step 4: Green — and now the FULL reactor must be green** (`mvn -q test`); `forPrincipal` is gone and every site is converted
+- [x] **Step 5: Commit**
 
 ### Task 5: `gates identity rotate-key`
 
@@ -187,7 +187,7 @@ Case 5's second half is the one worth thinking about. Distinctness has always be
 
 Printing the whole block rather than editing the file in place is deliberate and matches `duty-key-mint`: the trust anchor is the one file whose change control is out-of-band, and a CLI that rewrites it silently is exactly the wrong tool.
 
-- [ ] **Step 1: failing test · Step 2: red · Step 3: implement · Step 4: green · Step 5: commit**
+- [x] **Step 1: failing test · Step 2: red · Step 3: implement · Step 4: green · Step 5: commit**
 
 ---
 
@@ -199,7 +199,7 @@ Printing the whole block rather than editing the file in place is deliberate and
 - Modify: `heimdall/src/main/java/dev/krillin/bifrost/heimdall/EdgeIdentity.java`
 - Test: `heimdall/src/test/java/dev/krillin/bifrost/heimdall/EdgeIdentityExpiryTest.java` (new)
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 1. `notAfter()` matches the certificate's `getNotAfter()`
 2. `daysUntilExpiry(Clock)` is correct, and **negative** past expiry rather than clamped — an operator needs to know how long it has been broken
@@ -209,7 +209,7 @@ Printing the whole block rather than editing the file in place is deliberate and
 
 `Clock`-injected overloads, as everywhere else.
 
-- [ ] **Step 2: Red · Step 3: Implement · Step 4: Green · Step 5: Commit**
+- [x] **Step 2: Red · Step 3: Implement · Step 4: Green · Step 5: Commit**
 
 ### Task 7: Say it, early and precisely
 
@@ -218,13 +218,13 @@ Printing the whole block rather than editing the file in place is deliberate and
 - Modify: `heimdall/src/main/java/dev/krillin/bifrost/heimdall/EdgeHealth.java`
 - Test: `heimdall/src/test/java/dev/krillin/bifrost/heimdall/NcmdOpcUaBridgeMainDefaultsTest.java` (extend)
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 1. `HEIMDALL_CERT_WARN_DAYS` defaults to 30 and parses like every other int env — an unparseable value falls back with a loud WARN (`intEnv`, already there)
 2. `EdgeHealth.report()` carries `cert_days_remaining` when an identity is configured, and **omits it** when none is
 3. `healthy()` is **unchanged** — an expired certificate does not by itself flip health; its consequence (writes failing) already flips `plant_reachable`, and reporting the same fault twice in one boolean would make the signal harder to read, not easier
 
-- [ ] **Step 2: Red · Step 3: Implement**
+- [x] **Step 2: Red · Step 3: Implement**
 
 At startup, after the identity line:
 - expired → `System.err.println("[BRIDGE] identity.cert.expired notAfter=… daysAgo=… - the OPC-UA server will refuse this certificate; renew with EdgeIdentityCli renew")`
@@ -233,7 +233,7 @@ At startup, after the identity line:
 
 **Do not throw.** The startup ledger-trust checks keep failing closed; this one does not, and the difference is stated in the code comment.
 
-- [ ] **Step 4: Green · Step 5: Commit**
+- [x] **Step 4: Green · Step 5: Commit**
 
 ### Task 8: `EdgeIdentityCli renew`
 
@@ -244,7 +244,7 @@ At startup, after the identity line:
 
 `renew <dir> <applicationUri>` and `show <dir>`. An **operator command, not a startup flag** — a restart that could mint an identity is a restart that can silently become a new principal to the server, which is the failure `loadOrCreate`'s javadoc already warns about.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 1. `renew` writes a **new** cert and key, and the thumbprint differs from the predecessor's
 2. the predecessor is **preserved** on disk under a timestamped name, not overwritten — the overlap window is only usable if the old identity still exists
@@ -253,7 +253,7 @@ At startup, after the identity line:
 5. `show` prints the thumbprint, `notAfter` and days remaining, and exits 2 when there is no identity
 6. the renewed private key file is owner-only, like the original
 
-- [ ] **Step 2: Red · Step 3: Implement · Step 4: Green · Step 5: Commit**
+- [x] **Step 2: Red · Step 3: Implement · Step 4: Green · Step 5: Commit**
 
 ### Task 9: The server's trust list holds more than one thumbprint
 
@@ -264,14 +264,14 @@ At startup, after the identity line:
 
 `GOVERNED_WRITER_THUMBPRINT` becomes comma-separated. This is not a convenience: **a rotation with a single-valued trust list is a rotation that stops the line**, and the whole point of K8 below is to prove it does not have to.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 1. either thumbprint in the list grants write; a third is denied
 2. whitespace and case are tolerated per element (today's `trim`/`equalsIgnoreCase`, per element now)
 3. an empty or absent list still **fails closed** (R3's rule: an unconfigured thumbprint denies)
 4. an empty session thumbprint is still an internal read, not an anonymous writer (R3's rule, unchanged)
 
-- [ ] **Step 2: Red · Step 3: Implement · Step 4: Green · Step 5: Commit**
+- [x] **Step 2: Red · Step 3: Implement · Step 4: Green · Step 5: Commit**
 
 ---
 
@@ -296,27 +296,35 @@ House idiom: `cygpath` shim, `fail`, staged registry, fresh dirs, count-based as
 
 K9/K10 need a certificate with a chosen `notAfter`. Generate a short-lived one in the test fixture rather than waiting — `SelfSignedCertificateBuilder` takes a validity period, and a `Clock` shifted forward is the alternative if the builder will not accept a past date.
 
-- [ ] **Step 1: write · Step 2: run · Step 3: one deterministic injection per assertion · Step 4: every other gate · Step 5: commit**
+- [x] **Step 1: write · Step 2: run · Step 3: one deterministic injection per assertion · Step 4: every other gate · Step 5: commit**
 
 ### Task 11: Documents
 
-- [ ] `ENTERPRISE.md` axis 10 **open → partial**, naming exactly what is closed (offline rotation; expiry decided and announced) and what is not (no CA/GDS, no enrolment, no compromise-revocation, and renewal still changes the thumbprint so the server must be re-told)
-- [ ] `ENTERPRISE.md` §6 — the "decide, then integrate" order now has its first half done; say so, and keep the trigger for the second half
-- [ ] `ENTERPRISE.md` limitations — **rotation is not revocation**, and why: a retired key still verifies its own history by design, so retirement stops future signing and nothing else. Anyone reading "rotated" as "the old key can no longer hurt me" is wrong, and the document must say it
-- [ ] `ADOPTION.md` — the R4 retirement instruction gains its mechanism (`rotate-key`); add certificate renewal to phase 5 with the overlap procedure (**put the successor thumbprint in the server's trust list BEFORE restarting the edge**)
-- [ ] Counts: gates 20→21, tests, `README.md` badge, per-module split, gate list; **add the gate to `.github/workflows/ci.yml`** if it is broker-free — K8 needs the sim but no broker, so check honestly whether the whole gate can run there and place it accordingly
-- [ ] `docs/superpowers/plans/2026-09-08-r4-break-glass.md` needs no change; R4's landmine row in `ENTERPRISE.md` gains a pointer to the safe path
+- [x] `ENTERPRISE.md` axis 10 **open → partial**, naming exactly what is closed (offline rotation; expiry decided and announced) and what is not (no CA/GDS, no enrolment, no compromise-revocation, and renewal still changes the thumbprint so the server must be re-told)
+- [x] `ENTERPRISE.md` §6 — the "decide, then integrate" order now has its first half done; say so, and keep the trigger for the second half
+- [x] `ENTERPRISE.md` limitations — **rotation is not revocation**, and why: a retired key still verifies its own history by design, so retirement stops future signing and nothing else. Anyone reading "rotated" as "the old key can no longer hurt me" is wrong, and the document must say it
+- [x] `ADOPTION.md` — the R4 retirement instruction gains its mechanism (`rotate-key`); add certificate renewal to phase 5 with the overlap procedure (**put the successor thumbprint in the server's trust list BEFORE restarting the edge**)
+- [x] Counts: gates 20→21, tests, `README.md` badge, per-module split, gate list; **add the gate to `.github/workflows/ci.yml`** if it is broker-free — K8 needs the sim but no broker, so check honestly whether the whole gate can run there and place it accordingly
+- [x] `docs/superpowers/plans/2026-09-08-r4-break-glass.md` needs no change; R4's landmine row in `ENTERPRISE.md` gains a pointer to the safe path
 
 ---
 
 ## Definition of done
 
-- [ ] `mvn test` green; **every pre-existing identity test unchanged and passing** — a registry with one unbounded key per principal must behave exactly as before
-- [ ] `run-key-rotation-gate.sh` PASS, **every K1–K10 proved by injecting its defect**
-- [ ] **K2, K5 and K8 pass** — history survives rotation, the edge still boots, and the write path survives the certificate change. These three are the round
-- [ ] Every activation-ladder gate still PASS: activation, lineage, identity, activation-authz, anchored, federation, break-glass
-- [ ] `LedgerEntry`, `LedgerChain`, `ActivationEvent` and both preimages **untouched** — rotation must not change what is signed, or every existing ledger breaks
-- [ ] The new gate is in CI if it is broker-free
+- [x] `mvn test` green (545). A registry with one unbounded key per principal behaves exactly as
+      before. **TWO pre-existing tests were changed deliberately, against this plan's own wording:**
+      `duplicate_principal_different_key_is_a_load_error` pinned the behaviour R5 reverses, and
+      `head_four_eyes_same_key` built a scenario whose two signers share a NAME, which is now the
+      more precise `same-principal` fault (a genuine same-key case was added beside it)
+- [x] `run-key-rotation-gate.sh` PASS for K1-K7, K9, K10, **each proved by injecting its defect**
+- [ ] **K8 and its injection have NOT been run** - Docker Desktop is down on this machine
+- [x] **K2 and K5 pass** — history survives rotation, and the edge still boots on a registry whose
+      signer has since been retired
+- [ ] **K8 has NOT been run.** The write path surviving the certificate change is the round's other
+      headline assertion, and it is unverified
+- [x] Every activation-ladder gate's CLI legs still PASS: activation, lineage, identity, activation-authz, anchored, break-glass. **Their Docker legs, and federation entirely, were not run** (same reason as K8)
+- [x] `LedgerEntry`, `LedgerChain`, `ActivationEvent` and both preimages **untouched** — rotation must not change what is signed, or every existing ledger breaks
+- [x] The new gate is NOT in CI: K8 needs Docker, so it is docker-gated like the other ladder gates and the broker-free count stays six
 
 ## What R5 explicitly does not fix
 
