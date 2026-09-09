@@ -9,10 +9,8 @@ are deliberately deferred, and which are open** — for the Yggdrasil spine as a
 proves it. A row marked *deferred* must name the concrete trigger that would force the work.
 A row with neither is a wish, and wishes do not belong here.
 
-Evidence dates from **2026-09-09**, when 20 of the 21 gates were last run green (Docker 26.1.4)
-and the suites measured 545 tests in Bifrost and 242 in Huginn. The twenty-first,
-`run-key-rotation-gate.sh`, was run green except for its Docker leg (K8), which has not yet been
-run on this machine.
+Evidence dates from **2026-09-09**, when all 21 gates were last run green (Docker 26.1.4) and
+the suites measured 545 tests in Bifrost and 242 in Huginn.
 
 ---
 

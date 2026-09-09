@@ -316,12 +316,12 @@ K9/K10 need a certificate with a chosen `notAfter`. Generate a short-lived one i
       `duplicate_principal_different_key_is_a_load_error` pinned the behaviour R5 reverses, and
       `head_four_eyes_same_key` built a scenario whose two signers share a NAME, which is now the
       more precise `same-principal` fault (a genuine same-key case was added beside it)
-- [x] `run-key-rotation-gate.sh` PASS for K1-K7, K9, K10, **each proved by injecting its defect**
-- [ ] **K8 and its injection have NOT been run** - Docker Desktop is down on this machine
-- [x] **K2 and K5 pass** — history survives rotation, and the edge still boots on a registry whose
-      signer has since been retired
-- [ ] **K8 has NOT been run.** The write path surviving the certificate change is the round's other
-      headline assertion, and it is unverified
+- [x] `run-key-rotation-gate.sh` PASS (K1-K10), **each proved by injecting its defect**. The k8
+      injection collapses the trust list to its first entry and flips exactly the successor leg,
+      with the message this round exists to prevent: "the rotation stopped the line"
+- [x] **K2, K5 and K8 pass** — history survives rotation, the edge still boots on a registry whose
+      signer has since been retired, and the write path survives the certificate change with the
+      server trusting both thumbprints. These three are the round
 - [x] Every activation-ladder gate's CLI legs still PASS: activation, lineage, identity, activation-authz, anchored, break-glass. **Their Docker legs, and federation entirely, were not run** (same reason as K8)
 - [x] `LedgerEntry`, `LedgerChain`, `ActivationEvent` and both preimages **untouched** — rotation must not change what is signed, or every existing ledger breaks
 - [x] The new gate is NOT in CI: K8 needs Docker, so it is docker-gated like the other ladder gates and the broker-free count stays six
