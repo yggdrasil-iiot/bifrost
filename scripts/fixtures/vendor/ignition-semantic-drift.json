@@ -1,0 +1,26 @@
+{
+  "name": "WeldController-corp",
+  "tags": [
+    {
+      "name": "WeldCurrent",
+      "dataType": "Float8",
+      "engLow": 0,
+      "engHigh": 15,
+      "semanticId": "corp:weld/amperage"
+    },
+    {
+      "name": "WeldTime",
+      "dataType": "Float8",
+      "engLow": 0,
+      "engHigh": 600,
+      "semanticId": "corp:weld/time"
+    },
+    {
+      "name": "ElectrodeForce",
+      "dataType": "Float8",
+      "engLow": 0,
+      "engHigh": 8,
+      "semanticId": "corp:weld/force"
+    }
+  ]
+}

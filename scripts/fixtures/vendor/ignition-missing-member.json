@@ -1,0 +1,19 @@
+{
+  "name": "WeldController-corp",
+  "tags": [
+    {
+      "name": "WeldCurrent",
+      "dataType": "Float8",
+      "engLow": 0,
+      "engHigh": 15,
+      "semanticId": "corp:weld/current"
+    },
+    {
+      "name": "WeldTime",
+      "dataType": "Float8",
+      "engLow": 0,
+      "engHigh": 600,
+      "semanticId": "corp:weld/time"
+    }
+  ]
+}
