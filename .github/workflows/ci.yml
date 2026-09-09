@@ -56,6 +56,10 @@ jobs:
       - name: 'Gate ⑥ break-glass (mint four-eyes, derived marking, edge still binds)'
         run: bash scripts/run-break-glass-gate.sh
 
+      # Broker-free: the vendor's copy arrives as a file, so there is nothing to connect to.
+      - name: 'Gate ⑦ vendor model reconciliation (divergence per member, granularity)'
+        run: bash scripts/run-model-reconciliation-gate.sh
+
       - name: Upload SBOM
         uses: actions/upload-artifact@v4
         with:

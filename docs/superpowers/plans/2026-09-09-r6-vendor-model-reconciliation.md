@@ -71,7 +71,7 @@ A diff proves the two copies **disagree**. It does not prove which one is right 
 - Create: `core/src/main/java/dev/krillin/bifrost/core/vendor/FileVendorModelSource.java`
 - Test: `core/src/test/java/dev/krillin/bifrost/core/vendor/FileVendorModelSourceTest.java`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 1. `FileVendorModelSource` reads a JSON export from disk and returns its tree
 2. an absent file yields **empty**, not an exception — "the vendor has no copy" is a legitimate answer and a different one from "the export is corrupt"
@@ -79,13 +79,13 @@ A diff proves the two copies **disagree**. It does not prove which one is right 
 4. `capability()` returns what the source was constructed with, and `PER_OBJECT`/`WHOLE_SET` round-trip
 5. a `WHOLE_SET` source is still readable — granularity constrains remediation, not reading
 
-- [ ] **Step 2: Run to verify red**
+- [x] **Step 2: Run to verify red**
 
 ```bash
 mvn -q -pl core test -Dtest=FileVendorModelSourceTest -Dsurefire.failIfNoSpecifiedTests=false
 ```
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 ```java
 /**
@@ -108,7 +108,7 @@ public enum Granularity {
 
 `VendorModelSource` is `capability()` plus `Optional<JsonNode> read(String ref) throws IOException`.
 
-- [ ] **Step 4: Green** · **Step 5: Commit**
+- [x] **Step 4: Green** · **Step 5: Commit**
 
 ### Task 2: The diff
 
@@ -117,7 +117,7 @@ public enum Granularity {
 - Create: `core/src/main/java/dev/krillin/bifrost/core/vendor/ModelReconciler.java`
 - Test: `core/src/test/java/dev/krillin/bifrost/core/vendor/ModelReconcilerTest.java`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Findings, one test each, asserting the **exact** rule string (the house discipline — a test that accepts any failure proves the code failed, not that it failed correctly):
 
@@ -136,11 +136,11 @@ Plus:
 9. a member differing in two ways (type AND range) produces **both** findings, so the report is not truncated per member
 10. **no `templateRef` or `version` finding exists** — a test that pins the absence, with the reason, so it is not "fixed" later
 
-- [ ] **Step 2: Red** · **Step 3: Implement**
+- [x] **Step 2: Red** · **Step 3: Implement**
 
 `ReconciliationVerdict(boolean agreed, Granularity remediationUnit, List<Violation> findings)`, reusing the existing `Violation(rule, detail)` rather than inventing a parallel vocabulary.
 
-- [ ] **Step 4: Green** · **Step 5: Commit**
+- [x] **Step 4: Green** · **Step 5: Commit**
 
 ### Task 3: Granularity reaches the verdict
 
@@ -148,7 +148,7 @@ Plus:
 - Modify: `core/.../vendor/ModelReconciler.java`
 - Test: `core/src/test/java/dev/krillin/bifrost/core/vendor/ModelReconcilerGranularityTest.java`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 1. the **same** divergent pair yields the **same findings** under both granularities — the findings come from the data, the remediation unit from the product
 2. `remediationUnit` is `PER_OBJECT` when the source declares it, `WHOLE_SET` when it does not
@@ -156,7 +156,7 @@ Plus:
 
 **A refinement of the row, worth stating.** `ENTERPRISE.md` §13 currently says that for a blob product *"the smallest unit of both the finding and the fix is much larger"*. Building it shows that is half right: the **fetch** and the **fix** are whole-set, but once the blob is parsed the **finding** is still per member. Keeping the per-member detail is strictly better for the operator, and the verdict records the remediation unit separately rather than degrading the diagnosis to match it. Task 7 corrects the row.
 
-- [ ] **Step 2: Red** · **Step 3: Implement** · **Step 4: Green** · **Step 5: Commit**
+- [x] **Step 2: Red** · **Step 3: Implement** · **Step 4: Green** · **Step 5: Commit**
 
 ---
 
@@ -173,7 +173,7 @@ Plus:
 
 Exit codes follow the house convention: **0** agreed, **1** divergence found, **2** usage or input error.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 1. agreed → 0, and the output says which product and remediation unit
 2. divergence → 1, with every finding printed as `- [rule] detail`
@@ -182,7 +182,7 @@ Exit codes follow the house convention: **0** agreed, **1** divergence found, **
 5. **a governed definition absent from the registry → 2, not a report that every vendor member is unexpected.** An empty governed side would produce a long, confident, meaningless finding list — fail closed instead
 6. `--granularity` defaults to `per-object` and an unrecognized value is a usage error rather than a silent default
 
-- [ ] **Step 2: Red** · **Step 3: Implement** · **Step 4: Green** · **Step 5: Commit**
+- [x] **Step 2: Red** · **Step 3: Implement** · **Step 4: Green** · **Step 5: Commit**
 
 ### Task 5: `scripts/run-model-reconciliation-gate.sh`
 
@@ -211,7 +211,7 @@ Fixtures under `scripts/fixtures/vendor/`, each derived from the existing `scrip
 | **V8** | fail-closed inputs: a missing `--vendor` file, an unknown adapter and an unrecognized granularity are each exit 2, and **none of them prints "agreed"** |
 | **V9** | **a governed ref absent from the registry is exit 2, not a wall of `unexpected` findings.** The assertion is on the absence of findings as much as on the exit code |
 
-- [ ] **Step 1: write · Step 2: run · Step 3: one deterministic injection per assertion · Step 4: every other gate · Step 5: commit**
+- [x] **Step 1: write · Step 2: run · Step 3: one deterministic injection per assertion · Step 4: every other gate · Step 5: commit**
 
 **Injection discipline, with R5's lesson attached.** Three of R5's ten injections were ineffective on the first attempt — one flipped a different assertion, one renamed a rule string the gate matched by substring anyway, one landed in a branch the gate never reached. **Read the failure message of every injection and confirm it names the assertion being proved**, not merely that the gate went red.
 
@@ -221,25 +221,25 @@ Fixtures under `scripts/fixtures/vendor/`, each derived from the existing `scrip
 
 ### Task 6
 
-- [ ] `ENTERPRISE.md` row 13 **open → partial**, naming what is built (the comparison, the port, the granularity distinction) and what is not (**the fetch**; no live product; no projection direction)
-- [ ] `ENTERPRISE.md` §13 — **correct the "smallest unit of both the finding and the fix" sentence**: the fetch and the fix are whole-set, the finding is per member once parsed, and the verdict carries the two separately
-- [ ] `ENTERPRISE.md` §13 — record the identity limit: the export carries no Bifrost ref/version, so the governed side is an operator input and this answers *"does this object agree"*, not *"is everything present"*
-- [ ] `ENTERPRISE.md` limitations — a divergence finding proves disagreement, **not** which side is right
-- [ ] `ADOPTION.md` phase 2 — the second reconciliation now has a command; state that the export is handed over like a pcap, and that a version check belongs in the phase-0 survey (the row already says the Ignition endpoint does not exist before 8.3.2)
-- [ ] Counts: gates 21→22, tests, `README.md` badge, per-module split, gate list
-- [ ] **Add the gate to `.github/workflows/ci.yml`** — it is broker-free, so the "six of the twenty-one need no broker" sentence becomes **seven of the twenty-two**, and a broker-free gate not in CI would contradict it
-- [ ] Readiness board SVG: **open 1 → 0**, partial 5 → 6. The counts are baked into the SVG text and the alt text; regenerate the dark variant and **render and look at it**
+- [x] `ENTERPRISE.md` row 13 **open → partial**, naming what is built (the comparison, the port, the granularity distinction) and what is not (**the fetch**; no live product; no projection direction)
+- [x] `ENTERPRISE.md` §13 — **correct the "smallest unit of both the finding and the fix" sentence**: the fetch and the fix are whole-set, the finding is per member once parsed, and the verdict carries the two separately
+- [x] `ENTERPRISE.md` §13 — record the identity limit: the export carries no Bifrost ref/version, so the governed side is an operator input and this answers *"does this object agree"*, not *"is everything present"*
+- [x] `ENTERPRISE.md` limitations — a divergence finding proves disagreement, **not** which side is right
+- [x] `ADOPTION.md` phase 2 — the second reconciliation now has a command; state that the export is handed over like a pcap, and that a version check belongs in the phase-0 survey (the row already says the Ignition endpoint does not exist before 8.3.2)
+- [x] Counts: gates 21→22, tests, `README.md` badge, per-module split, gate list
+- [x] **Add the gate to `.github/workflows/ci.yml`** — it is broker-free, so the "six of the twenty-one need no broker" sentence becomes **seven of the twenty-two**, and a broker-free gate not in CI would contradict it
+- [x] Readiness board SVG: **open 1 → 0**, partial 5 → 6. The counts are baked into the SVG text and the alt text; regenerate the dark variant and **render and look at it**
 
 ---
 
 ## Definition of done
 
-- [ ] `mvn test` green; no pre-existing test changed
-- [ ] `run-model-reconciliation-gate.sh` PASS, **every V1–V9 proved by injecting its defect**, each injection's failure message naming its own assertion
-- [ ] **V1 and V7 pass** — the agreed baseline, and granularity being the product's property rather than the file's. Without V1 every other row is unfalsifiable; V7 is the reason the port exists at all
-- [ ] Every other gate still PASS (21 of them, Docker up)
-- [ ] `TemplateAdapter` and its three implementations **untouched** — the outbound side reuses the inbound anti-corruption layer, and changing it here would mean the reuse was not real
-- [ ] The new gate is in CI
+- [x] `mvn test` green; no pre-existing test changed
+- [x] `run-model-reconciliation-gate.sh` PASS, **every V1–V9 proved by injecting its defect**, each injection's failure message naming its own assertion
+- [x] **V1 and V7 pass** — the agreed baseline, and granularity being the product's property rather than the file's. Without V1 every other row is unfalsifiable; V7 is the reason the port exists at all
+- [x] Every other gate still PASS (21 of them, Docker up)
+- [x] `TemplateAdapter` and its three implementations **untouched** — the outbound side reuses the inbound anti-corruption layer, and changing it here would mean the reuse was not real
+- [x] The new gate is in CI
 
 ## What R6 explicitly does not fix
 

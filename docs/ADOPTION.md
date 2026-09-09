@@ -112,13 +112,35 @@ spreadsheet does.
 **A second reconciliation belongs in this phase**, against the vendor tools rather than the wire.
 Wherever a ThingWorx, Kepware or Ignition holds its own copy of a governed model, read that copy
 back and compare it — read-only, same as the traffic side. It answers the question that decides
-whether any of this is vendor-independent in practice: *which copy is being hand-edited*. See
-[`ENTERPRISE.md` §13](ENTERPRISE.md#13-governed-model-vs-vendor-runtime), which is open, and note
-that some products will only ever support this direction and never a push.
+whether any of this is vendor-independent in practice: *which copy is being hand-edited*.
 
-**This is also the first phase that needs code that does not exist.** Huginn reads its own
-`CommunicationPolicy` YAML and holds no reference to the governed registry, and nothing reads a
-vendor's configuration back at all.
+**This now has a command.** `gates model-reconcile <reg> <ref> <version> --vendor <export>
+--adapter <ignition|cfihos|aas> [--granularity per-object|whole-set]` reports divergence per member
+— a missing member, an unexpected one, a retyped tag, a widened range, a repointed `semanticId` —
+and exits 0 agreed, 1 diverged, 2 if it could not read either side.
+
+**The export is handed over, exactly like the capture in phase 0.** Nothing connects to a running
+product; a Composer export, an Ignition `tags/export` and a Kepware `GET` all produce a file, and
+the file is the interface. That keeps this phase inert in the same way phase 0 is: the tool cannot
+reach the plant, and obtaining the export is the part with a person in it.
+
+**`--granularity` is a fact about the product, not about the file.** Kepware and Ignition can be
+corrected per object; ThingWorx has no per-object write, so a correction re-imports an entity set.
+The findings are the same either way — the export was parsed — but the cost of acting on them is
+not, and the command says which it is. Declare it per product when you write the runbook.
+
+**Two limits worth knowing before you rely on it.** A finding proves the two copies *disagree*, not
+which is right: a site whose vendor copy has been hand-edited for two years may well find the
+registry is the stale document, and deciding that is a human act with an owner. And the export
+carries no Bifrost identity, so **you tell it which governed definition to compare against** — it
+answers *"does this object agree"*, not *"is everything present"*. See
+[`ENTERPRISE.md` §13](ENTERPRISE.md#13-governed-model-vs-vendor-runtime), now partial, and note that
+the push direction still does not exist.
+
+**This phase still needs code that does not exist, though less of it than before.** Huginn reads
+its own `CommunicationPolicy` YAML and holds no reference to the governed registry — that seam is
+untouched and it is what hard-blocks phase 4. The vendor half is now half-built: the comparison
+exists and is gated, the fetch does not.
 
 ### 3 — Gate the change process, not the runtime
 
@@ -303,7 +325,7 @@ support: **this shortens the governance part of a site rollout, not the rollout.
 | Gap | Bites at | Status today |
 |---|---|---|
 | Huginn ↔ Bifrost seam, **including the surface mismatch** | phase 2, hard-blocks phase 4 | not built |
-| Vendor-side verification (governed model vs vendor's copy) | phase 2 | [row 13](ENTERPRISE.md#13-governed-model-vs-vendor-runtime): not built |
+| Vendor-side verification (governed model vs vendor's copy) | phase 2 | **built in part** — `gates model-reconcile` compares an export against the registry ([row 13](ENTERPRISE.md#13-governed-model-vs-vendor-runtime): partial). **The fetch is not built**, so somebody exports and hands the file over |
 | ~~Heimdall shadow / log-only mode~~ | phase 4 | **built** — `ENFORCEMENT_LOG_ONLY`, 10 tests |
 | ~~Certificate expiry and key rotation~~ | phase 4–5 | **built in part** — `identity rotate-key` and `EdgeIdentity renew`, with `run-key-rotation-gate.sh` ([axis 10](ENTERPRISE.md#10-certificate-expiry-and-key-rotation): partial). **No CA and no enrolment**, so a renewal is manual and the successor thumbprint reaches the server out of band |
 | ~~Write-path exclusivity — the edge has no identity to present~~ | phase 4 | **built** — `EdgeIdentity` + `run-write-exclusivity-gate.sh`. The other half, the server configuration, is still the site's ([row 12](ENTERPRISE.md#12-write-path-exclusivity): partial) |

@@ -3,7 +3,7 @@
 [![CI](https://github.com/yggdrasil-iiot/bifrost/actions/workflows/ci.yml/badge.svg)](https://github.com/yggdrasil-iiot/bifrost/actions/workflows/ci.yml)
 ![Java](https://img.shields.io/badge/Java-17-orange?logo=openjdk&logoColor=white)
 ![Build](https://img.shields.io/badge/build-Maven%20multi--module-blue)
-![Tests](https://img.shields.io/badge/tests-545-brightgreen)
+![Tests](https://img.shields.io/badge/tests-577-brightgreen)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache_2.0-blue.svg)](LICENSE)
 
 **The governance core of the [Yggdrasil](https://github.com/yggdrasil-iiot) IIoT spine — the "IAM" for the OT governance boundary.**
@@ -122,6 +122,7 @@ scripts/run-activation-authz-gate.sh       # T6 — deny-by-default authZ, maker
 scripts/run-anchored-activation-gate.sh    # T7 — four-eyes head + external anchor, rollback/co-rollback caught
 scripts/run-break-glass-gate.sh            # break-glass — four-eyes moved to mint time; marked, verifiable, edge still binds
 scripts/run-key-rotation-gate.sh           # a signing key rotates without breaking history; an expiring certificate is announced
+scripts/run-model-reconciliation-gate.sh   # the vendor's copy of a model against the governed one; divergence named per member
 scripts/run-federation-gate.sh             # multi-site — enterprise template + cross-domain anchor + federated audit
 scripts/run-yggdrasil-spine-gate.sh        # Mímir → Bifrost → Muninn northbound spine
 scripts/run-yggdrasil-full-loop-gate.sh    # closed loop: observe → command → observe
@@ -140,7 +141,7 @@ sim/       an embedded Eclipse Milo OPC-UA server the gates drive end-to-end.
 ## Build & test
 
 ```bash
-mvn install     # Java 17 · 545 tests (core 294 · heimdall 121 · gates 107 · sim 23)
+mvn install     # Java 17 · 577 tests (core 315 · heimdall 121 · gates 118 · sim 23)
                 # also writes target/bifrost-sbom.{json,xml} — one CycloneDX 1.6 SBOM
                 # for the whole reactor (40 components, licences resolved)
 ```
