@@ -84,7 +84,7 @@ allowed:
 
 **Why both protocols, including ones the edge does not speak.** The claim is *only the edge may write this equipment*. Over a protocol the edge does not speak, its rule is simply never exercised and costs nothing — while every other host's write to that equipment becomes a violation, which is the finding the seam exists to produce. Enumerating only the protocol the edge happens to use would silently exempt the others.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 1. one equipment yields a document with two peers and two rules (one per protocol)
 2. two equipments yield three peers and four rules; the edge peer appears **once**
@@ -94,13 +94,13 @@ allowed:
 6. an empty equipment list is a coded refusal: a document declaring an edge and nothing else governs nothing, and emitting it would look like success
 7. the document carries a **header comment** naming the registry it came from and saying the binding is a declaration
 
-- [ ] **Step 2: Run to verify red**
+- [x] **Step 2: Run to verify red**
 
 ```bash
 mvn -q -pl core test -Dtest=ConduitPolicyWriterTest -Dsurefire.failIfNoSpecifiedTests=false
 ```
 
-- [ ] **Step 3: Implement** · **Step 4: Green** · **Step 5: Commit**
+- [x] **Step 3: Implement** · **Step 4: Green** · **Step 5: Commit**
 
 ### Task 2: `gates conduit-project`
 
@@ -111,7 +111,7 @@ mvn -q -pl core test -Dtest=ConduitPolicyWriterTest -Dsurefire.failIfNoSpecified
 
 `conduit-project <reg> --edge <address> --bind <ref>=<address> [--bind ...] [--out <file>]`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 1. a valid projection exits 0 and writes the document; without `--out` it prints to stdout
 2. **a `--bind` naming a ref that is not in the governed registry is exit 2**, `conduit.equipment.ungoverned`. This is the check that makes it a Bifrost command rather than a YAML templater: projecting governance for equipment nobody governs would produce a confident, meaningless policy
@@ -121,7 +121,7 @@ mvn -q -pl core test -Dtest=ConduitPolicyWriterTest -Dsurefire.failIfNoSpecified
 6. no `--bind` at all is exit 2, not an empty policy
 7. the printed output says the binding is operator-declared and the fragment is not a complete site policy
 
-- [ ] **Step 2: Red** · **Step 3: Implement** · **Step 4: Green** · **Step 5: Commit**
+- [x] **Step 2: Red** · **Step 3: Implement** · **Step 4: Green** · **Step 5: Commit**
 
 ---
 
@@ -148,7 +148,7 @@ mvn -q -pl core test -Dtest=ConduitPolicyWriterTest -Dsurefire.failIfNoSpecified
 | **H7** | the emitted document names the registry and says the binding is declared, not discovered |
 | **H8** | with **no equipment governed at that address** — the PLC bound to a different governed ref whose address is a host with no traffic — Huginn reports **no violation for that equipment**, so H2's finding is attributable to the binding rather than to the capture |
 
-- [ ] **Step 1: write · Step 2: run · Step 3: one deterministic injection per assertion · Step 4: every other gate · Step 5: commit**
+- [x] **Step 1: write · Step 2: run · Step 3: one deterministic injection per assertion · Step 4: every other gate · Step 5: commit**
 
 **Injection discipline.** R5 had three ineffective injections and R6 one; in every case the gate went red for the wrong reason. **Read each injection's failure message and confirm it names the assertion being proved.** An injection that produces a crash, a usage error, or a failure in an earlier assertion has not proved its own.
 
@@ -158,24 +158,28 @@ mvn -q -pl core test -Dtest=ConduitPolicyWriterTest -Dsurefire.failIfNoSpecified
 
 ### Task 4
 
-- [ ] `ENTERPRISE.md` — the "**Huginn is not wired to Bifrost**" limitation is now wrong as written; replace it with what exists (a projection Huginn parses, and a bypass finding proved against a real capture) and what does not (**Bifrost still holds no reference to Huginn, and Huginn still holds none to the registry** — the seam is an artifact handed across, not a dependency)
-- [ ] `ENTERPRISE.md` row 12 — the write-exclusivity row gains its other half: the OPC-UA side is enforced by the server, and a bypass *over another protocol* is now visible rather than merely acknowledged. Say plainly that visibility is not enforcement
-- [ ] `ENTERPRISE.md` §5 — the conduit register now has a declared-source input for the governed conduits; the frequency, ownership and exclusion gaps are untouched
-- [ ] `ADOPTION.md` — the gap table row "Huginn ↔ Bifrost seam, including the surface mismatch" becomes **built in part**, and phase 2 gains the command with the binding step called out as the human input it is
-- [ ] `ADOPTION.md` — the "first phase that needs code that does not exist" paragraph narrows again
-- [ ] Counts: gates 22→23, tests, `README.md` badge, per-module split, gate list
-- [ ] **Not added to CI** — it needs the Huginn repo beside Bifrost, so the broker-free sentence stays seven of the twenty-three, with the reason stated
+- [x] `ENTERPRISE.md` — the "**Huginn is not wired to Bifrost**" limitation is now wrong as written; replace it with what exists (a projection Huginn parses, and a bypass finding proved against a real capture) and what does not (**Bifrost still holds no reference to Huginn, and Huginn still holds none to the registry** — the seam is an artifact handed across, not a dependency)
+- [x] `ENTERPRISE.md` row 12 — the write-exclusivity row gains its other half: the OPC-UA side is enforced by the server, and a bypass *over another protocol* is now visible rather than merely acknowledged. Say plainly that visibility is not enforcement
+- [x] `ENTERPRISE.md` §5 — the conduit register now has a declared-source input for the governed conduits; the frequency, ownership and exclusion gaps are untouched
+- [x] `ADOPTION.md` — the gap table row "Huginn ↔ Bifrost seam, including the surface mismatch" becomes **built in part**, and phase 2 gains the command with the binding step called out as the human input it is
+- [x] `ADOPTION.md` — the "first phase that needs code that does not exist" paragraph narrows again
+- [x] Counts: gates 22→23, tests, `README.md` badge, per-module split, gate list
+- [x] **Not added to CI** — it needs the Huginn repo beside Bifrost, so the broker-free sentence stays seven of the twenty-three, with the reason stated
 
 ---
 
 ## Definition of done
 
-- [ ] `mvn test` green; no pre-existing test changed
-- [ ] `run-huginn-seam-gate.sh` PASS with Huginn present, **every H1–H8 proved by injecting its defect**
-- [ ] **H2, H3 and H5 pass** — the bypass is found, the declared edge is not flagged, and swapping the binding moves the finding. The three together are what distinguishes a working seam from deny-by-default noise
-- [ ] The gate **skips cleanly** with `HUGINN_HOME` unset and no sibling checkout, exiting 0
-- [ ] Every other gate still PASS (22 of them, Docker up)
-- [ ] **No file under the Huginn repository is modified** — if one is, the claim that the projection satisfies an existing contract is false
+- [x] `mvn test` green; no pre-existing test changed
+- [x] `run-huginn-seam-gate.sh` PASS with Huginn present. **Five of the eight rows have an
+      isolating injection (H1, H3, H5, H6, H7); three structurally cannot** — H2 is a precondition
+      no Bifrost defect can flip, H4's unique claim over H1 needs an unreachable exit 0, and H8
+      tests the same property as H3 plus the control that attributes it. The gate header carries
+      the reasoning; three of this round's injections landing on an earlier row is what surfaced it
+- [x] **H2, H3 and H5 pass** — the bypass is found, the declared edge is not flagged, and swapping the binding moves the finding. The three together are what distinguishes a working seam from deny-by-default noise
+- [x] The gate **skips cleanly** with `HUGINN_HOME` unset and no sibling checkout, exiting 0
+- [x] Every other gate still PASS (22 of them, Docker up)
+- [x] **No file under the Huginn repository is modified** — if one is, the claim that the projection satisfies an existing contract is false
 
 ## What R7 explicitly does not fix
 

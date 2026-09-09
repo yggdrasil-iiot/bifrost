@@ -9,8 +9,8 @@ are deliberately deferred, and which are open** — for the Yggdrasil spine as a
 proves it. A row marked *deferred* must name the concrete trigger that would force the work.
 A row with neither is a wish, and wishes do not belong here.
 
-Evidence dates from **2026-09-09**, when all 22 gates were last run green (Docker 26.1.4) and
-the suites measured 577 tests in Bifrost and 242 in Huginn.
+Evidence dates from **2026-09-10**, when all 23 gates were last run green (Docker 26.1.4) and
+the suites measured 601 tests in Bifrost and 242 in Huginn.
 
 ---
 
@@ -50,7 +50,7 @@ what is and is not answered; read the rows for why.
 | 9 | AAS alignment → conformance | **deferred** | Trigger: a customer asking for an IDTA submodel template by number |
 | 10 | **Certificate expiry, key rotation** | **partial** | `run-key-rotation-gate.sh` K1-K10 — a signing key rotates offline without breaking history, and an expiring certificate is announced rather than discovered. **No CA, no enrolment, and rotation is not revocation** ([detail](#10-certificate-expiry-and-key-rotation)) |
 | 11 | Audit query at scale | **measured** | `scripts/bench-ledger.sh` — growth is exactly 434 B/entry (645 signed); signature verification costs ~8× the chain walk, and anchoring is free on top of it ([detail](#11-audit-query-at-scale)). **Those numbers are for the activation ledger at roughly ten events a day. The command ledger is a different volume class — two entries per applied command — and is unmeasured** |
-| 12 | **Write-path exclusivity** | **partial** | `run-write-exclusivity-gate.sh` X1–X6 — the edge presents an X.509 identity and a server told to require it refuses a second client's write with `Bad_UserAccessDenied` while still serving its reads. Proved against the bundled sim on the OPC-UA surface only; **Modbus is untouched, and a plant's own server still has to be configured** ([detail](#12-write-path-exclusivity)) |
+| 12 | **Write-path exclusivity** | **partial** | `run-write-exclusivity-gate.sh` X1–X6 — the edge presents an X.509 identity and a server told to require it refuses a second client's write with `Bad_UserAccessDenied` while still serving its reads. A bypass **over another protocol** is now visible rather than merely acknowledged: `run-huginn-seam-gate.sh` H1–H8 reports a write to governed equipment from anything that is not the edge. **Visibility is not enforcement**, Modbus is still unenforced, and a plant's own server has to be configured ([detail](#12-write-path-exclusivity)) |
 | 13 | **Governed model vs vendor runtime** | **partial** | `run-model-reconciliation-gate.sh` V1-V9 — a vendor export is compared against the governed definition and divergence is reported per member, with the port carrying **granularity** so a blob product is recorded as weaker. **The comparison is built; the FETCH is not** — the export arrives as a file, nothing connects to a running product, and the projection direction does not exist ([detail](#13-governed-model-vs-vendor-runtime)) |
 
 Rows 5, 6 and 7 carry the engineering. **Rows 12 and 13 bound everything else on the board**, and
@@ -120,7 +120,9 @@ today's output.
 - **Frequency.** A finding says a path exists, not how often it is used. An auditor's register
   wants both. The data is in the capture; the report does not aggregate it over time.
 - **Responsibility.** Who owns this conduit is not derivable from traffic. It has to come from
-  the declaration side, which means `CommunicationPolicy` needs an owner field.
+  the declaration side, which means `CommunicationPolicy` needs an owner field. **The governed
+  conduits now have a declared source** — `gates conduit-project` emits them from the Bifrost
+  registry — but that covers only the equipment Bifrost governs, and it carries no owner either.
 - **Declared exclusions, distinct from blind spots.** UDP and anything that is not Modbus/TCP or
   S7comm is counted as out of scope — but by the decoder's limits, not by anyone's decision.
   `CommunicationPolicy` has no way to say *"this conduit is governed elsewhere, by change control"*,
@@ -726,9 +728,18 @@ experience, and says so.
   off-box witness.
 - **ISA-95 and AAS are alignments, not certifications.** For ISA-95 no certification scheme
   exists; for AAS, conformance means IDTA submodel templates this does not yet implement.
-- **Huginn is not wired to Bifrost.** It reads its own `CommunicationPolicy`; there is no
-  reference to the governed registry in its code. Connecting them is the next real test of the
-  seam, and it has not been taken.
+- **The Huginn seam is an artifact handed across, not a dependency — and that is the design.**
+  `gates conduit-project` emits the governed conduits as the `CommunicationPolicy` YAML Huginn
+  already reads, and `run-model-reconciliation-gate.sh`'s sibling `run-huginn-seam-gate.sh` runs the
+  real Huginn against a real capture to prove a write to governed equipment from anything that is
+  not the governed edge is reported. **Neither repository references the other**: no Huginn source
+  changed, and Bifrost holds no Huginn import. What crosses is a file.
+  **Three limits.** The equipment-to-address binding is **declared, not discovered** — no byte on
+  the wire says which address is which governed equipment, so a human asserts it and the artifact
+  says so in its own header. The projection is a **fragment**: Bifrost knows who may write governed
+  equipment and has no idea who may legitimately read it, so used alone deny-by-default reports
+  every historian as a violation. And **visibility is not enforcement** — a bypass becomes a
+  finding with an owner; nothing blocks it.
 - **The edge can now be an exclusive write path, and is not one by default.** Row 12. The edge
   presents an X.509 identity and the bundled server, told to require it, refuses another client's
   write while still serving its reads — proved by `run-write-exclusivity-gate.sh`. Two things bound
@@ -744,8 +755,9 @@ experience, and says so.
 
 ## How to falsify this document
 
-Every *built* row above names a script. Clone, run it, and read the exit code — seven of the
-twenty-two need no broker at all. If a row's gate does not prove what the row claims, the row is
+Every *built* row above names a script. Clone, run it, and read the exit code — eight of the
+twenty-three need no broker at all, though one of those eight needs the Huginn repository beside
+this one and skips without it. If a row's gate does not prove what the row claims, the row is
 wrong and should be reported as a bug in this document, not excused.
 
 ---

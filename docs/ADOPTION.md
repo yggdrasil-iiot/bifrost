@@ -109,6 +109,21 @@ wants**, which is what makes this phase worth doing on its own even if the proje
 site grants to a tool that has not yet demonstrated it understands the plant better than the
 spreadsheet does.
 
+**The governed conduits can be projected for Huginn to check.** `gates conduit-project <reg>
+--edge <address> --bind <ref>=<address>` emits the `CommunicationPolicy` fragment saying the
+governed edge is the only permitted writer of that equipment. Run Huginn with it and a write to
+governed equipment from anything else is reported — including over a protocol the edge does not
+speak, which is exactly the bypass phase 4 is worried about.
+
+**The binding is the human input, and it is the whole seam.** Nothing on the wire says which IP is
+`Line1-Mixer`; somebody has to say so, and the emitted file records that they did. Get it wrong and
+the findings are wrong in a way no amount of capture fixes.
+
+**Merge the fragment into the site policy — do not run it alone.** It says who may *write* the
+governed equipment. Bifrost does not know which HMIs and historians may legitimately *read* it, so
+on its own deny-by-default reports every one of them as a violation. And note what this is not:
+**a finding is visibility, not enforcement.** Nothing blocks the bypass; it acquires an owner.
+
 **A second reconciliation belongs in this phase**, against the vendor tools rather than the wire.
 Wherever a ThingWorx, Kepware or Ignition holds its own copy of a governed model, read that copy
 back and compare it — read-only, same as the traffic side. It answers the question that decides
@@ -137,10 +152,12 @@ answers *"does this object agree"*, not *"is everything present"*. See
 [`ENTERPRISE.md` §13](ENTERPRISE.md#13-governed-model-vs-vendor-runtime), now partial, and note that
 the push direction still does not exist.
 
-**This phase still needs code that does not exist, though less of it than before.** Huginn reads
-its own `CommunicationPolicy` YAML and holds no reference to the governed registry — that seam is
-untouched and it is what hard-blocks phase 4. The vendor half is now half-built: the comparison
-exists and is gated, the fetch does not.
+**Both halves of this phase are now half-built, and the remainders are different in kind.** The
+vendor half has the comparison and not the fetch — somebody exports and hands the file over. The
+Huginn half has the projection and the proof that Huginn acts on it, and what it does not have is
+any shared protocol between the two tools: **the surface mismatch was routed around, not closed.**
+Bifrost still holds no reference to Huginn and Huginn none to the registry. What crosses is an
+artifact and one binding a human asserted.
 
 ### 3 — Gate the change process, not the runtime
 
@@ -324,7 +341,7 @@ support: **this shortens the governance part of a site rollout, not the rollout.
 
 | Gap | Bites at | Status today |
 |---|---|---|
-| Huginn ↔ Bifrost seam, **including the surface mismatch** | phase 2, hard-blocks phase 4 | not built |
+| ~~Huginn ↔ Bifrost seam~~ | phase 2, hard-blocks phase 4 | **built in part** — `gates conduit-project` emits the governed conduits as the policy Huginn reads, and `run-huginn-seam-gate.sh` runs the real Huginn to prove a bypass is reported. **The surface mismatch is not closed, it is routed around**: the two tools still share no protocol, and what crosses between them is a file plus one declared binding |
 | Vendor-side verification (governed model vs vendor's copy) | phase 2 | **built in part** — `gates model-reconcile` compares an export against the registry ([row 13](ENTERPRISE.md#13-governed-model-vs-vendor-runtime): partial). **The fetch is not built**, so somebody exports and hands the file over |
 | ~~Heimdall shadow / log-only mode~~ | phase 4 | **built** — `ENFORCEMENT_LOG_ONLY`, 10 tests |
 | ~~Certificate expiry and key rotation~~ | phase 4–5 | **built in part** — `identity rotate-key` and `EdgeIdentity renew`, with `run-key-rotation-gate.sh` ([axis 10](ENTERPRISE.md#10-certificate-expiry-and-key-rotation): partial). **No CA and no enrolment**, so a renewal is manual and the successor thumbprint reaches the server out of band |
