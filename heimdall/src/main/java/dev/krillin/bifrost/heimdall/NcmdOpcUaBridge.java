@@ -112,7 +112,7 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
     private final boolean requireSignedCommand;
 
     /** Principal name to registered public key, or null for an unregistered name. */
-    private final java.util.function.Function<String, java.security.PublicKey> trustAnchor;
+    private final java.util.function.Function<String, java.util.List<java.security.PublicKey>> trustAnchor;
 
     /**
      * Recently-seen command ids, for replay refusal. Consulted only when the bar is on.
@@ -183,7 +183,7 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
                            UdtDefinition conformanceDef, ConformancePolicy conformancePolicy, MasterSpec activeRecipe,
                            boolean logOnly, EdgeHealth health, int applyThreads, int applyQueueDepth,
                            boolean requireSignedCommand, int replayWindow,
-                           java.util.function.Function<String, java.security.PublicKey> trustAnchor) {
+                           java.util.function.Function<String, java.util.List<java.security.PublicKey>> trustAnchor) {
         this(group, edge, policy, applier, conformanceDef, conformancePolicy, activeRecipe, logOnly,
                 health, applyThreads, applyQueueDepth, requireSignedCommand, replayWindow, trustAnchor,
                 null, false);
@@ -198,7 +198,7 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
                            UdtDefinition conformanceDef, ConformancePolicy conformancePolicy, MasterSpec activeRecipe,
                            boolean logOnly, EdgeHealth health, int applyThreads, int applyQueueDepth,
                            boolean requireSignedCommand, int replayWindow,
-                           java.util.function.Function<String, java.security.PublicKey> trustAnchor,
+                           java.util.function.Function<String, java.util.List<java.security.PublicKey>> trustAnchor,
                            dev.krillin.bifrost.core.command.CommandLedger commandLedger,
                            boolean requireCommandLedger) {
         this.commandLedger = commandLedger;

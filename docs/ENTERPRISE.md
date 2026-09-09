@@ -9,8 +9,8 @@ are deliberately deferred, and which are open** — for the Yggdrasil spine as a
 proves it. A row marked *deferred* must name the concrete trigger that would force the work.
 A row with neither is a wish, and wishes do not belong here.
 
-Evidence dates from **2026-09-08**, when all 20 gates were last run green (Docker 26.1.4) and
-the suites measured 475 tests in Bifrost and 242 in Huginn.
+Evidence dates from **2026-09-09**, when all 21 gates were last run green (Docker 26.1.4) and
+the suites measured 545 tests in Bifrost and 242 in Huginn.
 
 ---
 
@@ -31,7 +31,7 @@ it did.**
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="diagrams/readiness-board.dark.svg">
-  <img alt="Thirteen enterprise-readiness axes sorted into four columns: five built, four partial, two deferred with a named trigger, two open with no mechanism" src="diagrams/readiness-board.svg">
+  <img alt="Thirteen enterprise-readiness axes sorted into four columns: five built, five partial, two deferred with a named trigger, one open with no mechanism" src="diagrams/readiness-board.svg">
 </picture>
 
 The table below is the same board with the evidence attached. Read the figure for the shape of
@@ -48,7 +48,7 @@ what is and is not answered; read the rows for why.
 | 7 | **Supply chain / EU CRA** | **partial** | Ledger, provenance manifest and a CycloneDX SBOM exist; **no vulnerability-handling process, and the ledger does not reach the build** ([detail](#7-supply-chain-and-the-cra)) |
 | 8 | Brownfield vendor heterogeneity | **partial** | 3 `TemplateAdapter` implementations (inbound only — see row 13); the vendor-front gateway posture is designed, not built |
 | 9 | AAS alignment → conformance | **deferred** | Trigger: a customer asking for an IDTA submodel template by number |
-| 10 | Certificate expiry, key rotation | **open** | No mechanism. Trigger: any deployment that outlives its first certificate |
+| 10 | **Certificate expiry, key rotation** | **partial** | `run-key-rotation-gate.sh` K1-K10 — a signing key rotates offline without breaking history, and an expiring certificate is announced rather than discovered. **No CA, no enrolment, and rotation is not revocation** ([detail](#10-certificate-expiry-and-key-rotation)) |
 | 11 | Audit query at scale | **measured** | `scripts/bench-ledger.sh` — growth is exactly 434 B/entry (645 signed); signature verification costs ~8× the chain walk, and anchoring is free on top of it ([detail](#11-audit-query-at-scale)). **Those numbers are for the activation ledger at roughly ten events a day. The command ledger is a different volume class — two entries per applied command — and is unmeasured** |
 | 12 | **Write-path exclusivity** | **partial** | `run-write-exclusivity-gate.sh` X1–X6 — the edge presents an X.509 identity and a server told to require it refuses a second client's write with `Bad_UserAccessDenied` while still serving its reads. Proved against the bundled sim on the OPC-UA surface only; **Modbus is untouched, and a plant's own server still has to be configured** ([detail](#12-write-path-exclusivity)) |
 | 13 | **Governed model vs vendor runtime** | **open** | Adapters read a vendor's model *in*; nothing reads a vendor's live configuration *back*. Vendor APIs checked 2026-09-07: all three read and write, but Kepware and Ignition are per-object and ThingWorx is a whole-entity blob ([detail](#13-governed-model-vs-vendor-runtime)) |
@@ -162,8 +162,73 @@ Wiring it to a certificate authority without first deciding what it does when re
 unreachable would convert a security control into an outage generator. The order has to be:
 decide the disconnected-renewal behaviour, then integrate.
 
+**The first half of that order is now done — see [row 10](#10-certificate-expiry-and-key-rotation).**
+The behaviour is decided: an expired certificate is diagnosed and announced, and the edge does not
+stop. What is still deferred is the second half, the integration itself, and the trigger is
+unchanged.
+
 **Trigger:** the second site running on real hardware, or the first certificate expiry —
 whichever comes first. Both make the current design untenable in the same week.
+
+---
+
+## 10. Certificate expiry and key rotation
+
+Two credentials, one problem: **an identity has to outlive the thing that first proved it.** Both
+halves here are the halves that need no certificate authority, because §6 fixed the order and this
+is the first step in it.
+
+### A signing key rotates without breaking history
+
+A principal may now hold several Ed25519 keys at once, which is what makes rotation expressible.
+The two questions are deliberately separated:
+
+- **Verification** asks *which of this principal's registered keys signed this entry* — and is
+  **not** filtered by time. A ledger entry carries no key id, and its timestamp is self-asserted, so
+  there is no honest way to pick "the key that was valid then". A retired key therefore keeps
+  verifying the history it signed (`run-key-rotation-gate.sh` K2, at T4, T5 and T7).
+- **Signing** is where the validity window bites. A key past its `notAfter` is refused at preflight
+  with `identity.key.expired` (K3), and its successor signs into the same ledger (K4).
+
+`gates identity rotate-key` prints the replacement block — every existing line for that principal
+re-emitted with a retirement stamp, plus the successor — rather than editing the trust anchor. The
+anchor is the one file whose change control is deliberately out-of-band.
+
+This is what finally gives `ADOPTION.md`'s "retire a key by removing its policy grants, **never** by
+deleting its key line" a mechanism instead of only a warning. Until now a second line for a
+principal was a load error, so there was no way to write down a predecessor and its successor at
+all. **The landmine is not disarmed**: deleting a line still breaks every entry that key signed, and
+K7 keeps proving it.
+
+### An expiring certificate is announced, not discovered
+
+`EdgeIdentity` reloaded whatever was on disk without looking at its dates, so a lapsed certificate
+surfaced as an opaque connect failure that reads like a server fault.
+
+**The decision this records: an expired certificate does not stop the edge.** The startup
+ledger-trust checks still fail closed, deliberately — an untrustworthy model is a governance fault.
+A lapsed transport credential is an operational one, the same class as the unreachable plant R0
+already decided not to die on, and refusing to start here would turn a missed renewal into a stopped
+line. What the edge owes instead is a precise diagnosis and an early warning: `identity.cert.expired`
+/ `identity.cert.expiring`, a `HEIMDALL_CERT_WARN_DAYS` window (default 30), and
+`cert_days_remaining` on `/healthz` — negative once expired, because how long it has been broken is
+the number that decides whether this is today's problem or last quarter's.
+
+`EdgeIdentity renew` is an operator command, not a startup flag: a restart that could mint an
+identity is a restart that can silently make the edge a new principal to the server. It preserves
+the predecessor on disk and prints both thumbprints, because **the order is the whole procedure** —
+add the successor to the server's trust list, *then* restart the edge.
+
+### What this does not do
+
+- **Rotation is not revocation.** A retired key still verifies its own history, by design; retirement
+  stops future signing and nothing else. Invalidating past signatures needs a time source the site
+  trusts, and this document already records that OT sites frequently have none.
+- **No CA, no GDS, no enrolment.** Renewal is manual and self-signed, so the successor thumbprint
+  changes and has to reach the server out of band. That is §6's second half, still deferred.
+- **Nothing expires a policy grant.** A principal's authorization has no window; only its keys do.
+- **The warning has no transport.** It is a log line and a health metric, like R4's break-glass
+  loudness.
 
 ---
 
@@ -598,13 +663,23 @@ experience, and says so.
   bound keys, not by an audit trail — so there is nothing to point at afterwards showing when a duty
   key came into existence. And "loud" means a log line at the gate, a log line at the edge, and the
   recorded action. **There is no alerting transport**, so nobody is woken by it.
+- **Rotation is not revocation, and reading it as one is the dangerous mistake.** A key retired with
+  `identity rotate-key` can no longer sign anything new, and that is the whole of what retirement
+  does. It still verifies every entry it already signed -- deliberately, because an entry carries no
+  key id and its timestamp is self-asserted, so a verifier has no honest way to decide which key was
+  valid when. Anyone reading "we rotated that key" as "that key can no longer hurt us" is wrong: a
+  stolen predecessor still authenticates its own past, and nothing here invalidates it. Real
+  revocation needs a trusted time source, which is the same thing this document says is missing for
+  command replay freshness.
 - **Deleting a principal's key line retroactively breaks the ledger and stops every edge bound to
   that target.** `SignedLedgerVerifier` resolves `forPrincipal` for every historical entry, so a
   principal removed from `authorized-keys.jsonl` turns entries it signed years ago into
   `identity.key.unregistered`, and the ledger is append-only, so re-adding a different key does not
   repair it. This is pre-existing, and break-glass makes it **routine** — a duty key is exactly the
   credential an operator will want to revoke. Retire one by removing its **policy grants**; B9
-  proves the deletion path rather than merely warning about it.
+  proves the deletion path rather than merely warning about it. Since R5 there is a safe path to take
+  instead -- `identity rotate-key` retires by stamping `notAfter`, never by removing a line -- but the
+  landmine itself is untouched, and `run-key-rotation-gate.sh` K7 keeps proving it is still armed.
 - **F5's rollback resistance is topological, not cryptographic.** It holds because the enterprise
   anchor lives in a repository the site never rewrites. Real closure needs a tamper-resistant
   off-box witness.
@@ -629,7 +704,7 @@ experience, and says so.
 ## How to falsify this document
 
 Every *built* row above names a script. Clone, run it, and read the exit code — six of the
-twenty need no broker at all. If a row's gate does not prove what the row claims, the row is
+twenty-one need no broker at all. If a row's gate does not prove what the row claims, the row is
 wrong and should be reported as a bug in this document, not excused.
 
 ---

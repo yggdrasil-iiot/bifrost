@@ -211,10 +211,10 @@ final class EmbeddedMiloSim implements AutoCloseable {
                 .setIdentityValidator(requireIdentity
                         ? new CompositeValidator(
                                 AnonymousIdentityValidator.INSTANCE,
-                                new X509IdentityValidator(cert -> governedThumbprint != null
-                                        && !governedThumbprint.isBlank()
-                                        && governedThumbprint.trim().equalsIgnoreCase(
-                                                GovernedWriteFilter.thumbprintOf(cert))))
+                                // Same trust list the write filter uses -- one source of truth, so a
+                                // certificate that may write can also open a session.
+                                new X509IdentityValidator(cert -> GovernedWriteFilter.isTrusted(
+                                        GovernedWriteFilter.thumbprintOf(cert), governedThumbprint)))
                         : AnonymousIdentityValidator.INSTANCE)
                 .build();
 

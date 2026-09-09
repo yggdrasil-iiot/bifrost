@@ -59,7 +59,11 @@ public final class SimMain {
         return false;
     }
 
-    /** {@code SIM_GOVERNED_THUMBPRINT} — the one certificate thumbprint permitted to write. */
+    /** {@code SIM_GOVERNED_THUMBPRINT} — the certificate thumbprints permitted to write, comma-separated.
+     *  A list rather than one value because a real server's trust list is one, and because a self-signed
+     *  certificate cannot be renewed without changing its thumbprint: with a single value every renewal
+     *  is a cutover with no overlap, and the server stops trusting the edge at the exact moment the edge
+     *  starts presenting the new certificate. */
     static String resolveGovernedThumbprint(Map<String, String> env) {
         String v = env.get("SIM_GOVERNED_THUMBPRINT");
         return (v == null || v.isBlank()) ? null : v.trim();

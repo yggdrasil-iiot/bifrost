@@ -21,35 +21,41 @@ class AuthorizedKeysTest {
 
     @Test void absent_file_authorizes_nobody(@TempDir Path root) throws Exception {
         AuthorizedKeys ak = AuthorizedKeys.load(root);
-        assertTrue(ak.forPrincipal("alice").isEmpty());
+        assertTrue(ak.allForPrincipal("alice").isEmpty());
     }
 
     @Test void registered_principal_resolves_to_its_pubkey(@TempDir Path root) throws Exception {
         KeyPair alice = Ed25519Keys.generate();
         writeKeys(root, line("alice", alice));
         AuthorizedKeys ak = AuthorizedKeys.load(root);
-        assertTrue(ak.forPrincipal("alice").isPresent());
-        assertTrue(ak.forPrincipal("bob").isEmpty());
-        // resolved key verifies a sig made by alice's private key
+        assertEquals(1, ak.allForPrincipal("alice").size());
+        assertTrue(ak.allForPrincipal("bob").isEmpty());
+        // the resolved key verifies a sig made by alice's private key
         String sig = Ed25519Keys.sign("m".getBytes(), alice.getPrivate());
-        assertTrue(Ed25519Keys.verify("m".getBytes(), sig, ak.forPrincipal("alice").get()));
+        assertTrue(Ed25519Keys.verify("m".getBytes(), sig, ak.allForPrincipal("alice").get(0)));
+        assertTrue(ak.verifying("alice", "m".getBytes(), sig).isPresent());
     }
 
     @Test void duplicate_principal_same_key_is_tolerated(@TempDir Path root) throws Exception {
         KeyPair alice = Ed25519Keys.generate();
         writeKeys(root, line("alice", alice), line("alice", alice));
-        assertTrue(AuthorizedKeys.load(root).forPrincipal("alice").isPresent());
+        assertEquals(1, AuthorizedKeys.load(root).allForPrincipal("alice").size());
     }
 
-    @Test void duplicate_principal_different_key_is_a_load_error(@TempDir Path root) throws Exception {
+    /**
+     * This used to be a load error, and reversing it is the whole of R5's first half: a principal
+     * that cannot hold two keys at once cannot be rotated, which left ADOPTION.md's "retire by
+     * policy, never by deleting the line" with nothing behind it. See AuthorizedKeysRotationTest.
+     */
+    @Test void duplicate_principal_different_key_is_a_rotation(@TempDir Path root) throws Exception {
         writeKeys(root, line("alice", Ed25519Keys.generate()), line("alice", Ed25519Keys.generate()));
-        assertThrows(IllegalStateException.class, () -> AuthorizedKeys.load(root));
+        assertEquals(2, AuthorizedKeys.load(root).allForPrincipal("alice").size());
     }
 
     @Test void blank_lines_are_ignored(@TempDir Path root) throws Exception {
         KeyPair alice = Ed25519Keys.generate();
         writeKeys(root, line("alice", alice), "", "  ");
-        assertTrue(AuthorizedKeys.load(root).forPrincipal("alice").isPresent());
+        assertEquals(1, AuthorizedKeys.load(root).allForPrincipal("alice").size());
     }
 
     @Test void malformed_public_key_value_is_a_coded_load_error(@TempDir Path root) throws Exception {

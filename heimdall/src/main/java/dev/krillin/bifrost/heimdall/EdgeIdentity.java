@@ -33,10 +33,13 @@ import org.eclipse.milo.opcua.stack.core.util.SelfSignedCertificateGenerator;
  * That is why row 12 was not, as both documents claimed, work this repository did not owe.
  *
  * <p><b>Self-signed, and that is a real limitation rather than a shortcut to forget.</b> There is
- * no CA, no rotation, no revocation and no Global Discovery Server here. Trust is established by
- * the server being told this certificate's thumbprint. That is row 10, it is still open, and this
- * class is what makes it bite: an identity that cannot be rotated is a deployment that cannot
- * outlive it.
+ * no CA, no enrolment and no Global Discovery Server here. Trust is established by the server being
+ * told this certificate's thumbprint, which is why {@link #renew} changes that thumbprint and the
+ * server has to be told again.
+ *
+ * <p>Rotation itself now exists ({@link #renew}, {@code EdgeIdentity renew}), so row 10 is partial
+ * rather than open. What is still missing is the authority: renewal is manual, the successor
+ * thumbprint travels out of band, and nothing revokes a certificate that is merely superseded.
  *
  * <p>Reloading rather than regenerating is load-bearing. A restart that minted a new certificate
  * would be a new principal to the server, so every restart would need the server reconfigured.
@@ -66,6 +69,66 @@ public final class EdgeIdentity {
 
     public String applicationUri() {
         return applicationUri;
+    }
+
+    /** The certificate's own end date. */
+    public java.time.Instant notAfter() {
+        return certificate.getNotAfter().toInstant();
+    }
+
+    /**
+     * Whole days until the certificate expires, NEGATIVE once it has.
+     *
+     * <p>Not clamped at zero on purpose: "expired" is a boolean an operator already has; how long it
+     * has been expired is the number that says whether this is today's problem or last quarter's.
+     */
+    public long daysUntilExpiry(java.time.Clock clock) {
+        return java.time.Duration.between(clock.instant(), notAfter()).toDays();
+    }
+
+    public boolean expired(java.time.Clock clock) {
+        return !clock.instant().isBefore(notAfter());
+    }
+
+    /**
+     * Mint a successor certificate and keypair, PRESERVING the predecessor on disk.
+     *
+     * <p>Self-signed means renewal and rotation are the same act: there is no CA to re-sign under, so
+     * the successor is a different certificate with a different thumbprint, and the server has to be
+     * told about it. The predecessor is kept because the only way that does not stop the line is an
+     * overlap -- the server trusting both for a while -- and an overlap is impossible if renewing
+     * destroyed the certificate currently in the server's trust list.
+     *
+     * <p>The correct order at a site is therefore: renew, put the successor thumbprint in the
+     * server's trust list, THEN restart the edge. Restarting first presents a certificate the server
+     * has never heard of.
+     *
+     * <p>Refuses when there is no identity to renew: creating one here would silently make the edge a
+     * new principal, which is the failure {@code loadOrCreate}'s reload-rather-than-regenerate rule
+     * exists to prevent.
+     */
+    public static EdgeIdentity renew(Path dir, String applicationUri, java.time.Clock clock) throws Exception {
+        Path certPath = dir.resolve(CERT_FILE);
+        Path keyPath = dir.resolve(KEY_FILE);
+        if (!Files.exists(certPath) || !Files.exists(keyPath))
+            throw new IllegalStateException("identity.cert.nothing-to-renew: no identity in " + dir);
+
+        String stamp = java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'")
+                .withZone(java.time.ZoneOffset.UTC).format(clock.instant());
+        Files.move(certPath, dir.resolve(CERT_FILE + "." + stamp));
+        Files.move(keyPath, dir.resolve(KEY_FILE + "." + stamp));
+
+        KeyPair kp = SelfSignedCertificateGenerator.generateRsaKeyPair(2048);
+        X509Certificate cert = new SelfSignedCertificateBuilder(kp)
+                .setCommonName("Bifrost Heimdall Edge")
+                .setOrganization("yggdrasil-iiot")
+                .setApplicationUri(applicationUri)
+                .setValidityPeriod(Period.ofYears(2))
+                .setSignatureAlgorithm(SelfSignedCertificateBuilder.SA_SHA256_RSA)
+                .build();
+        Files.write(certPath, cert.getEncoded());
+        writePrivateKey(keyPath, kp.getPrivate().getEncoded());
+        return new EdgeIdentity(cert, kp, applicationUri);
     }
 
     /**
@@ -120,20 +183,76 @@ public final class EdgeIdentity {
     }
 
     /**
-     * {@code java -cp bifrost-heimdall.jar …EdgeIdentity --print-thumbprint <dir> <applicationUri>}
-     * — generate the identity if absent, then print only its thumbprint.
+     * {@code java -cp bifrost-heimdall.jar …EdgeIdentity <subcommand> <dir> <applicationUri>}
      *
-     * <p>Exists for the write-exclusivity gate, which has to start the SERVER already trusting the
-     * client's thumbprint. Without this the gate would have to start the edge first against a
-     * server that is not up, scrape its log, then start the server — which works only because the
-     * edge tolerates a down plant, and leans on a reconnect backoff for no reason.
+     * <ul>
+     *   <li>{@code --print-thumbprint} — generate the identity if absent, then print only its
+     *       thumbprint. Exists for the write-exclusivity gate, which has to start the SERVER already
+     *       trusting the client's thumbprint; without it the gate would start the edge against a
+     *       server that is not up, scrape its log, then start the server.
+     *   <li>{@code show} — thumbprint, notAfter and days remaining. Never creates.
+     *   <li>{@code renew} — mint a successor, preserving the predecessor, and print BOTH thumbprints.
+     * </ul>
+     *
+     * <p>Renewal lives here, in a command a person runs, rather than behind a startup flag: a restart
+     * that could mint an identity is a restart that can silently make the edge a new principal to the
+     * server.
      */
     public static void main(String[] args) throws Exception {
-        if (args.length != 3 || !"--print-thumbprint".equals(args[0])) {
-            System.err.println("usage: EdgeIdentity --print-thumbprint <dir> <applicationUri>");
-            System.exit(2);
+        System.exit(run(args));
+    }
+
+    static int run(String[] args) throws Exception {
+        if (args.length != 3) {
+            usage();
+            return 2;
         }
-        System.out.println(loadOrCreate(Path.of(args[1]), args[2]).thumbprint());
+        Path dir = Path.of(args[1]);
+        String applicationUri = args[2];
+        switch (args[0]) {
+            case "--print-thumbprint":
+                System.out.println(loadOrCreate(dir, applicationUri).thumbprint());
+                return 0;
+            case "show": {
+                if (!Files.exists(dir.resolve(CERT_FILE))) {
+                    System.err.println("[IDENTITY] no identity in " + dir);
+                    return 2;   // inspecting must never create
+                }
+                EdgeIdentity id = loadOrCreate(dir, applicationUri);
+                java.time.Clock clock = java.time.Clock.systemUTC();
+                long days = id.daysUntilExpiry(clock);
+                System.out.println("thumbprint " + id.thumbprint());
+                System.out.println("notAfter " + id.notAfter());
+                System.out.println("days " + days
+                        + (id.expired(clock) ? " (EXPIRED - the server will refuse this certificate)" : ""));
+                return 0;
+            }
+            case "renew": {
+                if (!Files.exists(dir.resolve(CERT_FILE))) {
+                    System.err.println("[IDENTITY] nothing to renew in " + dir
+                            + " - an edge with no identity gets one at its next start");
+                    return 2;
+                }
+                String before = loadOrCreate(dir, applicationUri).thumbprint();
+                EdgeIdentity after = renew(dir, applicationUri, java.time.Clock.systemUTC());
+                System.out.println("previous thumbprint " + before);
+                System.out.println("new thumbprint      " + after.thumbprint());
+                System.out.println("new notAfter        " + after.notAfter());
+                System.out.println("Add the new thumbprint to the OPC-UA server's trust list BEFORE"
+                        + " restarting the edge. Restarting first presents a certificate the server has"
+                        + " never heard of, and every write is refused until it is told.");
+                System.out.println("Keep the previous thumbprint trusted until the edge is up on the new"
+                        + " one. That overlap is the only reason a renewal does not stop the line.");
+                return 0;
+            }
+            default:
+                usage();
+                return 2;
+        }
+    }
+
+    private static void usage() {
+        System.err.println("usage: EdgeIdentity <--print-thumbprint|show|renew> <dir> <applicationUri>");
     }
 
     /**

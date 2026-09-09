@@ -28,6 +28,7 @@ public final class EdgeHealth {
 
     private volatile boolean broker;
     private volatile boolean plant;
+    private volatile Long certDaysRemaining;   // null when no OPC-UA identity is configured
     private HttpServer server;
 
     public void brokerConnected()    { broker = true; }
@@ -37,6 +38,19 @@ public final class EdgeHealth {
     public void applied()            { applied.incrementAndGet(); plant = true; }
     public void denied()             { denied.incrementAndGet(); }
 
+    /**
+     * Days until the edge's OPC-UA certificate expires, negative once it has. Null when no identity
+     * is configured, in which case the metric is omitted rather than reported as a misleading zero.
+     */
+    public void certDaysRemaining(long days) { certDaysRemaining = days; }
+
+    /**
+     * Deliberately NOT affected by certificate expiry. An expired certificate makes writes fail,
+     * which already flips plant_reachable through the applier -- reporting the same fault twice in
+     * one boolean makes the signal harder to read, not easier, and would also mean a monitoring
+     * system could not tell "the plant is down" from "our certificate lapsed". The days metric is
+     * where that distinction lives, and it goes negative long before anyone has to guess.
+     */
     public boolean healthy()       { return broker && plant; }
     public long appliedCount()     { return applied.get(); }
     public long deniedCount()      { return denied.get(); }
@@ -44,12 +58,14 @@ public final class EdgeHealth {
 
     /** Plain text, one metric per line — readable by a human and by a scraper, with no dependency. */
     public String report() {
+        Long days = certDaysRemaining;
         return "healthy " + (healthy() ? 1 : 0) + "\n"
              + "broker_connected " + (broker ? 1 : 0) + "\n"
              + "plant_reachable " + (plant ? 1 : 0) + "\n"
              + "applied " + applied.get() + "\n"
              + "denied " + denied.get() + "\n"
-             + "plant_unreachable " + unreachable.get() + "\n";
+             + "plant_unreachable " + unreachable.get() + "\n"
+             + (days == null ? "" : "cert_days_remaining " + days + "\n");
     }
 
     /** @param port the listen port; {@code 0} disables the endpoint entirely. */

@@ -122,7 +122,10 @@ class SignedLedgerVerifierAnchoredTest {
         assertEquals("identity.head.four-eyes.missing", v.rule());
     }
 
-    @Test void head_four_eyes_same_key(@TempDir Path root, @TempDir Path keys) throws Exception {
+    /** The head's two signers are the same NAME. Renamed from head_four_eyes_same_key when key sets
+     *  arrived: the scenario it builds is one person signing twice, and once a principal may hold
+     *  several keys that is a distinct fault from two names sharing one key (below). */
+    @Test void head_four_eyes_same_principal(@TempDir Path root, @TempDir Path keys) throws Exception {
         LedgerSigner s = signer(root, keys);
         AnchorStore anchor = new FileAnchorStore(root);
         new ActivationLedger(root, anchor).append(ev("1.0.0", null), s);
@@ -130,6 +133,25 @@ class SignedLedgerVerifierAnchoredTest {
         byte[] pre = SignedHeadStore.preimage("Line1", h.seq(), h.tailEntryHash()).getBytes(StandardCharsets.UTF_8);
         String bobCoSig = Ed25519Keys.sign(pre, bob.getPrivate());
         writeHead(root, new SignedHead(h.target(), h.seq(), h.tailEntryHash(), "bob", h.sig(), "bob", bobCoSig));
+        SignedVerdict v = verifyAnchored(root, anchor);
+        assertFalse(v.intact());
+        assertEquals("identity.head.four-eyes.same-principal", v.rule());
+    }
+
+    /** Two different NAMES resolving to one key: the original same-key rule, still enforced. */
+    @Test void head_four_eyes_same_key(@TempDir Path root, @TempDir Path keys) throws Exception {
+        LedgerSigner s = signer(root, keys);
+        AnchorStore anchor = new FileAnchorStore(root);
+        new ActivationLedger(root, anchor).append(ev("1.0.0", null), s);
+        // register a THIRD name that shares bob's key, and co-sign the head under that name
+        Path akf = root.resolve("identity").resolve("authorized-keys.jsonl");
+        Files.writeString(akf, "{\"principal\":\"bobby\",\"publicKey\":\""
+                + Ed25519Keys.publicKeyB64(bob.getPublic()) + "\"}\n",
+                java.nio.file.StandardOpenOption.APPEND);
+        SignedHead h = readHead(root);   // signedBy == "bob"
+        byte[] pre = SignedHeadStore.preimage("Line1", h.seq(), h.tailEntryHash()).getBytes(StandardCharsets.UTF_8);
+        String coSig = Ed25519Keys.sign(pre, bob.getPrivate());
+        writeHead(root, new SignedHead(h.target(), h.seq(), h.tailEntryHash(), "bob", h.sig(), "bobby", coSig));
         SignedVerdict v = verifyAnchored(root, anchor);
         assertFalse(v.intact());
         assertEquals("identity.head.four-eyes.same-key", v.rule());

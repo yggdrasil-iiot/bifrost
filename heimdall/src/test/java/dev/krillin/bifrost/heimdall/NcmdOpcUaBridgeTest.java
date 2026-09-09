@@ -372,7 +372,7 @@ class NcmdOpcUaBridgeTest {
     /** Bar ON, with a one-principal trust anchor. */
     private NcmdOpcUaBridge barred(Applier applier, String principal, PublicKey pk) throws Exception {
         return new NcmdOpcUaBridge(GROUP, EDGE, policy(), applier, null, null, null, false,
-                new EdgeHealth(), 4, 64, true, 64, name -> principal.equals(name) ? pk : null);
+                new EdgeHealth(), 4, 64, true, 64, name -> principal.equals(name) ? java.util.List.of(pk) : java.util.List.<java.security.PublicKey>of());
     }
 
     @Test void bar_on_a_correctly_signed_command_is_applied() throws Exception {
@@ -452,7 +452,7 @@ class NcmdOpcUaBridgeTest {
         FakeApplier fake = new FakeApplier();
         PublicKey pk = Ed25519Keys.generate().getPublic();
         NcmdOpcUaBridge logOnlyBarred = new NcmdOpcUaBridge(GROUP, EDGE, policy(), fake, null, null, null,
-                true, new EdgeHealth(), 4, 64, true, 64, name -> P.equals(name) ? pk : null);
+                true, new EdgeHealth(), 4, 64, true, 64, name -> P.equals(name) ? java.util.List.of(pk) : java.util.List.<java.security.PublicKey>of());
         NcmdResponse r = logOnlyBarred.handle(NCMD_TOPIC,
                 cmd("s-6", "write", "ns=2;s=Recipe/Rpm", 1500.0, MetricDataType.Double, null, null));
         assertFalse(r.ok(), "log-only must not shadow the signature bar: " + r.detail());

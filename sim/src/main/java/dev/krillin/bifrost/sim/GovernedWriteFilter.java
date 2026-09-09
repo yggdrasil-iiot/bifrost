@@ -65,7 +65,8 @@ public final class GovernedWriteFilter implements AttributeFilter {
      * thumbprint means nobody is governed, never everybody.
      *
      * @param sessionThumbprint  the thumbprint the session presented, or null if it presented none
-     * @param governedThumbprint the one thumbprint permitted to write, or null/blank if unconfigured
+     * @param governedThumbprint the thumbprints permitted to write, comma-separated (a trust list, so
+     *                           a certificate renewal can overlap), or null/blank if unconfigured
      */
     static int userAccessLevelFor(String sessionThumbprint, String governedThumbprint) {
         if (governedThumbprint == null || governedThumbprint.isBlank()) {
@@ -74,8 +75,26 @@ public final class GovernedWriteFilter implements AttributeFilter {
         if (sessionThumbprint == null || sessionThumbprint.isBlank()) {
             return READ_ONLY;
         }
-        return sessionThumbprint.trim().equalsIgnoreCase(governedThumbprint.trim())
-                ? READ_WRITE : READ_ONLY;
+        // A comma-separated LIST, because a real server's trust list is one. This is not a
+        // convenience: a self-signed certificate cannot be renewed without changing its thumbprint,
+        // so a single-valued trust list makes every renewal a cutover with no overlap -- the server
+        // stops trusting the edge at the exact moment the edge starts presenting the new certificate.
+        // The overlap window is the only reason a renewal does not stop the line.
+        return isTrusted(sessionThumbprint, governedThumbprint) ? READ_WRITE : READ_ONLY;
+    }
+
+    /** Whether a presented thumbprint appears in the comma-separated trust list. Fails closed. */
+    static boolean isTrusted(String presented, String trustList) {
+        if (trustList == null || trustList.isBlank() || presented == null || presented.isBlank()) {
+            return false;
+        }
+        String p = presented.trim();
+        for (String permitted : trustList.split(",")) {
+            if (!permitted.isBlank() && p.equalsIgnoreCase(permitted.trim())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** The thumbprint of the certificate this session authenticated with, or null if it used none. */

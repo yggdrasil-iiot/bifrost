@@ -25,7 +25,10 @@ class CommandEnvelopeTest {
     private CommandEnvelope.Verdict verify(String subject, String sig, String cmdId,
                                            String command, Object value, String type,
                                            java.util.Map<String, java.security.PublicKey> anchor) {
-        return CommandEnvelope.verify(anchor::get, subject, sig, GROUP, EDGE, cmdId, command, value, type);
+        // one key per principal, which is what every registry written before rotation looks like
+        return CommandEnvelope.verify(
+                name -> anchor.containsKey(name) ? java.util.List.of(anchor.get(name)) : java.util.List.of(),
+                subject, sig, GROUP, EDGE, cmdId, command, value, type);
     }
 
     private java.util.Map<String, java.security.PublicKey> anchorWith(String name, KeyPair kp) {
