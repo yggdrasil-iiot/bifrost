@@ -33,10 +33,13 @@ import org.eclipse.milo.opcua.stack.core.util.SelfSignedCertificateGenerator;
  * That is why row 12 was not, as both documents claimed, work this repository did not owe.
  *
  * <p><b>Self-signed, and that is a real limitation rather than a shortcut to forget.</b> There is
- * no CA, no rotation, no revocation and no Global Discovery Server here. Trust is established by
- * the server being told this certificate's thumbprint. That is row 10, it is still open, and this
- * class is what makes it bite: an identity that cannot be rotated is a deployment that cannot
- * outlive it.
+ * no CA, no enrolment and no Global Discovery Server here. Trust is established by the server being
+ * told this certificate's thumbprint, which is why {@link #renew} changes that thumbprint and the
+ * server has to be told again.
+ *
+ * <p>Rotation itself now exists ({@link #renew}, {@code EdgeIdentity renew}), so row 10 is partial
+ * rather than open. What is still missing is the authority: renewal is manual, the successor
+ * thumbprint travels out of band, and nothing revokes a certificate that is merely superseded.
  *
  * <p>Reloading rather than regenerating is load-bearing. A restart that minted a new certificate
  * would be a new principal to the server, so every restart would need the server reconfigured.

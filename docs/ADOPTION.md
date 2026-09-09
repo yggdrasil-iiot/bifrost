@@ -258,6 +258,37 @@ target refuses to start. The ledger is append-only, so this is not recoverable b
 key. Removing the grants leaves the history verifiable and stops the key being usable, which is what
 revocation actually needs to mean here. B9 in that gate exists to prove this rather than assert it.
 
+**Rotate a signing key with `gates identity rotate-key`, and paste the whole block it prints.** The
+instruction above now has a mechanism behind it. The command mints the successor and prints every
+line for that principal — the predecessor re-emitted with a `notAfter` stamp, then the successor —
+and you replace exactly those lines. A key past its `notAfter` can no longer sign anything, while it
+goes on verifying every entry it already signed, which is what makes retiring it safe. `K2` and `K3`
+in `scripts/run-key-rotation-gate.sh` prove both halves, and `K5` proves the edge still boots on a
+registry where the signer of the active version has since been retired.
+
+**Rotation is not revocation, and the difference matters at 03:00.** A retired key still
+authenticates its own past. If a key is believed *stolen* rather than merely old, rotating it stops
+it signing anything new and does nothing about what it already signed — this repository has no
+answer for that, because invalidating past signatures needs a time source the site trusts.
+
+**Renew the edge certificate before it expires, and change the server first.** `EdgeIdentity show`
+reports the days remaining; the edge prints them at every boot and warns from 30 days out
+(`HEIMDALL_CERT_WARN_DAYS`), with `cert_days_remaining` on `/healthz` going negative once it has
+lapsed. `EdgeIdentity renew` mints the successor, keeps the predecessor on disk and prints both
+thumbprints. **The order is the whole procedure:**
+
+1. `renew` — the running edge is untouched, still presenting the old certificate
+2. add the **new** thumbprint to the OPC-UA server's trust list, keeping the old one
+3. restart the edge, which now presents the new certificate
+4. remove the old thumbprint once the edge is up
+
+Steps 2 and 3 in that order are what makes this not an outage: the overlap, with the server trusting
+both for a while, is the only reason a renewal does not stop the line. Doing 3 before 2 presents a
+certificate the server has never heard of, and every write is refused until it is told. An expired
+certificate does **not** stop the edge — it is diagnosed, loudly — because a lapsed transport
+credential is an operational fault and failing closed on one would turn a missed renewal into a
+planned outage.
+
 ### 6 — Second site
 
 F1 — `site ⊨ enterprise` — only becomes real here; until now there has been one site and a
@@ -274,12 +305,13 @@ support: **this shortens the governance part of a site rollout, not the rollout.
 | Huginn ↔ Bifrost seam, **including the surface mismatch** | phase 2, hard-blocks phase 4 | not built |
 | Vendor-side verification (governed model vs vendor's copy) | phase 2 | [row 13](ENTERPRISE.md#13-governed-model-vs-vendor-runtime): not built |
 | ~~Heimdall shadow / log-only mode~~ | phase 4 | **built** — `ENFORCEMENT_LOG_ONLY`, 10 tests |
-| Certificate expiry and key rotation | phase 4–5 | [axis 10](ENTERPRISE.md#the-board): open, no mechanism |
+| ~~Certificate expiry and key rotation~~ | phase 4–5 | **built in part** — `identity rotate-key` and `EdgeIdentity renew`, with `run-key-rotation-gate.sh` ([axis 10](ENTERPRISE.md#10-certificate-expiry-and-key-rotation): partial). **No CA and no enrolment**, so a renewal is manual and the successor thumbprint reaches the server out of band |
 | ~~Write-path exclusivity — the edge has no identity to present~~ | phase 4 | **built** — `EdgeIdentity` + `run-write-exclusivity-gate.sh`. The other half, the server configuration, is still the site's ([row 12](ENTERPRISE.md#12-write-path-exclusivity): partial) |
 
 The log-only row was named here as the one worth building first for adoption's sake, and it has
 since been built — it was the smallest and it is what turned phase 4 from a cliff into a step. Two
-rows are still code this project owes and has not started.
+rows are still code this project owes and has not started; the certificate row joined the struck-out
+ones in part, and its remainder is an integration rather than a gap.
 
 **The last row was listed here as "not this project's code to write", and that was wrong.** The
 reasoning was that what closes it is server-side write permission and — for protocols with no
@@ -306,10 +338,17 @@ again, because reversibility by restart is the property this plan actually leans
 Both directions were checked by injecting the defect rather than by trusting the green: forcing
 log-only ON makes seven existing enforcement tests fail, and forcing it OFF makes T4 fail.
 
-The certificate row deserves a note against the board. `ENTERPRISE.md` gives axis 10 the trigger "any
-deployment that outlives its first certificate", which reads like a late problem. Laid against
-this sequence it is not: an OPC UA deployment acquires certificates in phase 4, so **the trigger
-fires inside the rollout, not after it.**
+The certificate row deserved a note against the board, and the note is why it is now struck through.
+`ENTERPRISE.md` gave axis 10 the trigger "any deployment that outlives its first certificate", which
+reads like a late problem. Laid against this sequence it is not: an OPC UA deployment acquires
+certificates in phase 4, so **the trigger fires inside the rollout, not after it** — which is what
+made building the half that needs no CA the right next thing rather than a nicety.
+
+What was built is the half §6 of that document had already fixed the order for: *decide the
+disconnected-renewal behaviour, then integrate.* The behaviour is decided and coded — an expired
+certificate is diagnosed and the edge does not stop — and offline key rotation needs no authority to
+reach. **The integration itself is still deferred**, and the trigger for it is unchanged: a GDS or an
+enterprise PKI, on the day a fleet makes manual renewal unworkable.
 
 ## Abort criteria
 
