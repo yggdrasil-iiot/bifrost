@@ -50,7 +50,7 @@ what is and is not answered; read the rows for why.
 | 9 | AAS alignment → conformance | **deferred** | Trigger: a customer asking for an IDTA submodel template by number |
 | 10 | **Certificate expiry, key rotation** | **partial** | `run-key-rotation-gate.sh` K1-K10 — a signing key rotates offline without breaking history, and an expiring certificate is announced rather than discovered. **No CA, no enrolment, and rotation is not revocation** ([detail](#10-certificate-expiry-and-key-rotation)) |
 | 11 | Audit query at scale | **measured** | `scripts/bench-ledger.sh` — growth is exactly 434 B/entry (645 signed); signature verification costs ~8× the chain walk, and anchoring is free on top of it ([detail](#11-audit-query-at-scale)). **Those numbers are for the activation ledger at roughly ten events a day. The command ledger is a different volume class — two entries per applied command — and is unmeasured** |
-| 12 | **Write-path exclusivity** | **partial** | `run-write-exclusivity-gate.sh` X1–X6 — the edge presents an X.509 identity and a server told to require it refuses a second client's write with `Bad_UserAccessDenied` while still serving its reads. A bypass **over another protocol** is now visible rather than merely acknowledged: `run-huginn-seam-gate.sh` H1–H8 reports a write to governed equipment from anything that is not the edge. **Visibility is not enforcement**, Modbus is still unenforced, and a plant's own server has to be configured ([detail](#12-write-path-exclusivity)) |
+| 12 | **Write-path exclusivity** | **partial** | `run-write-exclusivity-gate.sh` X1–X6 — the edge presents an X.509 identity and a server told to require it refuses a second client's write with `Bad_UserAccessDenied` while still serving its reads. A bypass **over another protocol** is now visible rather than merely acknowledged: `run-huginn-seam-gate.sh` H1–H8 reports a write to governed equipment from anything that is not the edge. **Visibility is not enforcement**, Modbus is still unenforced, and a plant's own server has to be configured — as does its network: a bypass over a protocol nobody decodes is the conduit rule's to stop, not a decoder's ([detail](#12-write-path-exclusivity), [layers](#5-conduit-inventory)) |
 | 13 | **Governed model vs vendor runtime** | **partial** | `run-model-reconciliation-gate.sh` V1-V9 — a vendor export is compared against the governed definition and divergence is reported per member, with the port carrying **granularity** so a blob product is recorded as weaker. **The comparison is built; the FETCH is not** — the export arrives as a file, nothing connects to a running product, and the projection direction does not exist ([detail](#13-governed-model-vs-vendor-runtime)) |
 
 Rows 5, 6 and 7 carry the engineering. **Rows 12 and 13 bound everything else on the board**, and
@@ -132,6 +132,36 @@ today's output.
   there is nothing to verify an implementation against.
 - **Live capture.** Today it reads a pcap. The decode path is identical either way, but a
   register that is refreshed manually is not "living".
+
+**Enforcement is layered, and the last two layers are not this project's.** The blind-spot
+sentence above — a conduit nothing decodes is unaccounted for — read as if the answer were a wider
+decoder. It is not. The layers are:
+
+| Layer | Decides | Whose | Cannot do |
+|---|---|---|---|
+| git gate | a change to the declaration, before deploy | this project | see the runtime |
+| edge (Heimdall) | the *meaning* of a command — range, interlock, principal | this project | see what does not pass through it |
+| vendor server | the *identity* that may write (certificates, users) | **the plant and the vendor** — Kepware, Ignition; row 12 is this project using it | the meaning |
+| network | the *position* a packet may take — `(src, dst, port)` | **the plant** — OT firewalls, VLAN/ACL, NAC, conduit rules | tell READ from WRITE on one port |
+| observation | after the fact, against the declaration | Huginn, **or** a commercial monitor (Claroty, Nozomi, Dragos, Defender for IoT, Cisco Cyber Vision) | enforce anything; see what it cannot decode |
+
+So the bypass classes divide up rather than all landing on the observer:
+
+| Bypass over | Caught by | How |
+|---|---|---|
+| Modbus/TCP, S7comm | observation + network | reported from the wire; blocked by a conduit rule |
+| a direct OPC-UA client | vendor server (row 12) + network | refused by thumbprint; port 4840 position-limited |
+| S7comm-plus, or anything undecoded | **network** | blocked on `(src, dst, port)` without being decoded |
+| an unregistered device at all | **NAC / 802.1X** | never joins the segment |
+
+What this project uniquely holds is the **declaration**, and its job at each layer is to project
+it into the form that layer consumes — `acl-project` for the broker, `conduit-project` for Huginn.
+The same declaration projected as firewall rules would complete the picture; there is no firewall
+here to verify it against, so that stays a design note, not code. Two honest limits: the network
+blocks by position and not by meaning, so it does not replace the edge; and a network rule can
+stop the line, so it belongs in phases 4–5 of [`ADOPTION.md`](ADOPTION.md) while observation stays
+the phase-0 wedge. And S7comm-plus under TLS (TIA v17+) is opaque to *every* passive observer,
+commercial ones included — position is the only answer there.
 
 **Trigger:** the first time this is used to answer an audit rather than to demonstrate a
 mechanism. That is when frequency and ownership stop being optional.

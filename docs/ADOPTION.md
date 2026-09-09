@@ -71,12 +71,24 @@ nobody noticed is not.
 window all have to happen at least once. If week four is still producing new paths, the duty cycle
 has not been captured and every later phase would be built on a list that is missing rows.
 
-**Collect two things, not one.** The captures, and an inventory of **product and gateway
+**Collect three things, not one.** The captures, and an inventory of **product and gateway
 versions** for everything that will hold a copy of a governed model — Ignition, Kepware, ThingWorx,
 the historian. Version decides which vendor-side direction is even available (the Ignition tag/UDT
 export endpoint does not exist before 8.3.2; parts of the Kepware Configuration API need particular
 6.x versions), so a plan written without it will promise a reconciliation some site cannot perform.
 It is also the cheapest thing to collect and the easiest to forget.
+
+**The third is what the plant already has.** Segmentation and conduit rules (OT firewalls, VLANs,
+ACLs), NAC / 802.1X on the OT segments, any commercial passive monitoring already deployed (Claroty,
+Nozomi, Dragos, Defender for IoT, Cisco Cyber Vision), and the permission model of the vendor servers
+themselves (Kepware, Ignition: certificates, users). **Nothing in this sequence is meant to stand
+beside those; it is meant to stand on them.** Two reasons to survey them here rather than later.
+The conduit rules decide which bypass classes this project's own observation never needs to see —
+a write over a protocol nobody decodes is stopped by a `(src, dst, port)` rule without being
+decoded, which is the answer to the S7comm-plus blind spot §5 of `ENTERPRISE.md` names. And where a
+commercial monitor already exists, its protocol breadth exceeds Huginn's and the declaration this
+project produces should feed *it*, not compete with it. The division of labour is in
+[`ENTERPRISE.md` §5](ENTERPRISE.md#5-conduit-inventory).
 
 **Cost to the site:** somebody has to pull the captures and hand them over. Without live capture
 this phase has a person in it.
