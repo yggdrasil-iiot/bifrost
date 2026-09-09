@@ -9,8 +9,8 @@ are deliberately deferred, and which are open** — for the Yggdrasil spine as a
 proves it. A row marked *deferred* must name the concrete trigger that would force the work.
 A row with neither is a wish, and wishes do not belong here.
 
-Evidence dates from **2026-09-09**, when all 21 gates were last run green (Docker 26.1.4) and
-the suites measured 545 tests in Bifrost and 242 in Huginn.
+Evidence dates from **2026-09-09**, when all 22 gates were last run green (Docker 26.1.4) and
+the suites measured 577 tests in Bifrost and 242 in Huginn.
 
 ---
 
@@ -31,7 +31,7 @@ it did.**
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="diagrams/readiness-board.dark.svg">
-  <img alt="Thirteen enterprise-readiness axes sorted into four columns: five built, five partial, two deferred with a named trigger, one open with no mechanism" src="diagrams/readiness-board.svg">
+  <img alt="Thirteen enterprise-readiness axes sorted into four columns: five built, six partial, two deferred with a named trigger, none open" src="diagrams/readiness-board.svg">
 </picture>
 
 The table below is the same board with the evidence attached. Read the figure for the shape of
@@ -51,14 +51,17 @@ what is and is not answered; read the rows for why.
 | 10 | **Certificate expiry, key rotation** | **partial** | `run-key-rotation-gate.sh` K1-K10 — a signing key rotates offline without breaking history, and an expiring certificate is announced rather than discovered. **No CA, no enrolment, and rotation is not revocation** ([detail](#10-certificate-expiry-and-key-rotation)) |
 | 11 | Audit query at scale | **measured** | `scripts/bench-ledger.sh` — growth is exactly 434 B/entry (645 signed); signature verification costs ~8× the chain walk, and anchoring is free on top of it ([detail](#11-audit-query-at-scale)). **Those numbers are for the activation ledger at roughly ten events a day. The command ledger is a different volume class — two entries per applied command — and is unmeasured** |
 | 12 | **Write-path exclusivity** | **partial** | `run-write-exclusivity-gate.sh` X1–X6 — the edge presents an X.509 identity and a server told to require it refuses a second client's write with `Bad_UserAccessDenied` while still serving its reads. Proved against the bundled sim on the OPC-UA surface only; **Modbus is untouched, and a plant's own server still has to be configured** ([detail](#12-write-path-exclusivity)) |
-| 13 | **Governed model vs vendor runtime** | **open** | Adapters read a vendor's model *in*; nothing reads a vendor's live configuration *back*. Vendor APIs checked 2026-09-07: all three read and write, but Kepware and Ignition are per-object and ThingWorx is a whole-entity blob ([detail](#13-governed-model-vs-vendor-runtime)) |
+| 13 | **Governed model vs vendor runtime** | **partial** | `run-model-reconciliation-gate.sh` V1-V9 — a vendor export is compared against the governed definition and divergence is reported per member, with the port carrying **granularity** so a blob product is recorded as weaker. **The comparison is built; the FETCH is not** — the export arrives as a file, nothing connects to a running product, and the projection direction does not exist ([detail](#13-governed-model-vs-vendor-runtime)) |
 
-Rows 5, 6 and 7 carry the engineering. **Rows 12 and 13 bound everything else on the board.** Row
-12 is whether anything *has* to pass through the governed edge, and it is now partial: the edge can
-present an identity and a server can be told to require it, demonstrated end to end against the
-bundled sim. Row 13 — whether the governed model is still the one the vendor tools are actually
-running — is still open. Rows 1–4 are the
-easy ones to write because they are done; on their own they would be a feature list.
+Rows 5, 6 and 7 carry the engineering. **Rows 12 and 13 bound everything else on the board**, and
+both are now partial rather than one of them open. Row 12 is whether anything *has* to pass through
+the governed edge: the edge can present an identity and a server can be told to require it,
+demonstrated end to end against the bundled sim. Row 13 is whether the governed model is still the
+one the vendor tools are actually running: divergence can now be found and named, though only from
+an export somebody hands over, and nothing yet pushes a correction back. **No row is open, which
+makes the two partial ones the honest place to look** -- each names what it does not do, and in
+both cases the missing half is the one that touches somebody else's running system. Rows 1-4 are
+the easy ones to write because they are done; on their own they would be a feature list.
 
 ---
 
@@ -539,17 +542,50 @@ this is operated:
 
 - **Per-object** products can be reconciled incrementally. Divergence is reported per tag, and a
   correction touches one object.
-- **Blob** products can only be reconciled by exporting the whole entity set and diffing it. There
-  is no per-object write, so a correction re-imports a set, and the smallest unit of both the
-  finding and the fix is much larger.
+- **Blob** products can only be reconciled by exporting the whole entity set. There is no
+  per-object write, so a correction re-imports a set.
+
+**That last point was half wrong, and building it is what showed the difference.** This section
+used to say the smallest unit of *both the finding and the fix* is larger for a blob product. The
+**fetch** and the **fix** are, but once the blob is parsed the **finding is still per member** —
+and keeping that detail is strictly better for whoever has to act on it. `ReconciliationVerdict`
+therefore carries the remediation unit *separately* from the findings rather than degrading the
+diagnosis to match the fix, and `run-model-reconciliation-gate.sh` V7 pins it: the same export
+under either granularity yields the same findings and a different remediation unit.
 
 A connector therefore declares read, write **and granularity**, and the core degrades what it
 promises accordingly: per-object reconciliation where it is available, whole-set comparison where
 it is not. Both are governance — divergence becomes a finding with an owner either way — but the
 blob case is weaker and has to be recorded as weaker, which is what this row exists to do.
 
-**Not built.** Neither direction exists in this codebase, and the capability-bearing port does not
-exist.
+**Verify is built; project is not.** `core/vendor` holds the capability-bearing port
+(`VendorModelSource`, `VendorCapability`, `Granularity`) and `ModelReconciler`, which diffs the
+governed `UdtDefinition` against the vendor's copy and reports `vendor.member.missing`,
+`.unexpected`, `.type-mismatch`, `.range-mismatch` and `.semantic-id-mismatch`. The design point is
+reuse: the vendor export is normalized through the **existing** `TemplateAdapter`, so the diff
+compares two canonical definitions and `core` gains no new vendor knowledge. `gates
+model-reconcile` is the command; V1-V9 is the evidence.
+
+**Three limits, all of them structural rather than temporary.**
+
+**The fetch is not built.** Nothing here connects to a running Kepware, Ignition or ThingWorx —
+none of them is in this repository, and a stub HTTP server would prove the plumbing while
+licensing the sentence "it reconciles against the vendor", which would be false. The vendor's copy
+arrives as a **file**, which is what a Composer export, an Ignition `tags/export` and a Kepware
+`GET` all produce, and what [`ADOPTION.md`](ADOPTION.md) phase 2 already asks for: read the copy
+back, read-only, the same way the traffic side is handled. It is structurally what Huginn does with
+a pcap — the artifact is handed over and the tool is offline.
+
+**There is no identity check, and there cannot be one.** `TemplateAdapter.adapt(external, ref,
+version)` takes the identity as parameters because the external document does not carry Bifrost's.
+So a `templateRef` or `version` finding would compare an operator's own argument against itself and
+could never fire; a test pins its absence so nobody adds it later thinking it was an oversight. The
+consequence is that **which governed definition to compare against is an operator input**: this
+answers *"does this vendor object agree with this definition"*, not *"is every governed definition
+present in the vendor"*, which would need an inventory the export does not carry.
+
+**Projection is not built.** Nothing generates a vendor configuration from the governed definition
+or pushes it. That is the other half of this row and it stays open.
 
 **Assumed: the products are licensed and supported.** A site that has standardized on these tools
 runs licensed versions of them. Whether a particular API sits behind an edition boundary is a
@@ -663,6 +699,11 @@ experience, and says so.
   bound keys, not by an audit trail — so there is nothing to point at afterwards showing when a duty
   key came into existence. And "loud" means a log line at the gate, a log line at the edge, and the
   recorded action. **There is no alerting transport**, so nobody is woken by it.
+- **A divergence finding proves disagreement, not which side is right.** `model-reconcile` reports
+  that the governed definition and the vendor's copy differ. Which one is the mistake is a human
+  judgement with an owner -- the governed side is the *declared* intent, not automatically the
+  correct one, and a site whose vendor copy has been hand-edited for two years may well find the
+  registry is the stale document. What changes is that the disagreement stops being invisible.
 - **Rotation is not revocation, and reading it as one is the dangerous mistake.** A key retired with
   `identity rotate-key` can no longer sign anything new, and that is the whole of what retirement
   does. It still verifies every entry it already signed -- deliberately, because an entry carries no
@@ -703,8 +744,8 @@ experience, and says so.
 
 ## How to falsify this document
 
-Every *built* row above names a script. Clone, run it, and read the exit code — six of the
-twenty-one need no broker at all. If a row's gate does not prove what the row claims, the row is
+Every *built* row above names a script. Clone, run it, and read the exit code — seven of the
+twenty-two need no broker at all. If a row's gate does not prove what the row claims, the row is
 wrong and should be reported as a bug in this document, not excused.
 
 ---
