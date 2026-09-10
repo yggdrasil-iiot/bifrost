@@ -59,22 +59,13 @@ That inversion is the whole claim. Everything below is the mechanics of it.
 
 ## Every boundary, with the protocol on it
 
-```
-                    ┌──────────────── control plane (git) ───────────────┐
-                    │  UdtDefinition · MasterSpec · ConformancePolicy     │
-                    │  CommandPolicy · activation ledger · anchor         │
-                    └───┬────────────────────────┬──────────────────┬─────┘
-                   file │ (gates CLI, pre-deploy)│ read at startup  │ projection
-                        ▼                        ▼                  ▼
-   PLC ──native──▶ OPC-UA server ──OPC-UA──▶ Muninn ──Sparkplug──▶ broker ──▶ historian
- (S7, EtherNet/IP,  (Kepware,          (feed)                  (MQTT)    │      MES
-  Modbus/TCP)        Ignition, …)                                        │      SCADA / HMI
-                        ▲                                                │      cloud / AI
-                        └────OPC-UA write──── Heimdall ◀────NCMD─────────┘
-                                           (write boundary)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="diagrams/integration-planes.dark.svg">
+  <img alt="Two planes. A control plane owned by governance (a git registry) sits above a data plane holding the historian, SCADA/HMI, cloud and MES as peer subscribers, an MQTT broker, this project's Muninn and Heimdall, a vendor OPC-UA server and the PLCs. Data flows up through Muninn, commands down through Heimdall, and the vendor's model copy reaches the registry only as a file carried by hand." src="diagrams/integration-planes.svg">
+</picture>
 
-   SPAN / TAP ──pcap──▶ Huginn (observe)  ◀── CommunicationPolicy (projected from the registry)
-```
+*Blue is what this project adds; everything grey you already own. The dashed blue edge is the one
+that is not automated — see [what is not built](#what-is-not-built).*
 
 | Boundary | Initiator | Protocol | Owned by |
 |---|---|---|---|
