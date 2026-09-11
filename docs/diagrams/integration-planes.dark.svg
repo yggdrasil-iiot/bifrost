@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="840" height="700" viewBox="0 0 840 700" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif">
+  <defs>
+    <marker id="ipG" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#8b949e"/></marker>
+    <marker id="ipA" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#d29922"/></marker>
+    <marker id="ipC" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#58a6ff"/></marker>
+  </defs>
+
+  <rect x="6" y="6" width="828" height="688" rx="14" fill="#0d1117" stroke="#30363d"/>
+
+  <text x="28" y="42" font-size="18" font-weight="600" fill="#c9d1d9">Where your existing systems meet this</text>
+  <text x="28" y="66" font-size="12.5" fill="#8b949e">Two planes, not a stack. Everything you already run is a peer on the data plane —</text>
+  <text x="28" y="85" font-size="12.5" fill="#8b949e">this project adds two components to it and owns a control plane none of them touch.</text>
+
+  <rect x="28" y="104" width="784" height="80" rx="10" fill="#101a28" stroke="#22334d"/>
+  <text x="44" y="124" font-size="11" font-weight="700" fill="#58a6ff" letter-spacing="1">CONTROL PLANE — GIT, OWNED BY GOVERNANCE</text>
+  <text x="44" y="152" font-size="11" fill="#8b949e">nothing on the data plane</text>
+  <text x="44" y="170" font-size="11" fill="#8b949e">owns any of this today</text>
+  <rect x="300" y="132" width="240" height="42" rx="6" fill="#0f2f1a" stroke="#3fb950"/>
+  <text x="420" y="151" font-size="12.5" font-weight="600" fill="#c9d1d9" text-anchor="middle">governed registry</text>
+  <text x="420" y="167" font-size="11" fill="#8b949e" text-anchor="middle">model · spec · policy · ledger</text>
+  <text x="796" y="152" font-size="11" fill="#8b949e" text-anchor="end">admit · version · seal · activate</text>
+  <text x="796" y="170" font-size="11" fill="#8b949e" text-anchor="end">every change is a governed event</text>
+
+  <rect x="76" y="214" width="688" height="430" rx="10" fill="#161b22" stroke="#21262d"/>
+  <text x="92" y="234" font-size="11" font-weight="700" fill="#8b949e" letter-spacing="1">DATA PLANE — WHERE YOUR PLANT ALREADY RUNS</text>
+
+  <rect x="92" y="252" width="152" height="52" rx="6" fill="#1c2128" stroke="#30363d"/>
+  <text x="168" y="278" font-size="12.5" fill="#c9d1d9" text-anchor="middle">Historian</text>
+  <text x="168" y="294" font-size="11" fill="#8b949e" text-anchor="middle">subscriber</text>
+
+  <rect x="260" y="252" width="152" height="52" rx="6" fill="#1c2128" stroke="#30363d"/>
+  <text x="336" y="278" font-size="12.5" fill="#c9d1d9" text-anchor="middle">SCADA / HMI</text>
+  <text x="336" y="294" font-size="11" fill="#8b949e" text-anchor="middle">+ holds a model copy</text>
+
+  <rect x="428" y="252" width="152" height="52" rx="6" fill="#1c2128" stroke="#30363d"/>
+  <text x="504" y="278" font-size="12.5" fill="#c9d1d9" text-anchor="middle">Cloud · AI</text>
+  <text x="504" y="294" font-size="11" fill="#8b949e" text-anchor="middle">subscriber</text>
+
+  <rect x="596" y="252" width="152" height="52" rx="6" fill="#1c2128" stroke="#30363d"/>
+  <text x="672" y="278" font-size="12.5" fill="#c9d1d9" text-anchor="middle">MES</text>
+  <text x="672" y="294" font-size="11" fill="#8b949e" text-anchor="middle">+ publishes commands</text>
+
+  <rect x="310" y="338" width="220" height="54" rx="6" fill="#1c2128" stroke="#30363d"/>
+  <text x="420" y="362" font-size="12.5" fill="#c9d1d9" text-anchor="middle">MQTT broker</text>
+  <text x="420" y="378" font-size="11" fill="#8b949e" text-anchor="middle">HiveMQ · EMQX · Mosquitto</text>
+
+  <rect x="150" y="418" width="180" height="56" rx="6" fill="#121d2f" stroke="#58a6ff"/>
+  <text x="240" y="444" font-size="12.5" font-weight="600" fill="#c9d1d9" text-anchor="middle">Heimdall</text>
+  <text x="240" y="460" font-size="11" fill="#8b949e" text-anchor="middle">write boundary</text>
+
+  <rect x="510" y="418" width="180" height="56" rx="6" fill="#121d2f" stroke="#58a6ff"/>
+  <text x="600" y="444" font-size="12.5" font-weight="600" fill="#c9d1d9" text-anchor="middle">Muninn</text>
+  <text x="600" y="460" font-size="11" fill="#8b949e" text-anchor="middle">northbound feed</text>
+
+  <rect x="310" y="502" width="220" height="56" rx="6" fill="#1c2128" stroke="#30363d"/>
+  <text x="420" y="526" font-size="12.5" fill="#c9d1d9" text-anchor="middle">OPC-UA server</text>
+  <text x="420" y="542" font-size="11" fill="#8b949e" text-anchor="middle">Kepware · Ignition</text>
+
+  <rect x="325" y="586" width="190" height="48" rx="6" fill="#1c2128" stroke="#30363d"/>
+  <text x="420" y="606" font-size="12.5" fill="#c9d1d9" text-anchor="middle">PLCs</text>
+  <text x="420" y="622" font-size="11" fill="#8b949e" text-anchor="middle">S7 · EtherNet/IP · Modbus</text>
+
+  <rect x="92" y="584" width="150" height="52" rx="6" fill="#121d2f" stroke="#58a6ff"/>
+  <text x="167" y="606" font-size="12.5" font-weight="600" fill="#c9d1d9" text-anchor="middle">Huginn</text>
+  <text x="167" y="622" font-size="11" fill="#8b949e" text-anchor="middle">observe · pcap</text>
+
+  <polyline points="420,586 420,558" fill="none" stroke="#8b949e" stroke-width="1.6" marker-end="url(#ipG)"/>
+  <text x="412" y="576" font-size="11" fill="#8b949e" text-anchor="end">PLC-native</text>
+
+  <polyline points="470,502 470,490 600,490 600,474" fill="none" stroke="#8b949e" stroke-width="1.6" marker-end="url(#ipG)"/>
+  <text x="535" y="484" font-size="11" fill="#8b949e" text-anchor="middle">OPC-UA read</text>
+
+  <polyline points="600,418 600,404 470,404 470,392" fill="none" stroke="#8b949e" stroke-width="1.6" marker-end="url(#ipG)"/>
+  <text x="535" y="398" font-size="11" fill="#8b949e" text-anchor="middle">Sparkplug B</text>
+
+  <polyline points="420,338 420,322" fill="none" stroke="#8b949e" stroke-width="1.6"/>
+  <polyline points="168,322 672,322" fill="none" stroke="#8b949e" stroke-width="1.6"/>
+  <polyline points="168,322 168,304" fill="none" stroke="#8b949e" stroke-width="1.6" marker-end="url(#ipG)"/>
+  <polyline points="336,322 336,304" fill="none" stroke="#8b949e" stroke-width="1.6" marker-end="url(#ipG)"/>
+  <polyline points="504,322 504,304" fill="none" stroke="#8b949e" stroke-width="1.6" marker-end="url(#ipG)"/>
+  <polyline points="672,322 672,304" fill="none" stroke="#8b949e" stroke-width="1.6" marker-end="url(#ipG)"/>
+  <text x="436" y="317" font-size="11" fill="#8b949e">subscribe</text>
+
+  <polyline points="748,278 756,278 756,352 530,352" fill="none" stroke="#d29922" stroke-width="1.6" marker-end="url(#ipA)"/>
+  <text x="643" y="347" font-size="11" fill="#d29922" text-anchor="middle">NCMD publish</text>
+
+  <polyline points="380,392 380,406 240,406 240,418" fill="none" stroke="#d29922" stroke-width="1.6" marker-end="url(#ipA)"/>
+  <text x="310" y="400" font-size="11" fill="#d29922" text-anchor="middle">NCMD</text>
+
+  <polyline points="240,474 240,488 370,488 370,502" fill="none" stroke="#d29922" stroke-width="1.6" marker-end="url(#ipA)"/>
+  <text x="305" y="484" font-size="11" fill="#d29922" text-anchor="middle">OPC-UA write</text>
+
+  <polyline points="470,558 470,586" fill="none" stroke="#d29922" stroke-width="1.6" marker-end="url(#ipA)"/>
+  <text x="482" y="576" font-size="11" fill="#d29922">native write</text>
+
+  <polyline points="325,610 242,610" fill="none" stroke="#8b949e" stroke-width="1.6" stroke-dasharray="5 3" marker-end="url(#ipG)"/>
+  <text x="283" y="602" font-size="11" fill="#8b949e" text-anchor="middle">SPAN / TAP</text>
+
+  <polyline points="52,184 52,446 150,446" fill="none" stroke="#58a6ff" stroke-width="1.6" marker-end="url(#ipC)"/>
+  <text x="56" y="438" font-size="11" fill="#58a6ff">read at startup</text>
+
+  <polyline points="780,184 780,446 690,446" fill="none" stroke="#58a6ff" stroke-width="1.6" marker-end="url(#ipC)"/>
+  <text x="776" y="414" font-size="11" fill="#58a6ff" text-anchor="end">verified definition</text>
+
+  <polyline points="530,530 796,530 796,184" fill="none" stroke="#58a6ff" stroke-width="1.6" stroke-dasharray="5 3" marker-end="url(#ipC)"/>
+  <text x="763" y="522" font-size="11" fill="#58a6ff" text-anchor="end">model copy — by hand, no live link</text>
+
+  <rect x="28" y="664" width="18" height="12" rx="3" fill="#121d2f" stroke="#58a6ff"/>
+  <text x="52" y="674" font-size="11" fill="#8b949e">this project</text>
+  <rect x="140" y="664" width="18" height="12" rx="3" fill="#1c2128" stroke="#30363d"/>
+  <text x="164" y="674" font-size="11" fill="#8b949e">bought / yours</text>
+  <polyline points="270,670 300,670" fill="none" stroke="#8b949e" stroke-width="1.6"/>
+  <text x="306" y="674" font-size="11" fill="#8b949e">data</text>
+  <polyline points="352,670 382,670" fill="none" stroke="#d29922" stroke-width="1.6"/>
+  <text x="388" y="674" font-size="11" fill="#8b949e">command</text>
+  <polyline points="462,670 492,670" fill="none" stroke="#58a6ff" stroke-width="1.6"/>
+  <text x="498" y="674" font-size="11" fill="#8b949e">control</text>
+  <polyline points="558,670 588,670" fill="none" stroke="#8b949e" stroke-width="1.6" stroke-dasharray="5 3"/>
+  <text x="594" y="674" font-size="11" fill="#8b949e">observation</text>
+  <polyline points="678,670 708,670" fill="none" stroke="#58a6ff" stroke-width="1.6" stroke-dasharray="5 3"/>
+  <text x="714" y="674" font-size="11" fill="#8b949e">by hand</text>
+</svg>

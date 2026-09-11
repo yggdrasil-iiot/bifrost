@@ -10,13 +10,21 @@
 
 Bifrost decides *what is allowed to cross the OT/IT boundary*. Nothing — no equipment model, no process spec, no runtime command, no version activation — reaches the plant floor or the unified namespace except as a **governed, fail-closed, provenance-verified contract**. Governance is enforced twice: **pre-deploy** (a CLI gate that rejects a bad change before it merges) and **at the runtime edge** (Heimdall, which refuses a bad command or a bad activation at the OPC-UA write boundary).
 
-**Start here.** Three things this repo is arguing, in the order they are worth checking:
+**Start here.** Four things this repo is arguing, in the order they are worth checking:
 
 | | |
 |---|---|
+| **[docs/INTEGRATION.md](docs/INTEGRATION.md)** | Where the systems you already run — MES, SCADA, historian, Kepware, the OT firewall — meet this, wire by wire: every boundary, its protocol, who initiates, and the actual Sparkplug topics. It answers the containment question ("does this sit above or below my MES?") by showing that it sits neither. |
 | **[docs/ENTERPRISE.md](docs/ENTERPRISE.md)** | Thirteen axes of taking this to an enterprise, each marked *built · deferred · open · measured*. A **built** row names the gate that proves it; a **deferred** row names the trigger that would force it. Ledger growth, verification cost and audit-at-scale are measured — and the measurements that came out unusable are reported as failures rather than quietly dropped. |
 | **[docs/ADOPTION.md](docs/ADOPTION.md)** | The order any of this could go into a plant that is **already running** — six phases, each with an exit criterion and an abort criterion, and the phase where it stops being risk-free. Derived from the code's constraints rather than from experience, and it says so. |
 | **[Executable gates](#executable-gates)** | Every claim below is backed by a gate you can run, not by a unit test. All 23 last ran green on **2026-09-10** (Docker 26.1.4), with no leg skipped. |
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/integration-planes.dark.svg">
+  <img alt="Two planes. A control plane owned by governance (a git registry) sits above a data plane holding the historian, SCADA/HMI, cloud and MES as peer subscribers, an MQTT broker, this project's Muninn and Heimdall, a vendor OPC-UA server and the PLCs. Data flows up through Muninn, commands down through Heimdall, and the vendor's model copy reaches the registry only as a file carried by hand." src="docs/diagrams/integration-planes.svg">
+</picture>
+
+Blue is what this project adds. Everything grey is bought, stays bought, and is a peer of everything else grey — including the MES, which subscribes like the historian and, when it commands, is re-authorized at the edge like anything else. The dashed edge is the one that is not automated. [docs/INTEGRATION.md](docs/INTEGRATION.md) is the wire-by-wire version.
 
 ## What it governs
 
