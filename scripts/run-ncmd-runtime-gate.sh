@@ -12,6 +12,10 @@
 #                    never APPLYed.
 #   T3 defense-in-depth : pub Rpm=9999 (allowed node, out of policy range 0..3000) -> bridge DENY
 #                    above-max, no new APPLY for Rpm.
+#   T3b non-finite  : pub Rpm=NaN (allowed node) -> bridge DENY, no new APPLY, and the live sim never
+#                    witnesses NaN on the node. NaN compares false against both bounds, so a range
+#                    check alone cannot refuse it; the sim is asserted because an APPLY whose
+#                    read-back then mismatches has still written the value.
 #   T4 log-only     : restart the edge with ENFORCEMENT_LOG_ONLY=on and re-send BOTH rogues. Each is
 #                    logged LOG-ONLY would-deny and then APPLIED, the live sim witnesses the
 #                    out-of-range 9999 landing on the OPC-UA node, and NO DENY line appears. This is
@@ -218,6 +222,18 @@ grep -qE "\[BRIDGE\] DENY cmd=$RPM_NODE .*above-max" "$BRIDGE_LOG" || fail "T3 b
 APPLY_AFTER=$(apply_count "$RPM_NODE")
 [ "$APPLY_AFTER" = "$APPLY_BEFORE" ] || fail "T3 an APPLY for $RPM_NODE appeared after the out-of-range rogue (before=$APPLY_BEFORE after=$APPLY_AFTER) — defense-in-depth breached"
 echo "[GATE] T3 OK: out-of-range command denied at the edge (above-max), no new APPLY"
+
+# ---------------------------------------------------------------------------
+echo "[GATE] ===== T3b: non-finite — Rpm=NaN (allowed node) -> DENY, never APPLY, never on the node ====="
+APPLY_BEFORE=$(apply_count "$RPM_NODE")
+pub "$RPM_NODE" NaN Double
+wait_line "$BRIDGE_LOG" "\[BRIDGE\] DENY cmd=$RPM_NODE val=NaN" 5 || fail "T3b bridge did not DENY Rpm=NaN"
+APPLY_AFTER=$(apply_count "$RPM_NODE")
+[ "$APPLY_AFTER" = "$APPLY_BEFORE" ] || fail "T3b an APPLY for $RPM_NODE appeared after Rpm=NaN (before=$APPLY_BEFORE after=$APPLY_AFTER)"
+if grep -q "\[SIM\] SET ns=2;s=Recipe/Rpm = NaN" "$SIM_LOG"; then
+  fail "T3b the sim witnessed Rpm=NaN — the value reached the OPC-UA node"
+fi
+echo "[GATE] T3b OK: NaN denied at the edge, no new APPLY, and the node never saw it"
 
 # ---------------------------------------------------------------------------
 echo "[GATE] ===== T4: log-only — restart with ENFORCEMENT_LOG_ONLY=on, both rogues APPLIED ====="

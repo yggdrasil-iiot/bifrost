@@ -82,6 +82,34 @@ class CommandAuthorizerTest {
         assertFalse(auth.authorize(p, req("Setpoint/Rpm", null, "Double")).allowed());
     }
 
+    // fail-closed: a non-finite value is a Number that no bound comparison can refuse.
+    // NaN compares false against everything, so "deny if v < min, deny if v > max" never fires for it.
+    @Test void nanWithBoundedConstraint_denies() {
+        CommandPolicy p = policy(new Rule("r","eng",gw3,"Setpoint/Rpm", new Constraint("Double",0.0,3000.0)));
+        assertFalse(auth.authorize(p, req("Setpoint/Rpm", Double.NaN, "Double")).allowed());
+    }
+    @Test void floatNanWithBoundedConstraint_denies() {
+        CommandPolicy p = policy(new Rule("r","eng",gw3,"Setpoint/Rpm", new Constraint("Float",0.0,3000.0)));
+        assertFalse(auth.authorize(p, req("Setpoint/Rpm", Float.NaN, "Float")).allowed());
+    }
+    // the shipped edge policy's shape: type only, with the range left to conformance
+    @Test void nanWithTypeOnlyConstraint_denies() {
+        CommandPolicy p = policy(new Rule("r","eng",gw3,"Setpoint/Rpm", new Constraint("Double", null, null)));
+        assertFalse(auth.authorize(p, req("Setpoint/Rpm", Double.NaN, "Double")).allowed());
+    }
+    // an open side is open to finite values, not to infinity
+    @Test void infinityThroughTheOpenSideOfASingleBound_denies() {
+        CommandPolicy minOnly = policy(new Rule("r","eng",gw3,"Setpoint/Rpm", new Constraint("Double", 0.0, null)));
+        CommandPolicy maxOnly = policy(new Rule("r","eng",gw3,"Setpoint/Rpm", new Constraint("Double", null, 3000.0)));
+        assertFalse(auth.authorize(minOnly, req("Setpoint/Rpm", Double.POSITIVE_INFINITY, "Double")).allowed());
+        assertFalse(auth.authorize(maxOnly, req("Setpoint/Rpm", Double.NEGATIVE_INFINITY, "Double")).allowed());
+    }
+    // a NaN bound cannot be shown to hold, so it refuses rather than switching the check off
+    @Test void nanBound_deniesInsteadOfDisablingTheCheck() {
+        CommandPolicy p = policy(new Rule("r","eng",gw3,"Setpoint/Rpm", new Constraint("Double", Double.NaN, 3000.0)));
+        assertFalse(auth.authorize(p, req("Setpoint/Rpm", 1500.0, "Double")).allowed());
+    }
+
     // wildcard target
     @Test void wildcardTarget_matches() {
         Target any = new Target("*", "*", null);

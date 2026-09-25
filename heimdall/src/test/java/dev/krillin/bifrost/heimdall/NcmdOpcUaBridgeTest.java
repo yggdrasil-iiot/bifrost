@@ -6,6 +6,8 @@ import java.nio.file.Path;
 import java.util.Date;
 import java.util.List;
 
+import org.eclipse.tahu.message.SparkplugBPayloadDecoder;
+import org.eclipse.tahu.message.SparkplugBPayloadEncoder;
 import org.eclipse.tahu.message.model.Metric.MetricBuilder;
 import org.eclipse.tahu.message.model.MetricDataType;
 import org.eclipse.tahu.message.model.PropertyDataType;
@@ -238,6 +240,31 @@ class NcmdOpcUaBridgeTest {
         assertFalse(fake.writeCalled, "an above-envelope write must NOT reach the applier");
         assertFalse(r.ok());
         assertTrue(r.detail().contains("above-max"), r.detail());
+    }
+
+    // ----- non-finite values: NaN compares false against every bound, in ① and in ② -----
+
+    /** Through Tahu's encoder and decoder, as the Paho shell receives it — the NaN a broker would carry. */
+    private static SparkplugBPayload overTheWire(SparkplugBPayload p) throws Exception {
+        return new SparkplugBPayloadDecoder().buildFromByteArray(new SparkplugBPayloadEncoder().getBytes(p, false), null);
+    }
+
+    @Test void a_nan_setpoint_never_reaches_the_applier() throws Exception {
+        // The configuration that refuses Rpm=9999 above: the shipped type-only policy plus the governed
+        // Mixer envelope Rpm∈[0,3000]. A NaN is below-min false and above-max false at both layers.
+        UdtDefinition mixerDef = new UdtDefinition("Line1-Mixer", SemVer.parse("1.0.0"),
+                List.of(new Member("Rpm", "Double", null, new Range(0, 3000)),
+                        new Member("Temp", "Double", null, new Range(0, 450))),
+                List.of(), null);
+        ConformancePolicy mixerPolicy = new ConformancePolicy("Line1-Mixer-policy", "1.0.0",
+                "Line1-Mixer", "1.0.0", new ConformancePolicy.Dial("envelope", null, null, null),
+                List.of(), List.of(new NodeBinding("ns=2;s=Recipe/Rpm", null, "Rpm")));
+        FakeApplier fake = new FakeApplier();
+        NcmdResponse r = new NcmdOpcUaBridge(GROUP, EDGE, policy(), fake, mixerDef, mixerPolicy, null)
+                .handle(NCMD_TOPIC, overTheWire(
+                        cmd("n-1", "write", "ns=2;s=Recipe/Rpm", Double.NaN, MetricDataType.Double, null, null)));
+        assertFalse(fake.writeCalled, "a NaN setpoint must NOT reach the applier");
+        assertFalse(r.ok());
     }
 
     // ----- R2: the command ledger -----
