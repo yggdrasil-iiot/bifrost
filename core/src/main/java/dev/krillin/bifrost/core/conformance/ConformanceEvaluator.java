@@ -11,7 +11,12 @@ public final class ConformanceEvaluator {
      * an ABSENT antecedent member means the cross-constraint is NOT triggered (design-time specs must
      * enumerate the sibling in the evaluated state for the check to fire); the {@code eq} op is exact-double;
      * the recipe tolerance band is {@code |target|*tol} (so target=0 ⇒ exact match required); recipe-mode
-     * only checks members that are present in the active recipe.
+     * only checks members that are present in the active recipe. A setpoint value that is not a finite number
+     * is always a violation ({@code spec.value.non-finite}): NaN compares false against everything, so no
+     * range, cross-member or recipe comparison could otherwise flag it — and a NaN antecedent would make its
+     * cross-member rule vacuously true. For the same reason a non-finite cross-member threshold is itself a
+     * violation, and range bounds and the recipe band are compared as "admit only if provably within", so a
+     * NaN on the model or policy side refuses rather than admits.
      */
     public ConformanceVerdict evaluate(UdtDefinition def, ConformancePolicy policy,
             MasterSpec activeRecipe, List<Setpoint> state) {
@@ -28,16 +33,24 @@ public final class ConformanceEvaluator {
                     "setpoint targets member '" + s.member() + "' absent from '" + def.templateRef() + "'")); continue; }
             if (!m.type().equals(s.type())) v.add(new Violation("spec.type.mismatch",
                     "member '" + s.member() + "' type " + m.type() + " but setpoint " + s.type()));
+            if (!Double.isFinite(s.value())) { v.add(new Violation("spec.value.non-finite",
+                    "member '" + s.member() + "' value " + s.value() + " is not a finite number")); continue; }
             if (m.range() != null) {
-                if (s.value() < m.range().low()) v.add(new Violation("spec.range.below-min",
+                if (!(s.value() >= m.range().low())) v.add(new Violation("spec.range.below-min",
                         "member '" + s.member() + "' value " + s.value() + " is below min " + m.range().low()));
-                if (s.value() > m.range().high()) v.add(new Violation("spec.range.above-max",
+                if (!(s.value() <= m.range().high())) v.add(new Violation("spec.range.above-max",
                         "member '" + s.member() + "' value " + s.value() + " is above max " + m.range().high()));
             }
         }
         // cross-member (policy)
         if (policy != null) {
             for (CrossConstraint c : policy.crossConstraints()) {
+                if (!Double.isFinite(c.ifValue()) || !Double.isFinite(c.thenValue())) {   // a rule that can never fire -> FAIL-CLOSED
+                    v.add(new Violation("conformance.cross." + c.id(),
+                        "cross-member " + c.id() + ": threshold " + c.ifValue() + "/" + c.thenValue()
+                        + " is not a finite number (cannot verify)"));
+                    continue;
+                }
                 Double a = values.get(c.ifMember());
                 if (a == null) continue;                        // antecedent member not in state -> rule not triggered
                 if (!cmp(a, c.ifOp(), c.ifValue())) continue;   // antecedent false -> vacuously satisfied
@@ -63,7 +76,7 @@ public final class ConformanceEvaluator {
             for (Setpoint s : state) {
                 Double target = recipe.get(s.member());
                 if (target == null) continue;
-                if (Math.abs(s.value() - target) > Math.abs(target) * tol) v.add(new Violation("conformance.recipe.deviation",
+                if (!(Math.abs(s.value() - target) <= Math.abs(target) * tol)) v.add(new Violation("conformance.recipe.deviation",
                         "member '" + s.member() + "' value " + s.value() + " deviates from approved recipe setpoint " + target));
             }
         }

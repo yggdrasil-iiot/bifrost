@@ -38,13 +38,17 @@ public final class CommandAuthorizer {
             if (!c.type().equals(req.type())) {
                 return Decision.deny("type-mismatch: expected " + c.type() + " got " + req.type());
             }
-            // fail-closed: if a value constraint exists but the value is null or not a Number, DENY rather than crash
-            if (!(req.value() instanceof Number)) {
-                return Decision.deny("invalid-value (not a number): " + req.value());
+            // fail-closed: if a value constraint exists but the value is null, not a Number, or not finite,
+            // DENY rather than crash. NaN compares false against every bound, so the two checks below could
+            // never refuse it; an infinity passes straight through whichever side of a bound is left open.
+            if (!(req.value() instanceof Number) || !Double.isFinite(((Number) req.value()).doubleValue())) {
+                return Decision.deny("invalid-value (not a finite number): " + req.value());
             }
             double v = ((Number) req.value()).doubleValue();
-            if (c.min() != null && v < c.min()) return Decision.deny("below-min: " + v + "<" + c.min());
-            if (c.max() != null && v > c.max()) return Decision.deny("above-max: " + v + ">" + c.max());
+            // Written as "admit only if provably within" rather than "deny if provably outside", so a NaN
+            // bound refuses every value instead of silently switching its check off.
+            if (c.min() != null && !(v >= c.min())) return Decision.deny("below-min: " + v + "<" + c.min());
+            if (c.max() != null && !(v <= c.max())) return Decision.deny("above-max: " + v + ">" + c.max());
             return Decision.allow(r.id());
         }
         return Decision.deny("no-matching-rule (deny-by-default)");
