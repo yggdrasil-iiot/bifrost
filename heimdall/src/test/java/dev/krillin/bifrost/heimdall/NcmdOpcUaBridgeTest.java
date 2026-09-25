@@ -267,6 +267,18 @@ class NcmdOpcUaBridgeTest {
         assertFalse(r.ok());
     }
 
+    @Test void a_nan_sibling_read_is_denied_fail_closed() throws Exception {
+        // Not a failed read: the plant answers the antecedent with a good-quality NaN. Treated as a number,
+        // "NaN < 3.0" is false, the weld-lobe is vacuously satisfied, and 9.0 — which violates the lobe at
+        // any force below 3 — would be applied on the strength of a value nobody knows.
+        FakeApplier fake = new FakeApplier();
+        fake.readDoubleResult = Double.NaN;
+        NcmdResponse r = weldBridge(fake).handle(NCMD_TOPIC,
+                cmd("w-6", "write", WELD_NODE, 9.0, MetricDataType.Double, null, null));
+        assertFalse(fake.writeCalled, "a write must NOT apply on the strength of a NaN antecedent");
+        assertFalse(r.ok());
+    }
+
     // ----- R2: the command ledger -----
 
     private CommandLedger ledgerAt(java.nio.file.Path dir) {

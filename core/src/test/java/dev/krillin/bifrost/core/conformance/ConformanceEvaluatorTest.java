@@ -110,4 +110,47 @@ class ConformanceEvaluatorTest {
         assertFalse(v.ok());
         assertTrue(v.violations().stream().anyMatch(x -> x.rule().equals("conformance.cross.weld-lobe")));
     }
+
+    // --- non-finite values: NaN compares false against everything, so no comparison below can flag it ---
+    @Test void nanSetpointIsRefusedNotInEnvelope() {
+        var v = ev.evaluate(weld(), null, null, List.of(new Setpoint("WeldCurrent","Double",Double.NaN)));
+        assertFalse(v.ok());
+        assertTrue(v.violations().stream().anyMatch(x -> x.rule().equals("spec.value.non-finite")), v.violations().toString());
+    }
+    @Test void nullRangeMemberStillRefusesNaN() {
+        // "any value" on a rangeless member means any number; NaN is not one.
+        var v = ev.evaluate(weldWithRatio(), null, null, List.of(new Setpoint("Ratio","Double",Double.NaN)));
+        assertFalse(v.ok());
+        assertTrue(v.violations().stream().anyMatch(x -> x.rule().equals("spec.value.non-finite")), v.violations().toString());
+    }
+    @Test void nanAntecedentDoesNotVacuouslySatisfyCrossMember() {
+        // WeldCurrent=9 violates the lobe whenever ElectrodeForce < 3. A NaN force is not "not < 3": it is unknown.
+        var v = ev.evaluate(weld(), lobe("envelope",null,null,null), null, List.of(
+            new Setpoint("WeldCurrent","Double",9.0), new Setpoint("ElectrodeForce","Double",Double.NaN)));
+        assertFalse(v.ok(), "a NaN antecedent must not make the cross-member rule vacuously true");
+    }
+    @Test void nanSetpointInRecipeModeIsRefused() {
+        MasterSpec recipe = masterSpec("WeldCurrent", 9.0);
+        var v = ev.evaluate(weld(), lobe("recipe","WeldSchedule","1.0.0",0.05), recipe, List.of(
+            new Setpoint("WeldCurrent","Double",Double.NaN), new Setpoint("ElectrodeForce","Double",4.0)));
+        assertFalse(v.ok());
+    }
+    @Test void nanRecipeTargetRefusesInsteadOfAdmittingAnything() {
+        // a NaN target makes |v - target| NaN, and "deviation > band" is then false for every v
+        MasterSpec recipe = masterSpec("WeldCurrent", Double.NaN);
+        var v = ev.evaluate(weld(), lobe("recipe","WeldSchedule","1.0.0",0.05), recipe, List.of(
+            new Setpoint("WeldCurrent","Double",7.0), new Setpoint("ElectrodeForce","Double",4.0)));
+        assertFalse(v.ok());
+        assertTrue(v.violations().stream().anyMatch(x -> x.rule().equals("conformance.recipe.deviation")), v.violations().toString());
+    }
+    @Test void nanCrossThresholdRefusesInsteadOfNeverTriggering() {
+        ConformancePolicy p = new ConformancePolicy("WeldPolicy","1.0.0","Weld-Controller","1.0.0",
+            new ConformancePolicy.Dial("envelope", null, null, null),
+            List.of(new CrossConstraint("weld-lobe","ElectrodeForce","lt",Double.NaN,"WeldCurrent","le",8.0)),
+            List.of());
+        var v = ev.evaluate(weld(), p, null, List.of(
+            new Setpoint("WeldCurrent","Double",9.0), new Setpoint("ElectrodeForce","Double",2.5)));
+        assertFalse(v.ok());
+        assertTrue(v.violations().stream().anyMatch(x -> x.rule().equals("conformance.cross.weld-lobe")), v.violations().toString());
+    }
 }
