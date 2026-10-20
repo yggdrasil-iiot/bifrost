@@ -10,7 +10,8 @@ proves it. A row marked *deferred* must name the concrete trigger that would for
 A row with neither is a wish, and wishes do not belong here.
 
 Evidence dates from **2026-09-10**, when all 23 gates were last run green (Docker 26.1.4) and
-the suites measured 601 tests in Bifrost and 242 in Huginn.
+the Huginn suite measured 242 tests. The Bifrost suite was re-measured on **2026-10-20**: 851
+tests, 237 of them for offline mapping publication; the gates were not re-run then.
 
 ---
 
@@ -287,7 +288,7 @@ SBOM, which is described as becoming a standard artefact in 2026.
   That is a non-repudiable lifecycle record, which is the shape the CRA asks for.
 
 - **An SBOM is generated.** `mvn package` emits `target/bifrost-sbom.{json,xml}` — one
-  CycloneDX 1.6 document for the whole reactor, 40 components with licences resolved. It is a
+  CycloneDX 1.6 document for the whole reactor, 45 components with licences resolved. It is a
   build artefact, so it is not committed; it belongs attached to a release.
 
 **What is missing, plainly:**
