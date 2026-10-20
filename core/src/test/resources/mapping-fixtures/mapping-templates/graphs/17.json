@@ -1,0 +1,51 @@
+{
+  "kind": "value-graph",
+  "version": "1.0.0",
+  "equipmentInstanceId": "line-a-motor-ab",
+  "id": "reuse-pump-ab-r1-g1",
+  "schemaVersion": "2.17.0",
+  "nodes": [
+    {
+      "nodeId": "result",
+      "op": "identity",
+      "inputs": {
+        "value": {
+          "kind": "graph",
+          "graphRef": {
+            "id": "reuse-pump-ab-r1-g0",
+            "version": "1.0.0"
+          },
+          "nodeId": "quotient"
+        }
+      },
+      "valueType": "Decimal",
+      "unit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-structure-ab-target",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-arithmetic-ab-gain",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-structure-ab-actual",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    }
+  ]
+}

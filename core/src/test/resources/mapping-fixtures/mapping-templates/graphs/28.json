@@ -1,0 +1,211 @@
+{
+  "kind": "value-graph",
+  "version": "1.0.1",
+  "equipmentInstanceId": "line-a-motor-ua",
+  "id": "reuse-pump-ua-r2-g0",
+  "schemaVersion": "2.17.0",
+  "nodes": [
+    {
+      "nodeId": "sum",
+      "op": "add",
+      "inputs": {
+        "left": {
+          "kind": "graph",
+          "graphRef": {
+            "id": "reuse-pump-ua-r2-g2",
+            "version": "1.0.1"
+          },
+          "nodeId": "delta"
+        },
+        "right": {
+          "kind": "graph",
+          "graphRef": {
+            "id": "reuse-pump-ua-r2-g2",
+            "version": "1.0.1"
+          },
+          "nodeId": "delta"
+        }
+      },
+      "valueType": "Decimal",
+      "unit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-arithmetic-ua-gain",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-structure-ua-target",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-structure-ua-actual",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    },
+    {
+      "nodeId": "scaled",
+      "op": "multiply",
+      "inputs": {
+        "left": {
+          "kind": "graph",
+          "graphRef": {
+            "id": "reuse-pump-ua-r2-g2",
+            "version": "1.0.1"
+          },
+          "nodeId": "delta"
+        },
+        "right": {
+          "kind": "source",
+          "sourceRef": {
+            "id": "arithmetic-ua-gain",
+            "version": "1.0.0"
+          }
+        }
+      },
+      "valueType": "Decimal",
+      "unit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-arithmetic-ua-gain",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-structure-ua-target",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-structure-ua-actual",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    },
+    {
+      "nodeId": "quotient",
+      "op": "divide",
+      "inputs": {
+        "left": {
+          "kind": "graph",
+          "graphRef": {
+            "id": "reuse-pump-ua-r2-g2",
+            "version": "1.0.1"
+          },
+          "nodeId": "delta"
+        },
+        "right": {
+          "kind": "source",
+          "sourceRef": {
+            "id": "arithmetic-ua-gain",
+            "version": "1.0.0"
+          }
+        }
+      },
+      "valueType": "Decimal",
+      "unit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-arithmetic-ua-gain",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-structure-ua-target",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-structure-ua-actual",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ],
+      "precision": 34,
+      "rounding": "half-even"
+    },
+    {
+      "nodeId": "ratio",
+      "op": "divide",
+      "inputs": {
+        "left": {
+          "kind": "graph",
+          "graphRef": {
+            "id": "reuse-pump-ua-r2-g2",
+            "version": "1.0.1"
+          },
+          "nodeId": "delta"
+        },
+        "right": {
+          "kind": "graph",
+          "graphRef": {
+            "id": "reuse-pump-ua-r2-g2",
+            "version": "1.0.1"
+          },
+          "nodeId": "delta"
+        }
+      },
+      "valueType": "Decimal",
+      "unit": {
+        "status": "known",
+        "code": "1"
+      },
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-arithmetic-ua-gain",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-structure-ua-target",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-structure-ua-actual",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ],
+      "precision": 34,
+      "rounding": "half-even"
+    }
+  ]
+}

@@ -1,0 +1,225 @@
+{
+  "kind": "mapping-set",
+  "schemaVersion": "2.2.0",
+  "id": "reuse-pump-ab-mapping",
+  "version": "1.0.0",
+  "equipmentInstanceId": "line-a-motor-ab",
+  "targetInstanceRef": {
+    "id": "reuse-pump-ab-target",
+    "version": "1.0.0"
+  },
+  "mappings": [
+    {
+      "mappingId": "reuse-pump-ab-ba44b3a21eb7a",
+      "memberPath": [
+        {
+          "kind": "member",
+          "memberId": "sum"
+        }
+      ],
+      "valueRef": {
+        "kind": "graph",
+        "graphRef": {
+          "id": "reuse-pump-ab-r1-g0",
+          "version": "1.0.0"
+        },
+        "nodeId": "sum"
+      },
+      "transform": [
+        {
+          "op": "cast",
+          "to": "Double",
+          "overflow": "error",
+          "rounding": "half-even"
+        }
+      ],
+      "outputUnit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "invalidValuePolicy": "bad-quality",
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-structure-ab-target",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-arithmetic-ab-gain",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-structure-ab-actual",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    },
+    {
+      "mappingId": "reuse-pump-ab-b82eb617f7f12",
+      "memberPath": [
+        {
+          "kind": "member",
+          "memberId": "scaled"
+        }
+      ],
+      "valueRef": {
+        "kind": "graph",
+        "graphRef": {
+          "id": "reuse-pump-ab-r1-g0",
+          "version": "1.0.0"
+        },
+        "nodeId": "scaled"
+      },
+      "transform": [
+        {
+          "op": "cast",
+          "to": "Double",
+          "overflow": "error",
+          "rounding": "half-even"
+        }
+      ],
+      "outputUnit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "invalidValuePolicy": "bad-quality",
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-structure-ab-target",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-arithmetic-ab-gain",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-structure-ab-actual",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    },
+    {
+      "mappingId": "reuse-pump-ab-b3fd86417f419",
+      "memberPath": [
+        {
+          "kind": "member",
+          "memberId": "quotient"
+        }
+      ],
+      "valueRef": {
+        "kind": "graph",
+        "graphRef": {
+          "id": "reuse-pump-ab-r1-g1",
+          "version": "1.0.0"
+        },
+        "nodeId": "result"
+      },
+      "transform": [
+        {
+          "op": "cast",
+          "to": "Double",
+          "overflow": "error",
+          "rounding": "half-even"
+        }
+      ],
+      "outputUnit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "invalidValuePolicy": "bad-quality",
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-structure-ab-target",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-arithmetic-ab-gain",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-structure-ab-actual",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    },
+    {
+      "mappingId": "reuse-pump-ab-b9a75a8959d8d",
+      "memberPath": [
+        {
+          "kind": "member",
+          "memberId": "ratio"
+        }
+      ],
+      "valueRef": {
+        "kind": "graph",
+        "graphRef": {
+          "id": "reuse-pump-ab-r1-g0",
+          "version": "1.0.0"
+        },
+        "nodeId": "ratio"
+      },
+      "transform": [
+        {
+          "op": "cast",
+          "to": "Double",
+          "overflow": "error",
+          "rounding": "half-even"
+        }
+      ],
+      "outputUnit": {
+        "status": "known",
+        "code": "1"
+      },
+      "invalidValuePolicy": "bad-quality",
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-structure-ab-target",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-arithmetic-ab-gain",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-structure-ab-actual",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    }
+  ]
+}

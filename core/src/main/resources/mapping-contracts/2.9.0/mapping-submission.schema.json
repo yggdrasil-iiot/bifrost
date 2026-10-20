@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:tyr:contract:2.9.0:mapping-submission",
+  "type": "object",
+  "properties": {
+    "kind": {
+      "const": "mapping-submission"
+    },
+    "schemaVersion": {
+      "const": "2.9.0"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9._-]{0,127}$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+    },
+    "workspaceSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "proposalSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "baseRelease": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9._-]{0,127}$"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "sha256"
+      ],
+      "additionalProperties": false
+    },
+    "proposedBy": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9._-]{0,127}$"
+    },
+    "execution": {
+      "const": "excluded"
+    },
+    "streamId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9._-]{0,127}$"
+    },
+    "context": {
+      "type": "object",
+      "properties": {
+        "equipment": {
+          "type": "array",
+          "maxItems": 1000,
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9._/-]*$"
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "id",
+              "label"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "connections": {
+          "type": "array",
+          "maxItems": 1000,
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9._/-]*$"
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1
+              },
+              "equipmentInstanceId": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9._/-]*$"
+              },
+              "accessProfileRef": {
+                "enum": [
+                  "ab-logix-symbol-v1",
+                  "s7-1500-opcua-v1",
+                  "s7-300-db-v1",
+                  "melsec-device-v1"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "label",
+              "equipmentInstanceId",
+              "accessProfileRef"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "equipment",
+        "connections"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "kind",
+    "schemaVersion",
+    "id",
+    "version",
+    "workspaceSha256",
+    "proposalSha256",
+    "baseRelease",
+    "proposedBy",
+    "execution",
+    "streamId",
+    "context"
+  ]
+}

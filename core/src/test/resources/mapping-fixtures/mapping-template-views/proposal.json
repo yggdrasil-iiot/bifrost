@@ -1,0 +1,93 @@
+{
+  "kind": "mapping-proposal",
+  "schemaVersion": "2.19.0",
+  "id": "local-workspace",
+  "version": "2.0.0",
+  "baseRelease": null,
+  "files": [
+    {
+      "path": "evidence/18.json",
+      "kind": "evidence-artifact",
+      "id": "manual-a07-melsec-alarm",
+      "version": "1.0.0",
+      "sha256": "b08c62630aa7955cfe63641e95577450b72c3238c814ca65a214718c66a0f370"
+    },
+    {
+      "path": "evidence/19.json",
+      "kind": "evidence-artifact",
+      "id": "manual-a07-melsec-alarm-alias",
+      "version": "1.0.0",
+      "sha256": "c4f959cf56a413d185027fa1b0beaa9d26fa48dc098833f2b51d5ce855462311"
+    },
+    {
+      "path": "evidence/15.json",
+      "kind": "evidence-artifact",
+      "id": "manual-a07-melsec-word",
+      "version": "1.0.0",
+      "sha256": "a75779e4b73b7b4c4c10f083edc7ff14de8dc9739668406d4a27fb40d0052482"
+    },
+    {
+      "path": "mappings/5.json",
+      "kind": "mapping-set",
+      "id": "reuse-view-melsec-mapping",
+      "version": "1.0.0",
+      "sha256": "7e963477f224c6d790d20b8d95ae6ece1bd1307cb63e93a8c1aa1d73f4a4bf66"
+    },
+    {
+      "path": "mappingTemplates/0.json",
+      "kind": "mapping-template",
+      "id": "word-and-bit",
+      "version": "1.0.0",
+      "sha256": "e0a6b182af2101c35f690e1b64269a8552c80c52fb345894a53022381349053d"
+    },
+    {
+      "path": "semantics/2.json",
+      "kind": "semantic-definition",
+      "id": "reuse-view-melsec-r1-model",
+      "version": "1.0.0",
+      "sha256": "7a6567d029f3d608ba0fbe48d52849c840428c4e8a1d9dded3bc291dc82cb240"
+    },
+    {
+      "path": "sources/18.json",
+      "kind": "source-definition",
+      "id": "a07-melsec-alarm",
+      "version": "1.0.0",
+      "sha256": "97270a7d7c45aac5712602889874903bbac125ba4d4acb1e6edb5a574db83a7b"
+    },
+    {
+      "path": "sources/19.json",
+      "kind": "source-definition",
+      "id": "a07-melsec-alarm-alias",
+      "version": "1.0.0",
+      "sha256": "ef6b390677975eb02767fe6307ff85375278a73652bcee7261f887fb9d15f09e"
+    },
+    {
+      "path": "sources/15.json",
+      "kind": "source-definition",
+      "id": "a07-melsec-word",
+      "version": "1.0.0",
+      "sha256": "2d364c55a0a78eeba0bdcc60c7e770f720cf900aa01316bdc9705e8420df2358"
+    },
+    {
+      "path": "targets/5.json",
+      "kind": "target-instance",
+      "id": "reuse-view-melsec-target",
+      "version": "1.0.0",
+      "sha256": "940dea225de62067b211b83aa1e0939d27ddbd5878854537bdf2e33011a621e7"
+    },
+    {
+      "path": "templateApplications/0.json",
+      "kind": "template-application",
+      "id": "application-view-melsec-r1",
+      "version": "1.0.0",
+      "sha256": "5f5bdfa9325d689e997df91debc3993cb94f511d91e9434ac94f471d444cf093"
+    },
+    {
+      "path": "graphs/4.json",
+      "kind": "value-graph",
+      "id": "reuse-view-melsec-r1-g0",
+      "version": "1.0.0",
+      "sha256": "9a0a6711cdc4e675b58ce22b2baf4d203a5a90b0cbfa234f0b7041ce35f10a31"
+    }
+  ]
+}

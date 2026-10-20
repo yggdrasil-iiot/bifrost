@@ -1,0 +1,43 @@
+{
+  "kind": "source-definition",
+  "schemaVersion": "2.10.0",
+  "id": "a07-ab-alarm",
+  "version": "1.0.0",
+  "equipmentInstanceId": "line-a-motor-ab",
+  "connectionProfileRef": "logical-ab",
+  "accessProfileRef": "ab-logix-symbol-v1",
+  "status": "ready",
+  "rawAddressText": "Drive.StatusWord",
+  "addressRadix": null,
+  "access": {
+    "kind": "symbol",
+    "symbolPath": "Drive.StatusWord"
+  },
+  "rawRepresentation": {
+    "mode": "typed",
+    "valueType": "UInt16"
+  },
+  "inputStage": "already-engineered",
+  "unit": {
+    "status": "not-applicable"
+  },
+  "evidenceRefs": [
+    {
+      "artifactId": "manual-a07-ab-alarm",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    }
+  ],
+  "viewOf": {
+    "id": "a07-ab-word",
+    "version": "1.0.0"
+  },
+  "sourceKind": "plc",
+  "accessMode": "read",
+  "view": {
+    "kind": "bit",
+    "bitIndex": 15
+  }
+}

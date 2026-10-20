@@ -1,0 +1,50 @@
+{
+  "kind": "value-graph",
+  "schemaVersion": "2.5.0",
+  "id": "mixed-pressure-difference",
+  "version": "1.0.0",
+  "equipmentInstanceId": "mixed-line",
+  "nodes": [
+    {
+      "nodeId": "difference",
+      "op": "subtract",
+      "inputs": {
+        "left": {
+          "kind": "source",
+          "sourceRef": {
+            "id": "mixed-plc-pressure",
+            "version": "1.0.0"
+          }
+        },
+        "right": {
+          "kind": "source",
+          "sourceRef": {
+            "id": "mixed-baseline",
+            "version": "1.0.0"
+          }
+        }
+      },
+      "valueType": "Decimal",
+      "unit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-mixed-plc-pressure",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-mixed-baseline",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    }
+  ]
+}

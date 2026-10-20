@@ -1,0 +1,17 @@
+{
+  "kind": "evidence-artifact",
+  "schemaVersion": "1.0.0",
+  "id": "manual-imp-review-base-alias",
+  "version": "1.0.0",
+  "origin": "synthetic",
+  "file": {
+    "path": "data/manual-6.txt",
+    "sha256": "d19d26c1287413b7dccd68cd0d9936ef400f50ca414da01aee1b23056188c6e5",
+    "mediaType": "text/plain"
+  },
+  "capturedAt": "2026-10-17T00:00:00Z",
+  "product": null,
+  "scope": [
+    "import-line"
+  ]
+}

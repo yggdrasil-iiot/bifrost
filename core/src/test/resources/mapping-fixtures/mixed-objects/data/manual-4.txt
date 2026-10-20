@@ -1,0 +1,2 @@
+Field label: record:pressure-object@1.0.0/target
+Offline declarations and virtual samples only

@@ -1,0 +1,46 @@
+{
+  "kind": "mapping-submission",
+  "schemaVersion": "2.9.0",
+  "id": "p4ab",
+  "streamId": "mixed-line",
+  "version": "1.0.0",
+  "workspaceSha256": "53f3559ad13ec8a5d6d54820e00bb69a0126cddb8dc9e6fda0ab2c16f16bec09",
+  "proposalSha256": "9ae870850881a12369674170c5dc2d1bb68ea390d8f08fa4eea0ac355b9f2fc2",
+  "baseRelease": null,
+  "proposedBy": "proposer",
+  "execution": "excluded",
+  "context": {
+    "equipment": [
+      {
+        "id": "import-line",
+        "label": "가상 통합 설비"
+      }
+    ],
+    "connections": [
+      {
+        "id": "import-0",
+        "label": "ab-logix-symbol-v1",
+        "equipmentInstanceId": "import-line",
+        "accessProfileRef": "ab-logix-symbol-v1"
+      },
+      {
+        "id": "import-1",
+        "label": "s7-1500-opcua-v1",
+        "equipmentInstanceId": "import-line",
+        "accessProfileRef": "s7-1500-opcua-v1"
+      },
+      {
+        "id": "import-2",
+        "label": "s7-300-db-v1",
+        "equipmentInstanceId": "import-line",
+        "accessProfileRef": "s7-300-db-v1"
+      },
+      {
+        "id": "import-3",
+        "label": "melsec-device-v1",
+        "equipmentInstanceId": "import-line",
+        "accessProfileRef": "melsec-device-v1"
+      }
+    ]
+  }
+}

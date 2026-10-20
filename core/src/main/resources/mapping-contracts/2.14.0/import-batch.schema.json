@@ -1,0 +1,694 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:tyr:contract:2.14.0:import-batch",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,47}$"
+    },
+    "filename": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "format": {
+      "enum": [
+        "xlsx",
+        "tyr-config-json-v1"
+      ]
+    },
+    "bytesBase64": {
+      "type": "string",
+      "maxLength": 699052
+    },
+    "equipmentInstanceId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "capturedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "origin": {
+      "enum": [
+        "field",
+        "synthetic"
+      ]
+    },
+    "kind": {
+      "const": "import-batch"
+    },
+    "schemaVersion": {
+      "const": "2.14.0"
+    },
+    "parser": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "const": "tyr-bounded-files"
+        },
+        "version": {
+          "const": "1.0.0"
+        }
+      },
+      "required": [
+        "name",
+        "version"
+      ],
+      "additionalProperties": false
+    },
+    "sha256": {
+      "$ref": "common.schema.json#/$defs/sha256"
+    },
+    "fileIssue": {
+      "type": "string"
+    },
+    "observations": {
+      "type": "array",
+      "maxItems": 256,
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^row-[0-9]+$"
+          },
+          "raw": {},
+          "locator": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "text-line"
+                  },
+                  "line": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                },
+                "required": [
+                  "kind",
+                  "line"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "xlsx-cell"
+                  },
+                  "sheet": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "cell": {
+                    "type": "string",
+                    "pattern": "^[A-Z]+[1-9][0-9]*$"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "sheet",
+                  "cell"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "json-pointer"
+                  },
+                  "pointer": {
+                    "type": "string",
+                    "pattern": "^(|/.*)$"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "pointer"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "derivation": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 65,
+            "items": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "const": "text-line"
+                    },
+                    "line": {
+                      "type": "integer",
+                      "minimum": 1
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "line"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "const": "xlsx-cell"
+                    },
+                    "sheet": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "cell": {
+                      "type": "string",
+                      "pattern": "^[A-Z]+[1-9][0-9]*$"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "sheet",
+                    "cell"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "const": "json-pointer"
+                    },
+                    "pointer": {
+                      "type": "string",
+                      "pattern": "^(|/.*)$"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "pointer"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            }
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "draft": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "../2.2.0/source-definition.schema.json"
+              }
+            ]
+          },
+          "template": {
+            "type": "object"
+          },
+          "originalColumns": {
+            "type": "object"
+          },
+          "assumptions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "raw",
+          "locator",
+          "derivation",
+          "issues",
+          "draft",
+          "assumptions"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "columnMap": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "enum": [
+          "address",
+          "base",
+          "byteOrder",
+          "count",
+          "id",
+          "identifierType",
+          "kind",
+          "label",
+          "namespaceUri",
+          "overrides",
+          "profile",
+          "stage",
+          "stride",
+          "target",
+          "type",
+          "unit",
+          "width",
+          "wordOrder"
+        ]
+      }
+    },
+    "contextConnections": {
+      "type": "array",
+      "maxItems": 1000,
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "equipmentInstanceId": {
+            "type": "string"
+          },
+          "accessProfileRef": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "equipmentInstanceId",
+          "accessProfileRef"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "version": {
+      "const": "1.0.0"
+    },
+    "reviews": {
+      "type": "array",
+      "maxItems": 256,
+      "items": {
+        "type": "object",
+        "properties": {
+          "observationId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "observationSha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "previousReviewSha256": {
+            "oneOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "decision": {
+            "enum": [
+              "resolve-source",
+              "exclude-non-source"
+            ]
+          },
+          "recordKey": {
+            "oneOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]{0,47}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "oneOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reviewer": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "reviewedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "observationId",
+          "observationSha256",
+          "previousReviewSha256",
+          "decision",
+          "recordKey",
+          "source",
+          "reviewer",
+          "reason",
+          "reviewedAt"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "adoptions": {
+      "type": "array",
+      "maxItems": 256,
+      "items": {
+        "type": "object",
+        "properties": {
+          "observationId": {
+            "oneOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "recordKey": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "sourceId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "imported": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "observationId",
+          "recordKey",
+          "sourceId",
+          "imported"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "reconciliation": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "previousBatchRef": {
+              "$ref": "common.schema.json#/$defs/ref"
+            },
+            "previousBatchSha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "workspaceSha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "ours": {
+              "type": "array",
+              "maxItems": 256,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "definition": {
+                    "type": "object"
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "note": {
+                    "type": "string"
+                  },
+                  "origin": {
+                    "enum": [
+                      "field",
+                      "synthetic"
+                    ]
+                  },
+                  "capturedAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "importRef": {
+                    "type": "object",
+                    "properties": {
+                      "batchId": {
+                        "type": "string"
+                      },
+                      "observationId": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "batchId",
+                      "observationId"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "definition",
+                  "label",
+                  "note",
+                  "origin",
+                  "capturedAt",
+                  "importRef"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "planSha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "actions": {
+              "type": "array",
+              "maxItems": 512,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "key": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  },
+                  "observationId": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "recordKey": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  },
+                  "sourceId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  },
+                  "classification": {
+                    "enum": [
+                      "new",
+                      "unchanged",
+                      "incoming-only",
+                      "local-only",
+                      "both-same",
+                      "mergeable",
+                      "conflict",
+                      "removed",
+                      "unresolved",
+                      "excluded"
+                    ]
+                  },
+                  "base": {
+                    "oneOf": [
+                      {
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "ours": {
+                    "oneOf": [
+                      {
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "incoming": {
+                    "oneOf": [
+                      {
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "fields": {
+                    "type": "array",
+                    "maxItems": 64,
+                    "items": {
+                      "type": "object"
+                    }
+                  }
+                },
+                "required": [
+                  "key",
+                  "observationId",
+                  "recordKey",
+                  "sourceId",
+                  "classification",
+                  "base",
+                  "ours",
+                  "incoming",
+                  "fields"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "choices": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "enum": [
+                      "apply",
+                      "skip",
+                      "retain"
+                    ]
+                  },
+                  "fields": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "enum": [
+                        "ours",
+                        "incoming"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "mode",
+                  "fields"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "results": {
+              "type": "object",
+              "additionalProperties": {
+                "oneOf": [
+                  {
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "reviewer": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000
+            },
+            "reviewedAt": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          "required": [
+            "previousBatchRef",
+            "previousBatchSha256",
+            "workspaceSha256",
+            "ours",
+            "planSha256",
+            "actions",
+            "choices",
+            "results",
+            "reviewer",
+            "reason",
+            "reviewedAt"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "id",
+    "filename",
+    "format",
+    "bytesBase64",
+    "equipmentInstanceId",
+    "capturedAt",
+    "origin",
+    "kind",
+    "schemaVersion",
+    "parser",
+    "sha256",
+    "observations",
+    "columnMap",
+    "contextConnections",
+    "version",
+    "reviews",
+    "adoptions",
+    "reconciliation"
+  ],
+  "additionalProperties": false
+}

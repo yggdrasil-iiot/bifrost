@@ -1,0 +1,225 @@
+{
+  "kind": "mapping-set",
+  "schemaVersion": "2.2.0",
+  "id": "arithmetic-mapping-ab",
+  "version": "1.0.0",
+  "equipmentInstanceId": "line-a-motor-ab",
+  "targetInstanceRef": {
+    "id": "arithmetic-object-ab",
+    "version": "1.0.0"
+  },
+  "mappings": [
+    {
+      "mappingId": "ab-sum",
+      "memberPath": [
+        {
+          "kind": "member",
+          "memberId": "sum"
+        }
+      ],
+      "valueRef": {
+        "kind": "graph",
+        "graphRef": {
+          "id": "arithmetic-ab",
+          "version": "1.0.0"
+        },
+        "nodeId": "sum"
+      },
+      "transform": [
+        {
+          "op": "cast",
+          "to": "Double",
+          "overflow": "error",
+          "rounding": "half-even"
+        }
+      ],
+      "outputUnit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "invalidValuePolicy": "bad-quality",
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-structure-ab-actual",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-structure-ab-target",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-arithmetic-ab-gain",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    },
+    {
+      "mappingId": "ab-scaled",
+      "memberPath": [
+        {
+          "kind": "member",
+          "memberId": "scaled"
+        }
+      ],
+      "valueRef": {
+        "kind": "graph",
+        "graphRef": {
+          "id": "arithmetic-ab",
+          "version": "1.0.0"
+        },
+        "nodeId": "scaled"
+      },
+      "transform": [
+        {
+          "op": "cast",
+          "to": "Double",
+          "overflow": "error",
+          "rounding": "half-even"
+        }
+      ],
+      "outputUnit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "invalidValuePolicy": "bad-quality",
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-structure-ab-actual",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-structure-ab-target",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-arithmetic-ab-gain",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    },
+    {
+      "mappingId": "ab-quotient",
+      "memberPath": [
+        {
+          "kind": "member",
+          "memberId": "quotient"
+        }
+      ],
+      "valueRef": {
+        "kind": "graph",
+        "graphRef": {
+          "id": "arithmetic-ab",
+          "version": "1.0.0"
+        },
+        "nodeId": "quotient"
+      },
+      "transform": [
+        {
+          "op": "cast",
+          "to": "Double",
+          "overflow": "error",
+          "rounding": "half-even"
+        }
+      ],
+      "outputUnit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "invalidValuePolicy": "bad-quality",
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-structure-ab-actual",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-structure-ab-target",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-arithmetic-ab-gain",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    },
+    {
+      "mappingId": "ab-ratio",
+      "memberPath": [
+        {
+          "kind": "member",
+          "memberId": "ratio"
+        }
+      ],
+      "valueRef": {
+        "kind": "graph",
+        "graphRef": {
+          "id": "arithmetic-ab",
+          "version": "1.0.0"
+        },
+        "nodeId": "ratio"
+      },
+      "transform": [
+        {
+          "op": "cast",
+          "to": "Double",
+          "overflow": "error",
+          "rounding": "half-even"
+        }
+      ],
+      "outputUnit": {
+        "status": "known",
+        "code": "1"
+      },
+      "invalidValuePolicy": "bad-quality",
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-structure-ab-actual",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-structure-ab-target",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-arithmetic-ab-gain",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    }
+  ]
+}

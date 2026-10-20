@@ -1,0 +1,60 @@
+{
+  "kind": "source-definition",
+  "schemaVersion": "2.4.0",
+  "id": "array-pressures-melsec",
+  "version": "1.0.0",
+  "equipmentInstanceId": "line-a-motor-melsec",
+  "connectionProfileRef": "logical-melsec",
+  "accessProfileRef": "melsec-device-v1",
+  "status": "ready",
+  "rawAddressText": "D7000",
+  "addressRadix": 10,
+  "access": {
+    "kind": "device-register",
+    "deviceArea": "D",
+    "addressIndex": 7000,
+    "addressUnit": "word16",
+    "wordCount": 2,
+    "bitOffset": null
+  },
+  "rawRepresentation": {
+    "mode": "bytes",
+    "valueType": "Float32",
+    "byteOrder": "little",
+    "wordOrder": "low-first"
+  },
+  "inputStage": "raw",
+  "unit": {
+    "status": "known",
+    "code": "kPa"
+  },
+  "evidenceRefs": [
+    {
+      "artifactId": "manual-array-pressures-melsec",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    }
+  ],
+  "viewOf": null,
+  "fixedArray": {
+    "shape": [
+      2,
+      3
+    ],
+    "lowerBounds": [
+      1,
+      10
+    ],
+    "strides": [
+      8,
+      2
+    ],
+    "strideUnit": "word16",
+    "range": {
+      "start": 7000,
+      "endExclusive": 7014
+    }
+  }
+}

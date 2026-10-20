@@ -1,0 +1,324 @@
+{
+  "kind": "mapping-proposal",
+  "schemaVersion": "2.0.0",
+  "id": "local-workspace",
+  "version": "2.0.0",
+  "baseRelease": null,
+  "files": [
+    {
+      "path": "evidence/0.json",
+      "kind": "evidence-artifact",
+      "id": "manual-array-pressures-ab",
+      "version": "1.0.0",
+      "sha256": "ef692b8cbc8d4875b8f93843f38fff4ddc6372b690cc48dc735acb9bcc4230ec"
+    },
+    {
+      "path": "evidence/2.json",
+      "kind": "evidence-artifact",
+      "id": "manual-array-pressures-db",
+      "version": "1.0.0",
+      "sha256": "df10baabb8a4c49116b8912e6b348ed7746a90ec39075f45adc026760d06e269"
+    },
+    {
+      "path": "evidence/3.json",
+      "kind": "evidence-artifact",
+      "id": "manual-array-pressures-melsec",
+      "version": "1.0.0",
+      "sha256": "cb6d9b0eeb620dfe53c4d86e9044334e2827a6c9eb1e2711c510c27ab9e90ff9"
+    },
+    {
+      "path": "evidence/1.json",
+      "kind": "evidence-artifact",
+      "id": "manual-array-pressures-ua",
+      "version": "1.0.0",
+      "sha256": "c4c8258a1fba78f5cc20b1b4471828e6e10c06a3a2cf80a8ecc093060a0d40a5"
+    },
+    {
+      "path": "evidence/4.json",
+      "kind": "evidence-artifact",
+      "id": "manual-structure-ab-actual",
+      "version": "1.0.0",
+      "sha256": "7f8fb2d91b2390176a03bdcc304883f305b277ce034835430183a17dff354dea"
+    },
+    {
+      "path": "evidence/6.json",
+      "kind": "evidence-artifact",
+      "id": "manual-structure-ab-flags",
+      "version": "1.0.0",
+      "sha256": "a74497971073146c2387193b9bedbce0389ad7a14a8c655fbebe06374fbdca5e"
+    },
+    {
+      "path": "evidence/5.json",
+      "kind": "evidence-artifact",
+      "id": "manual-structure-ab-target",
+      "version": "1.0.0",
+      "sha256": "eb8b69a136a775b20cc6e236393f9525ea8455641fa09ebb1c73689ccd168385"
+    },
+    {
+      "path": "evidence/10.json",
+      "kind": "evidence-artifact",
+      "id": "manual-structure-db-actual",
+      "version": "1.0.0",
+      "sha256": "3ba7efbbf729fffb9d25f61c268b9e601dd744eff034422fdd3ed9520d16bd60"
+    },
+    {
+      "path": "evidence/12.json",
+      "kind": "evidence-artifact",
+      "id": "manual-structure-db-flags",
+      "version": "1.0.0",
+      "sha256": "5101f3ea4750e12f961c58f3ea84d983558588df3902aaddd767c6d7ca32cf47"
+    },
+    {
+      "path": "evidence/11.json",
+      "kind": "evidence-artifact",
+      "id": "manual-structure-db-target",
+      "version": "1.0.0",
+      "sha256": "026981a637103ca89c025963d36d2792d9c2e94a09bfda789c83462ecf6cb126"
+    },
+    {
+      "path": "evidence/13.json",
+      "kind": "evidence-artifact",
+      "id": "manual-structure-melsec-actual",
+      "version": "1.0.0",
+      "sha256": "386fedfa6e9fbb54591920779ec027f84195ac5d707ce8fa50dee7f1df3fff98"
+    },
+    {
+      "path": "evidence/15.json",
+      "kind": "evidence-artifact",
+      "id": "manual-structure-melsec-flags",
+      "version": "1.0.0",
+      "sha256": "058546b8434ec5cfe54c1a2cffc915c6cb4aff9f06268d9163d4363750623abf"
+    },
+    {
+      "path": "evidence/14.json",
+      "kind": "evidence-artifact",
+      "id": "manual-structure-melsec-target",
+      "version": "1.0.0",
+      "sha256": "5154bab524d828ce7e30f1727257f48b54c37e5ba9df9e98cb04990cab451e32"
+    },
+    {
+      "path": "evidence/7.json",
+      "kind": "evidence-artifact",
+      "id": "manual-structure-ua-actual",
+      "version": "1.0.0",
+      "sha256": "2efaa7d8f5a3453bf21bd4b8e2706fe8d6ec79eeb0860635deb8c8577bdca504"
+    },
+    {
+      "path": "evidence/9.json",
+      "kind": "evidence-artifact",
+      "id": "manual-structure-ua-flags",
+      "version": "1.0.0",
+      "sha256": "fda4a746597237deef689547a5b7b5d3e8ba90f335fb5d336333bc3af38dbbf6"
+    },
+    {
+      "path": "evidence/8.json",
+      "kind": "evidence-artifact",
+      "id": "manual-structure-ua-target",
+      "version": "1.0.0",
+      "sha256": "03e6729a203fb57badf015bdf8385117fc9f95823f396d360c5319cfdc930961"
+    },
+    {
+      "path": "mappings/0.json",
+      "kind": "mapping-set",
+      "id": "structure-ab-mapping",
+      "version": "1.0.0",
+      "sha256": "42617a24185b4bfc67e963b25ddc66ab7b4f9736c1ea27c9171d3ca45bd81922"
+    },
+    {
+      "path": "mappings/2.json",
+      "kind": "mapping-set",
+      "id": "structure-db-mapping",
+      "version": "1.0.0",
+      "sha256": "cd928dfe15dc62dcd588cffed7fe9681e9100b921430d9eabe7dfdc9462c0009"
+    },
+    {
+      "path": "mappings/3.json",
+      "kind": "mapping-set",
+      "id": "structure-melsec-mapping",
+      "version": "1.0.0",
+      "sha256": "129b6508406c61254a10ca055afccf4820c77a57212d11226de1e5c6079c4550"
+    },
+    {
+      "path": "mappings/1.json",
+      "kind": "mapping-set",
+      "id": "structure-ua-mapping",
+      "version": "1.0.0",
+      "sha256": "7183a6f43ea9c35194f7713176cd2505b27b4f28b51f03cb62435af659ab12ec"
+    },
+    {
+      "path": "semantics/0.json",
+      "kind": "semantic-definition",
+      "id": "logical-skid",
+      "version": "1.0.0",
+      "sha256": "f26f25073562f035dfd2b134ff995c9683167f18e8179f8bb04f2de4bd3e9da3"
+    },
+    {
+      "path": "sources/0.json",
+      "kind": "source-definition",
+      "id": "array-pressures-ab",
+      "version": "1.0.0",
+      "sha256": "e7a3dea8f70a73aacf60b7305edceb5976196bc02c696df0baebf8035ad00a14"
+    },
+    {
+      "path": "sources/2.json",
+      "kind": "source-definition",
+      "id": "array-pressures-db",
+      "version": "1.0.0",
+      "sha256": "ae4d0f732418df937e30da670d96b7722a26d7861c350468532851c4aa338e81"
+    },
+    {
+      "path": "sources/3.json",
+      "kind": "source-definition",
+      "id": "array-pressures-melsec",
+      "version": "1.0.0",
+      "sha256": "2ee757f51fa41e1c2bb10a53d8d729f18cb1ed98f7c6a793bb1434ae56782d1a"
+    },
+    {
+      "path": "sources/1.json",
+      "kind": "source-definition",
+      "id": "array-pressures-ua",
+      "version": "1.0.0",
+      "sha256": "ddf40b59dd3260b9a4d3f27508b12e237bf81f5d3391145d65bc20be3063ab6c"
+    },
+    {
+      "path": "sources/4.json",
+      "kind": "source-definition",
+      "id": "structure-ab-actual",
+      "version": "1.0.0",
+      "sha256": "6c9db4d73588313c781895209264a36a5f8a21521842a26c56caddad4ff91691"
+    },
+    {
+      "path": "sources/6.json",
+      "kind": "source-definition",
+      "id": "structure-ab-flags",
+      "version": "1.0.0",
+      "sha256": "583b727f6462efff5fb198d3e14d0fc9975e05611362c115060225e7ce791fe6"
+    },
+    {
+      "path": "sources/5.json",
+      "kind": "source-definition",
+      "id": "structure-ab-target",
+      "version": "1.0.0",
+      "sha256": "77c14792414104629348f20493fe1d0698811dfb8d742048865113ab46139ad4"
+    },
+    {
+      "path": "sources/10.json",
+      "kind": "source-definition",
+      "id": "structure-db-actual",
+      "version": "1.0.0",
+      "sha256": "4626511f31b09947c899acf32eddc627d58419a67270e05730ed88da35121854"
+    },
+    {
+      "path": "sources/12.json",
+      "kind": "source-definition",
+      "id": "structure-db-flags",
+      "version": "1.0.0",
+      "sha256": "910bc00c3392c5b86002ef02c2f18c896d562d6f6150ee5c6a1857077024a979"
+    },
+    {
+      "path": "sources/11.json",
+      "kind": "source-definition",
+      "id": "structure-db-target",
+      "version": "1.0.0",
+      "sha256": "b089a7355075002c208004a41b05cd3da2ed95090a19cbd75de95a238ad89e55"
+    },
+    {
+      "path": "sources/13.json",
+      "kind": "source-definition",
+      "id": "structure-melsec-actual",
+      "version": "1.0.0",
+      "sha256": "c00bd54961540776ed8fef5e747df31dfe82498d534a39de0ffba4197264ec24"
+    },
+    {
+      "path": "sources/15.json",
+      "kind": "source-definition",
+      "id": "structure-melsec-flags",
+      "version": "1.0.0",
+      "sha256": "3b527a29104852b692465cd85d3e40dbccc9e2264c84d5c1c61b69e51b865a1b"
+    },
+    {
+      "path": "sources/14.json",
+      "kind": "source-definition",
+      "id": "structure-melsec-target",
+      "version": "1.0.0",
+      "sha256": "599e0582003e2dea068ccef3171de6d2c5c0b076fbc7f593914eb299210c44a8"
+    },
+    {
+      "path": "sources/7.json",
+      "kind": "source-definition",
+      "id": "structure-ua-actual",
+      "version": "1.0.0",
+      "sha256": "eb01304f14502361756419a1f858a60def86b828dff930770c3c791e46825b70"
+    },
+    {
+      "path": "sources/9.json",
+      "kind": "source-definition",
+      "id": "structure-ua-flags",
+      "version": "1.0.0",
+      "sha256": "85a7a80ff12b10d87ab2c03c7da729af7b7cfe37b8174bc95163b531f97670b0"
+    },
+    {
+      "path": "sources/8.json",
+      "kind": "source-definition",
+      "id": "structure-ua-target",
+      "version": "1.0.0",
+      "sha256": "e34a27c99841af20e5effad028f0c85c3f0fcdd139028b1be781d9d3285951e2"
+    },
+    {
+      "path": "targets/0.json",
+      "kind": "target-instance",
+      "id": "structure-skid-ab",
+      "version": "1.0.0",
+      "sha256": "daf87d56c054c223686a72c498c22c156346bed3e9e5beca9f0b7a43d43363dd"
+    },
+    {
+      "path": "targets/2.json",
+      "kind": "target-instance",
+      "id": "structure-skid-db",
+      "version": "1.0.0",
+      "sha256": "74848366982f6ef72ace613849cae2f9884d78eda9ddb71d9a0525276d6a69a5"
+    },
+    {
+      "path": "targets/3.json",
+      "kind": "target-instance",
+      "id": "structure-skid-melsec",
+      "version": "1.0.0",
+      "sha256": "c656d50ce0bb7f5ba385c993c27af89bf3388e5de032372944ef430b2230bed1"
+    },
+    {
+      "path": "targets/1.json",
+      "kind": "target-instance",
+      "id": "structure-skid-ua",
+      "version": "1.0.0",
+      "sha256": "d6f3e4e9e2ff5844c21b0370a5daeffa0346d51ad9ddb57b5f7d4e45895a8cde"
+    },
+    {
+      "path": "graphs/0.json",
+      "kind": "value-graph",
+      "id": "structure-ab-graph",
+      "version": "1.0.0",
+      "sha256": "90d1c2739b88d5e5af9eeaafb4e89665638934ee816d7d154857d94949e8822e"
+    },
+    {
+      "path": "graphs/2.json",
+      "kind": "value-graph",
+      "id": "structure-db-graph",
+      "version": "1.0.0",
+      "sha256": "b7a1da922d316231bc1d8f1b8b8defeda266384703f48879c74c316d1735df47"
+    },
+    {
+      "path": "graphs/3.json",
+      "kind": "value-graph",
+      "id": "structure-melsec-graph",
+      "version": "1.0.0",
+      "sha256": "b20688d1110a9bd211acdb7d459b82c590c91584f291bdf487b72cc546bf71ab"
+    },
+    {
+      "path": "graphs/1.json",
+      "kind": "value-graph",
+      "id": "structure-ua-graph",
+      "version": "1.0.0",
+      "sha256": "66134669380a056f139dbe629a494298e8b936fda47691a141f07d66f05a6ef3"
+    }
+  ]
+}

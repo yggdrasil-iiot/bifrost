@@ -1,0 +1,59 @@
+{
+  "kind": "mapping-set",
+  "schemaVersion": "2.2.0",
+  "id": "pressure-direct-mapping",
+  "version": "1.0.0",
+  "equipmentInstanceId": "line-a-motor-melsec",
+  "targetInstanceRef": {
+    "id": "filter-direct",
+    "version": "1.0.0"
+  },
+  "mappings": [
+    {
+      "mappingId": "direct-difference",
+      "valueRef": {
+        "kind": "graph",
+        "graphRef": {
+          "id": "pressure-direct",
+          "version": "1.0.0"
+        },
+        "nodeId": "difference"
+      },
+      "memberPath": [
+        {
+          "kind": "member",
+          "memberId": "pressure-difference"
+        }
+      ],
+      "transform": [
+        {
+          "op": "cast",
+          "to": "Double",
+          "overflow": "error",
+          "rounding": "half-even"
+        }
+      ],
+      "outputUnit": {
+        "status": "known",
+        "code": "1"
+      },
+      "invalidValuePolicy": "bad-quality",
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-pressure-up",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-pressure-down",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "kind": "source-observation",
+  "schemaVersion": "1.1.0",
+  "id": "import-review-base-row-8",
+  "version": "1.0.0",
+  "evidenceRefs": [
+    {
+      "artifactId": "import-review-base",
+      "locator": {
+        "kind": "json-pointer",
+        "pointer": "/vendorMetadata"
+      }
+    }
+  ],
+  "extractor": {
+    "name": "tyr-bounded-files",
+    "version": "1.0.0"
+  },
+  "claims": [
+    {
+      "field": "raw",
+      "value": {
+        "kind": "opaque",
+        "field": "vendorMetadata",
+        "value": {
+          "opaque": "preserve exactly"
+        }
+      },
+      "certainty": "explicit"
+    },
+    {
+      "field": "derivation",
+      "value": {
+        "id": "row-8",
+        "raw": {
+          "kind": "opaque",
+          "field": "vendorMetadata",
+          "value": {
+            "opaque": "preserve exactly"
+          }
+        },
+        "locator": {
+          "kind": "json-pointer",
+          "pointer": "/vendorMetadata"
+        },
+        "derivation": [
+          {
+            "kind": "json-pointer",
+            "pointer": "/vendorMetadata"
+          }
+        ],
+        "issues": [
+          "record.id"
+        ],
+        "assumptions": [],
+        "draft": null
+      },
+      "certainty": "inferred"
+    }
+  ],
+  "status": "unsupported"
+}

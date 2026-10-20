@@ -1,0 +1,2 @@
+Field label: 무차원 가상 입력 1
+Synthetic dimensionless UInt16 input at D1000; unit 1. Not a physical pressure measurement or a vendor device claim.

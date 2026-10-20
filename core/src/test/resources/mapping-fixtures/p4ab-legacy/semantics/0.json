@@ -1,0 +1,21 @@
+{
+  "kind": "semantic-definition",
+  "schemaVersion": "2.2.0",
+  "id": "import-speed-model",
+  "version": "1.0.0",
+  "members": [
+    {
+      "memberId": "speed",
+      "name": "Actual speed",
+      "semanticId": "urn:tyr:concept:motor.actual-speed",
+      "description": "동일 필터 상류 압력 - 하류 압력; 양수는 압력 강하, 음수 보존",
+      "valueType": "Double",
+      "unit": {
+        "status": "known",
+        "code": "rpm"
+      },
+      "role": "measurement",
+      "range": null
+    }
+  ]
+}

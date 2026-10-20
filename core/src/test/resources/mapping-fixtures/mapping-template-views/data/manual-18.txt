@@ -1,0 +1,2 @@
+Field label: a07-melsec-alarm
+Synthetic A07 explicit read view; LSB=0; root sample only.

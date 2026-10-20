@@ -1,0 +1,130 @@
+{
+  "kind": "record-mapping",
+  "schemaVersion": "2.20.0",
+  "id": "pressure-records",
+  "version": "1.0.0",
+  "label": "설비별 압력 결과 집합",
+  "equipmentInstanceId": "record-line-a",
+  "templateRef": {
+    "id": "pressure-record-template",
+    "version": "1.0.0",
+    "sha256": "34968e1f347fdd707dfad686de2c9b5b63ca9925ca7ab7b088bc8f9353c2313f"
+  },
+  "semanticDefinitionRef": {
+    "id": "records-model-1599af47e0aab12e7a7f278c",
+    "version": "1.0.0"
+  },
+  "previousMappingRef": null,
+  "resultSchema": {
+    "id": "pressure-result",
+    "version": "1.0.0",
+    "providerRef": "virtual-db",
+    "valueKey": "asset-pressure",
+    "query": {
+      "language": "sql",
+      "text": "SELECT asset, pressure, target, running FROM declared_view"
+    },
+    "fields": [
+      {
+        "fieldId": "asset",
+        "name": "asset",
+        "valueType": "String",
+        "unit": {
+          "status": "not-applicable"
+        },
+        "inputStage": "already-engineered",
+        "nullable": false
+      },
+      {
+        "fieldId": "pressure",
+        "name": "pressure",
+        "valueType": "Double",
+        "unit": {
+          "status": "known",
+          "code": "Pa"
+        },
+        "inputStage": "raw",
+        "nullable": true
+      },
+      {
+        "fieldId": "target",
+        "name": "target",
+        "valueType": "Int32",
+        "unit": {
+          "status": "known",
+          "code": "kPa"
+        },
+        "inputStage": "raw",
+        "nullable": false
+      },
+      {
+        "fieldId": "running",
+        "name": "running",
+        "valueType": "Boolean",
+        "unit": {
+          "status": "not-applicable"
+        },
+        "inputStage": "already-engineered",
+        "nullable": false
+      }
+    ],
+    "keyFields": [
+      "asset"
+    ],
+    "unknownFields": "preserve"
+  },
+  "bindings": [
+    {
+      "slotId": "input-1",
+      "fieldId": "asset",
+      "nullPolicy": "reject",
+      "defaultValue": null
+    },
+    {
+      "slotId": "input-2",
+      "fieldId": "pressure",
+      "nullPolicy": "default",
+      "defaultValue": "0"
+    },
+    {
+      "slotId": "input-3",
+      "fieldId": "running",
+      "nullPolicy": "reject",
+      "defaultValue": null
+    },
+    {
+      "slotId": "input-4",
+      "fieldId": "target",
+      "nullPolicy": "reject",
+      "defaultValue": null
+    }
+  ],
+  "output": {
+    "mode": "array",
+    "zeroPolicy": "empty",
+    "manyPolicy": "all",
+    "maxRows": 16,
+    "order": "canonical-key-utf8"
+  },
+  "selection": {
+    "kind": "all",
+    "key": []
+  },
+  "authoredBy": "fixture-author",
+  "authoredAt": "2026-10-18T00:00:00Z",
+  "reason": "가상 결과 집합 수용 검증",
+  "provenance": {
+    "origin": "synthetic",
+    "capturedAt": "2026-10-18T00:00:00Z",
+    "note": "합성 선언. 실제 DB/schema 정답 아님."
+  },
+  "evidenceRefs": [
+    {
+      "artifactId": "record-pressure-records-1-0-0",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    }
+  ]
+}

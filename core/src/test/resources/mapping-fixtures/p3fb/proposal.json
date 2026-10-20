@@ -1,0 +1,93 @@
+{
+  "kind": "mapping-proposal",
+  "schemaVersion": "2.0.0",
+  "id": "local-workspace",
+  "version": "2.0.0",
+  "baseRelease": null,
+  "files": [
+    {
+      "path": "evidence/1.json",
+      "kind": "evidence-artifact",
+      "id": "manual-pressure-down",
+      "version": "1.0.0",
+      "sha256": "272f0c7769d0264006dd913d0364fe4c332f12ddf19b7eedbdad705f7c5ebe46"
+    },
+    {
+      "path": "evidence/0.json",
+      "kind": "evidence-artifact",
+      "id": "manual-pressure-up",
+      "version": "1.0.0",
+      "sha256": "79853cba7daf5c6a121e4c9d8b2dcc341f705476df4436e92c406ca71ec47784"
+    },
+    {
+      "path": "evidence/2.json",
+      "kind": "evidence-artifact",
+      "id": "manual-selector-index",
+      "version": "1.0.0",
+      "sha256": "a5557195544d35a60ed89528e45ff730107313e24296279821ebe0f9a502984d"
+    },
+    {
+      "path": "evidence/3.json",
+      "kind": "evidence-artifact",
+      "id": "manual-selector-previous",
+      "version": "1.0.0",
+      "sha256": "5a5eb83d5ff56d97516d19f75262114220f3bd1355aadeb237ddd3636e7840d8"
+    },
+    {
+      "path": "mappings/0.json",
+      "kind": "mapping-set",
+      "id": "bounded-pressure-mapping",
+      "version": "1.0.0",
+      "sha256": "658dcffc513f281598c9caacf5e79d6de3a042536c409eb0c2b4576dbe56b6da"
+    },
+    {
+      "path": "semantics/0.json",
+      "kind": "semantic-definition",
+      "id": "bounded-pressure-model",
+      "version": "1.0.0",
+      "sha256": "d2d18085832a33478fd19a1403f190b63262caa4074f34b480c9c20de080b537"
+    },
+    {
+      "path": "sources/1.json",
+      "kind": "source-definition",
+      "id": "pressure-down",
+      "version": "1.0.0",
+      "sha256": "743a46ddbd6011650484773bf73570b2599427f4945ebeb83ca39af4b97571dd"
+    },
+    {
+      "path": "sources/0.json",
+      "kind": "source-definition",
+      "id": "pressure-up",
+      "version": "1.0.0",
+      "sha256": "f182ee8bc5316210bf935655d4a68145c1a1a0d317537d5d1ffc855bd915cb60"
+    },
+    {
+      "path": "sources/2.json",
+      "kind": "source-definition",
+      "id": "selector-index",
+      "version": "1.0.0",
+      "sha256": "34e00166439977abb5b00ff3320806de65bce459288f014c4f9c3c9b9370816e"
+    },
+    {
+      "path": "sources/3.json",
+      "kind": "source-definition",
+      "id": "selector-previous",
+      "version": "1.0.0",
+      "sha256": "6a844fa4a1a818da10a0795781da27cb30b23256cac1d8ed7e8f45da3bf7e033"
+    },
+    {
+      "path": "targets/0.json",
+      "kind": "target-instance",
+      "id": "bounded-pressure-target",
+      "version": "1.0.0",
+      "sha256": "7ca76642ffe1e943176fe00ea6082d4cbc4ec01dc1ce16611c73f2996793d58d"
+    },
+    {
+      "path": "graphs/0.json",
+      "kind": "value-graph",
+      "id": "bounded-pressure",
+      "version": "1.0.0",
+      "sha256": "d17d967c6feb2e1319f022f61c5be2418bde09d53673daa91e492981ad5b19de"
+    }
+  ]
+}

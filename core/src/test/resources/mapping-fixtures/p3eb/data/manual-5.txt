@@ -1,0 +1,2 @@
+Field label: target · ab
+Synthetic target; explicit logical mapping, native struct layout not claimed

@@ -1,0 +1,380 @@
+{
+  "kind": "mapping-proposal",
+  "schemaVersion": "2.7.0",
+  "id": "local-workspace",
+  "version": "2.0.0",
+  "baseRelease": null,
+  "files": [
+    {
+      "path": "evidence/3.json",
+      "kind": "evidence-artifact",
+      "id": "manual-a07-ab-alarm",
+      "version": "1.0.0",
+      "sha256": "51e72ea4ab197b0d2b062cd01c7c264d4cea60f34e2359328768df9bfa452612"
+    },
+    {
+      "path": "evidence/4.json",
+      "kind": "evidence-artifact",
+      "id": "manual-a07-ab-alarm-alias",
+      "version": "1.0.0",
+      "sha256": "06a3068d444b6337822a987f7464c68366df06267be606e7c95b51b6b64d9c96"
+    },
+    {
+      "path": "evidence/2.json",
+      "kind": "evidence-artifact",
+      "id": "manual-a07-ab-running",
+      "version": "1.0.0",
+      "sha256": "7c4cd5ae75d537a83e1355c172df17dfc4d28a2ef535522271c07340a943ce3c"
+    },
+    {
+      "path": "evidence/0.json",
+      "kind": "evidence-artifact",
+      "id": "manual-a07-ab-word",
+      "version": "1.0.0",
+      "sha256": "d01fe45f1006bedbc7624d9838030b5b392aa337be39a849b46bc9f18334b735"
+    },
+    {
+      "path": "evidence/1.json",
+      "kind": "evidence-artifact",
+      "id": "manual-a07-ab-word-alias",
+      "version": "1.0.0",
+      "sha256": "eb6948a41b05e341db8915889f9f7fa6641a5e8f4a191f0363147fc8bd84d253"
+    },
+    {
+      "path": "evidence/13.json",
+      "kind": "evidence-artifact",
+      "id": "manual-a07-db-alarm",
+      "version": "1.0.0",
+      "sha256": "3b47887daf89bc6ecb99ea1b52167afb8434f369d3a761410cf4a43cb4b6acbb"
+    },
+    {
+      "path": "evidence/14.json",
+      "kind": "evidence-artifact",
+      "id": "manual-a07-db-alarm-alias",
+      "version": "1.0.0",
+      "sha256": "624f23ed30a698c55eb271cd6df4d941f1bf6a65ee0a61fdc04dcd1927b34910"
+    },
+    {
+      "path": "evidence/12.json",
+      "kind": "evidence-artifact",
+      "id": "manual-a07-db-running",
+      "version": "1.0.0",
+      "sha256": "2b5de2ecd6fc48c93da5262851d0ec7703ad88477423d8f78f81d1dc50070065"
+    },
+    {
+      "path": "evidence/10.json",
+      "kind": "evidence-artifact",
+      "id": "manual-a07-db-word",
+      "version": "1.0.0",
+      "sha256": "03fa9405225d067d8f01e6673715164e939c0a29695e14f7331b723aef0b4195"
+    },
+    {
+      "path": "evidence/11.json",
+      "kind": "evidence-artifact",
+      "id": "manual-a07-db-word-alias",
+      "version": "1.0.0",
+      "sha256": "1291826d3b7759d1dec4fb6c77aa9561fb2f34695c30b329c1e0e6b4552b2585"
+    },
+    {
+      "path": "evidence/18.json",
+      "kind": "evidence-artifact",
+      "id": "manual-a07-melsec-alarm",
+      "version": "1.0.0",
+      "sha256": "b08c62630aa7955cfe63641e95577450b72c3238c814ca65a214718c66a0f370"
+    },
+    {
+      "path": "evidence/19.json",
+      "kind": "evidence-artifact",
+      "id": "manual-a07-melsec-alarm-alias",
+      "version": "1.0.0",
+      "sha256": "c4f959cf56a413d185027fa1b0beaa9d26fa48dc098833f2b51d5ce855462311"
+    },
+    {
+      "path": "evidence/17.json",
+      "kind": "evidence-artifact",
+      "id": "manual-a07-melsec-running",
+      "version": "1.0.0",
+      "sha256": "08a61c4cb3bb476e81bae0571f95788334eabaacf70606d482ce24af7ea3c2a6"
+    },
+    {
+      "path": "evidence/15.json",
+      "kind": "evidence-artifact",
+      "id": "manual-a07-melsec-word",
+      "version": "1.0.0",
+      "sha256": "a75779e4b73b7b4c4c10f083edc7ff14de8dc9739668406d4a27fb40d0052482"
+    },
+    {
+      "path": "evidence/16.json",
+      "kind": "evidence-artifact",
+      "id": "manual-a07-melsec-word-alias",
+      "version": "1.0.0",
+      "sha256": "ca8272e5a00ebf6ab44fcdc6992a5aa4ee43e4ff703b33e113027ba128eff43c"
+    },
+    {
+      "path": "evidence/8.json",
+      "kind": "evidence-artifact",
+      "id": "manual-a07-ua-alarm",
+      "version": "1.0.0",
+      "sha256": "a1758854f9193bbe41d1d951ecb4d4dd76b8bb21aad40165f08abdf9c86738bf"
+    },
+    {
+      "path": "evidence/9.json",
+      "kind": "evidence-artifact",
+      "id": "manual-a07-ua-alarm-alias",
+      "version": "1.0.0",
+      "sha256": "8d983163bfd9d904b2a1d9d18db82ab678d7c67c5be598196226e5358faf90a4"
+    },
+    {
+      "path": "evidence/7.json",
+      "kind": "evidence-artifact",
+      "id": "manual-a07-ua-running",
+      "version": "1.0.0",
+      "sha256": "cd92e5db9c62973ab39bdad97d8a97863b37a312097d9a6cbe309e9e28c6496e"
+    },
+    {
+      "path": "evidence/5.json",
+      "kind": "evidence-artifact",
+      "id": "manual-a07-ua-word",
+      "version": "1.0.0",
+      "sha256": "48a32c9426a4cb35683d925bae65452da527e2971e4f101e2754460a4bfacf85"
+    },
+    {
+      "path": "evidence/6.json",
+      "kind": "evidence-artifact",
+      "id": "manual-a07-ua-word-alias",
+      "version": "1.0.0",
+      "sha256": "6afa95329b73c9151e065150d1e2221fa0f601a9f2c5108200bad7a6200a2b0b"
+    },
+    {
+      "path": "mappings/0.json",
+      "kind": "mapping-set",
+      "id": "a07-ab-mapping",
+      "version": "1.0.0",
+      "sha256": "e2da33c6e140ed031245d805e2ebc547afc237ab2308a55b90d65ca3b2045421"
+    },
+    {
+      "path": "mappings/2.json",
+      "kind": "mapping-set",
+      "id": "a07-db-mapping",
+      "version": "1.0.0",
+      "sha256": "ca542d293913958a0240acb49ddca98f7ab5dbc091c40aaf84f9ceb15cec32bd"
+    },
+    {
+      "path": "mappings/3.json",
+      "kind": "mapping-set",
+      "id": "a07-melsec-mapping",
+      "version": "1.0.0",
+      "sha256": "3622c3e67af16937f9bffa0626de07d6a149080fb09e943d41ef9c725c3deafe"
+    },
+    {
+      "path": "mappings/1.json",
+      "kind": "mapping-set",
+      "id": "a07-ua-mapping",
+      "version": "1.0.0",
+      "sha256": "5c9f4035389b792199af6e974456ce1af9b3d3df7298284a67738c732f99b6c1"
+    },
+    {
+      "path": "semantics/0.json",
+      "kind": "semantic-definition",
+      "id": "a07-status-model",
+      "version": "1.0.0",
+      "sha256": "47bf64d057053294d1c87800c0a797a51ec89a4c48b45ec1c8c5b889b0458a92"
+    },
+    {
+      "path": "sources/3.json",
+      "kind": "source-definition",
+      "id": "a07-ab-alarm",
+      "version": "1.0.0",
+      "sha256": "4834113d38cd6f1511d4375fb259a59e1481f2d3b6ad38bc547861ba0bcb5383"
+    },
+    {
+      "path": "sources/4.json",
+      "kind": "source-definition",
+      "id": "a07-ab-alarm-alias",
+      "version": "1.0.0",
+      "sha256": "a90d7a7bf9085eda889a482b9353b5a215aa988da0346c96479608fc2f0d305c"
+    },
+    {
+      "path": "sources/2.json",
+      "kind": "source-definition",
+      "id": "a07-ab-running",
+      "version": "1.0.0",
+      "sha256": "2862a298b3cba7a7ecc8710bfd286aea2d3d905e29f56a728cbbfe508623308c"
+    },
+    {
+      "path": "sources/0.json",
+      "kind": "source-definition",
+      "id": "a07-ab-word",
+      "version": "1.0.0",
+      "sha256": "2e27c343306f1ff28b0cbf110913482d282aba7b807e1612c9f21f3dc80b4161"
+    },
+    {
+      "path": "sources/1.json",
+      "kind": "source-definition",
+      "id": "a07-ab-word-alias",
+      "version": "1.0.0",
+      "sha256": "1262cb47b0b9420ad820434c06216f5a567401e91ea8bb1467c046b70c594413"
+    },
+    {
+      "path": "sources/13.json",
+      "kind": "source-definition",
+      "id": "a07-db-alarm",
+      "version": "1.0.0",
+      "sha256": "238aa571106dfd97a19b86f10e25899669caf08c3a1e36553faf7a14dc6c65d8"
+    },
+    {
+      "path": "sources/14.json",
+      "kind": "source-definition",
+      "id": "a07-db-alarm-alias",
+      "version": "1.0.0",
+      "sha256": "f2e779c626d5d44c428ccf8f1b812e1d34c5618098996fc3c1a06e3fdd814b7c"
+    },
+    {
+      "path": "sources/12.json",
+      "kind": "source-definition",
+      "id": "a07-db-running",
+      "version": "1.0.0",
+      "sha256": "39a6e08becec3bd0654c4bcf9773da6dff9b8df69516ff71739d5a3f5c053237"
+    },
+    {
+      "path": "sources/10.json",
+      "kind": "source-definition",
+      "id": "a07-db-word",
+      "version": "1.0.0",
+      "sha256": "0f7bca29304389ac476e73e0613c49bd23ba05aa878a37a14463e4ba774e9838"
+    },
+    {
+      "path": "sources/11.json",
+      "kind": "source-definition",
+      "id": "a07-db-word-alias",
+      "version": "1.0.0",
+      "sha256": "fb3bc112e2fcb4ef589a3cf290b146b14d5e729c2e8868b5b1b35111d2792dbb"
+    },
+    {
+      "path": "sources/18.json",
+      "kind": "source-definition",
+      "id": "a07-melsec-alarm",
+      "version": "1.0.0",
+      "sha256": "97270a7d7c45aac5712602889874903bbac125ba4d4acb1e6edb5a574db83a7b"
+    },
+    {
+      "path": "sources/19.json",
+      "kind": "source-definition",
+      "id": "a07-melsec-alarm-alias",
+      "version": "1.0.0",
+      "sha256": "ef6b390677975eb02767fe6307ff85375278a73652bcee7261f887fb9d15f09e"
+    },
+    {
+      "path": "sources/17.json",
+      "kind": "source-definition",
+      "id": "a07-melsec-running",
+      "version": "1.0.0",
+      "sha256": "faaae3ff1e2ef4fef3d28696bfbed6029836b76a7343bdc4ee1b3c1dcf8a3d01"
+    },
+    {
+      "path": "sources/15.json",
+      "kind": "source-definition",
+      "id": "a07-melsec-word",
+      "version": "1.0.0",
+      "sha256": "2d364c55a0a78eeba0bdcc60c7e770f720cf900aa01316bdc9705e8420df2358"
+    },
+    {
+      "path": "sources/16.json",
+      "kind": "source-definition",
+      "id": "a07-melsec-word-alias",
+      "version": "1.0.0",
+      "sha256": "1452063242ae799da1e9ddeb2d8fa433a91e83dbb7514ad5aa569f5be82f61c9"
+    },
+    {
+      "path": "sources/8.json",
+      "kind": "source-definition",
+      "id": "a07-ua-alarm",
+      "version": "1.0.0",
+      "sha256": "8bdca682c2a4b8405ff9966f17b7df18ca029195d6778882ab0380f252dda95a"
+    },
+    {
+      "path": "sources/9.json",
+      "kind": "source-definition",
+      "id": "a07-ua-alarm-alias",
+      "version": "1.0.0",
+      "sha256": "c11904c5fb7d7a80b85c050c7c61267556bf56ec8229108477b167e4ed9fe8db"
+    },
+    {
+      "path": "sources/7.json",
+      "kind": "source-definition",
+      "id": "a07-ua-running",
+      "version": "1.0.0",
+      "sha256": "977a3aa93e0673cb84ba71a54e3968d9984d28016e61ed54908eaac554ef5e49"
+    },
+    {
+      "path": "sources/5.json",
+      "kind": "source-definition",
+      "id": "a07-ua-word",
+      "version": "1.0.0",
+      "sha256": "20a7ce4d1b045e0c6df0174a62829145db6350cc70c23ac9784a518a65271b13"
+    },
+    {
+      "path": "sources/6.json",
+      "kind": "source-definition",
+      "id": "a07-ua-word-alias",
+      "version": "1.0.0",
+      "sha256": "3c68c1a0080786b6e0e3bfba99f37a4ac57fc03f1c2a66df5a06ddffec6f6007"
+    },
+    {
+      "path": "targets/0.json",
+      "kind": "target-instance",
+      "id": "a07-ab-status",
+      "version": "1.0.0",
+      "sha256": "3ed251cc132069e01580cca49594df13d7d123206f1b67d6c3ef222be617d579"
+    },
+    {
+      "path": "targets/2.json",
+      "kind": "target-instance",
+      "id": "a07-db-status",
+      "version": "1.0.0",
+      "sha256": "104b957f66b1d53d3a5704b49e7f4dbae2db11e5e93de8634e3ad1d0560392ed"
+    },
+    {
+      "path": "targets/3.json",
+      "kind": "target-instance",
+      "id": "a07-melsec-status",
+      "version": "1.0.0",
+      "sha256": "93b8dfcde059403c355ef703547a35c00f5e761ac84e83ea32d45d5ad79f8a4b"
+    },
+    {
+      "path": "targets/1.json",
+      "kind": "target-instance",
+      "id": "a07-ua-status",
+      "version": "1.0.0",
+      "sha256": "5df4585af27b5a65bb9263332330ee5b4cf71c8836bdefa0bbc4d73e55e42e33"
+    },
+    {
+      "path": "graphs/0.json",
+      "kind": "value-graph",
+      "id": "a07-ab-graph",
+      "version": "1.0.0",
+      "sha256": "d643f8faec5d350051f2d4742d8bf48f367968bbfd4298f226793182e115841e"
+    },
+    {
+      "path": "graphs/2.json",
+      "kind": "value-graph",
+      "id": "a07-db-graph",
+      "version": "1.0.0",
+      "sha256": "59b2d9c1f451b9974bfbb9dd0d9559458efd4c8c5bcac45691238f3ccd0c8590"
+    },
+    {
+      "path": "graphs/3.json",
+      "kind": "value-graph",
+      "id": "a07-melsec-graph",
+      "version": "1.0.0",
+      "sha256": "38a1975264368d56af3efe62b29e5ef9d1ea51b8c72e564a0f0e5104f3ee3521"
+    },
+    {
+      "path": "graphs/1.json",
+      "kind": "value-graph",
+      "id": "a07-ua-graph",
+      "version": "1.0.0",
+      "sha256": "830df98c0198921ae6f89f9190d0bbbec217f7a5a8f804308e6b27a707010c5d"
+    }
+  ]
+}

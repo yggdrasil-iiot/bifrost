@@ -1,0 +1,394 @@
+{
+  "kind": "mapping-proposal",
+  "schemaVersion": "2.19.0",
+  "id": "local-workspace",
+  "version": "2.0.0",
+  "baseRelease": null,
+  "files": [
+    {
+      "path": "evidence/2.json",
+      "kind": "evidence-artifact",
+      "id": "manual-arithmetic-ab-gain",
+      "version": "1.0.0",
+      "sha256": "068594e80fa6b4af9fbbed711132e7e5e13be3fb8ab5ac810304fa2a56e239ed"
+    },
+    {
+      "path": "evidence/8.json",
+      "kind": "evidence-artifact",
+      "id": "manual-arithmetic-db-gain",
+      "version": "1.0.0",
+      "sha256": "dca8b5db574483129de82ce99b10ad95ddaf2cea10cdafce18ab5b5a7582cdd1"
+    },
+    {
+      "path": "evidence/11.json",
+      "kind": "evidence-artifact",
+      "id": "manual-arithmetic-melsec-gain",
+      "version": "1.0.0",
+      "sha256": "63b22daf8271fd2cff3fcf4c8eaf6d0ca7a00f8f7b1b80d67b042cec44f700d6"
+    },
+    {
+      "path": "evidence/5.json",
+      "kind": "evidence-artifact",
+      "id": "manual-arithmetic-ua-gain",
+      "version": "1.0.0",
+      "sha256": "9e87f3f85d30febba63b690a7a4d7b1d25175566396cb5c50244ab3468933a10"
+    },
+    {
+      "path": "evidence/0.json",
+      "kind": "evidence-artifact",
+      "id": "manual-structure-ab-actual",
+      "version": "1.0.0",
+      "sha256": "d273fe0d8c7474b9d066ef0d2b7db79b2720ad67618c609a0759070683dbc58c"
+    },
+    {
+      "path": "evidence/1.json",
+      "kind": "evidence-artifact",
+      "id": "manual-structure-ab-target",
+      "version": "1.0.0",
+      "sha256": "74a8caf14801d1ae0d44d88e54a84145270c5ce7a89b3154064f25cf0424451f"
+    },
+    {
+      "path": "evidence/6.json",
+      "kind": "evidence-artifact",
+      "id": "manual-structure-db-actual",
+      "version": "1.0.0",
+      "sha256": "b51c83781344bd744088c309c98c4cbe6879612e1436fe1580d16027da85c5eb"
+    },
+    {
+      "path": "evidence/7.json",
+      "kind": "evidence-artifact",
+      "id": "manual-structure-db-target",
+      "version": "1.0.0",
+      "sha256": "5cd6854e79397e53852384faebf49dacdc2b35c7fbfe1b7e40d0f29b5dfca0f2"
+    },
+    {
+      "path": "evidence/9.json",
+      "kind": "evidence-artifact",
+      "id": "manual-structure-melsec-actual",
+      "version": "1.0.0",
+      "sha256": "1ce5edaea0f96e1dca0b19adf6aeac7e20258eea318508ed596d5302fa0db837"
+    },
+    {
+      "path": "evidence/10.json",
+      "kind": "evidence-artifact",
+      "id": "manual-structure-melsec-target",
+      "version": "1.0.0",
+      "sha256": "3dcf3292d3715edf829c0c283cf5a6d6817b86a864e3696229bae9fb48b03a8f"
+    },
+    {
+      "path": "evidence/3.json",
+      "kind": "evidence-artifact",
+      "id": "manual-structure-ua-actual",
+      "version": "1.0.0",
+      "sha256": "4fe6a25d010f548e13735bf65d32b77bfbc36cb90b4a35d7845860982160dff8"
+    },
+    {
+      "path": "evidence/4.json",
+      "kind": "evidence-artifact",
+      "id": "manual-structure-ua-target",
+      "version": "1.0.0",
+      "sha256": "1155112e5013ac446ec2db9c0f017ff7e369bfdcb891732cb3fa56f83be2e5cd"
+    },
+    {
+      "path": "mappings/4.json",
+      "kind": "mapping-set",
+      "id": "reuse-pump-ab-mapping",
+      "version": "1.0.0",
+      "sha256": "2c64496f62d2d64453176d67189520d7f04e914ded6a256e2445e74ca0e25379"
+    },
+    {
+      "path": "mappings/5.json",
+      "kind": "mapping-set",
+      "id": "reuse-pump-db-mapping",
+      "version": "1.0.0",
+      "sha256": "7218a601a8c928cf9c89761ac6dd7825d659e3855f269bce05d2ae2b43f2cb42"
+    },
+    {
+      "path": "mappings/6.json",
+      "kind": "mapping-set",
+      "id": "reuse-pump-melsec-mapping",
+      "version": "1.0.0",
+      "sha256": "84f97006e906a115ddd0bbecd9ba5844364f9a7699bd10618b6c5bd5b9048d0e"
+    },
+    {
+      "path": "mappings/7.json",
+      "kind": "mapping-set",
+      "id": "reuse-pump-ua-mapping",
+      "version": "1.0.1",
+      "sha256": "144f79449daeb0448b8df22a631d35e1dda8960d8b2b66c9c54d5e2241f3d1bf"
+    },
+    {
+      "path": "mappingTemplates/0.json",
+      "kind": "mapping-template",
+      "id": "pressure-kit",
+      "version": "1.0.0",
+      "sha256": "05d232bd9ee4fcb34c8cbad82cea908109a6a7418c369e49db619b44ea649bba"
+    },
+    {
+      "path": "mappingTemplates/1.json",
+      "kind": "mapping-template",
+      "id": "pressure-kit",
+      "version": "1.1.0",
+      "sha256": "fbc09fac4dd6d8d7a84585f8738dfb4ef84510090712840c9191ee45f4817aeb"
+    },
+    {
+      "path": "semantics/1.json",
+      "kind": "semantic-definition",
+      "id": "reuse-pump-ab-r1-model",
+      "version": "1.0.0",
+      "sha256": "8ce4d92836fe13be76818f2834facfa3a61a0cea3eaa6ca263be2f8ac25edf46"
+    },
+    {
+      "path": "semantics/3.json",
+      "kind": "semantic-definition",
+      "id": "reuse-pump-db-r1-model",
+      "version": "1.0.0",
+      "sha256": "b44ab6d05758769be3734d692a160d8871e52a9f0070b16497e33e4afd9e7462"
+    },
+    {
+      "path": "semantics/4.json",
+      "kind": "semantic-definition",
+      "id": "reuse-pump-melsec-r1-model",
+      "version": "1.0.0",
+      "sha256": "83d1b56bc2b6961417f24973887b669b29bdbf15b2b1d334e7385cfdf4888804"
+    },
+    {
+      "path": "semantics/5.json",
+      "kind": "semantic-definition",
+      "id": "reuse-pump-ua-r2-model",
+      "version": "1.0.1",
+      "sha256": "9279f676e134b4be400c94de54609ce73a45eff73bfbc00cb11dacd0363e1da0"
+    },
+    {
+      "path": "sources/2.json",
+      "kind": "source-definition",
+      "id": "arithmetic-ab-gain",
+      "version": "1.0.0",
+      "sha256": "730e4bb11d44b8d97ba5332c7adcef6045540b3a9a3805f695891c387804f107"
+    },
+    {
+      "path": "sources/8.json",
+      "kind": "source-definition",
+      "id": "arithmetic-db-gain",
+      "version": "1.0.0",
+      "sha256": "990262a747d4f2d4969292568d74c79206b57ead4e93c8d252c9bcd0d1d756a6"
+    },
+    {
+      "path": "sources/11.json",
+      "kind": "source-definition",
+      "id": "arithmetic-melsec-gain",
+      "version": "1.0.0",
+      "sha256": "1aacc85390bdb53c831338ac39096bf9ebd3b95c7f6192a25ac1f53336c88e75"
+    },
+    {
+      "path": "sources/5.json",
+      "kind": "source-definition",
+      "id": "arithmetic-ua-gain",
+      "version": "1.0.0",
+      "sha256": "a0a270b1398f10588e4195308ceb0709378e90792b6f7215ec5b17ecab45d1c1"
+    },
+    {
+      "path": "sources/0.json",
+      "kind": "source-definition",
+      "id": "structure-ab-actual",
+      "version": "1.0.0",
+      "sha256": "6c9db4d73588313c781895209264a36a5f8a21521842a26c56caddad4ff91691"
+    },
+    {
+      "path": "sources/1.json",
+      "kind": "source-definition",
+      "id": "structure-ab-target",
+      "version": "1.0.0",
+      "sha256": "77c14792414104629348f20493fe1d0698811dfb8d742048865113ab46139ad4"
+    },
+    {
+      "path": "sources/6.json",
+      "kind": "source-definition",
+      "id": "structure-db-actual",
+      "version": "1.0.0",
+      "sha256": "4626511f31b09947c899acf32eddc627d58419a67270e05730ed88da35121854"
+    },
+    {
+      "path": "sources/7.json",
+      "kind": "source-definition",
+      "id": "structure-db-target",
+      "version": "1.0.0",
+      "sha256": "b089a7355075002c208004a41b05cd3da2ed95090a19cbd75de95a238ad89e55"
+    },
+    {
+      "path": "sources/9.json",
+      "kind": "source-definition",
+      "id": "structure-melsec-actual",
+      "version": "1.0.0",
+      "sha256": "c00bd54961540776ed8fef5e747df31dfe82498d534a39de0ffba4197264ec24"
+    },
+    {
+      "path": "sources/10.json",
+      "kind": "source-definition",
+      "id": "structure-melsec-target",
+      "version": "1.0.0",
+      "sha256": "599e0582003e2dea068ccef3171de6d2c5c0b076fbc7f593914eb299210c44a8"
+    },
+    {
+      "path": "sources/3.json",
+      "kind": "source-definition",
+      "id": "structure-ua-actual",
+      "version": "1.0.0",
+      "sha256": "eb01304f14502361756419a1f858a60def86b828dff930770c3c791e46825b70"
+    },
+    {
+      "path": "sources/4.json",
+      "kind": "source-definition",
+      "id": "structure-ua-target",
+      "version": "1.0.0",
+      "sha256": "e34a27c99841af20e5effad028f0c85c3f0fcdd139028b1be781d9d3285951e2"
+    },
+    {
+      "path": "targets/4.json",
+      "kind": "target-instance",
+      "id": "reuse-pump-ab-target",
+      "version": "1.0.0",
+      "sha256": "195bfb048e45ddce50fb4a9abc4c715972225e73b70c4cacf6f88a12535742c7"
+    },
+    {
+      "path": "targets/5.json",
+      "kind": "target-instance",
+      "id": "reuse-pump-db-target",
+      "version": "1.0.0",
+      "sha256": "45beb3c2f30e3d58b1378c69c767728690f7e855f1316db73ab7ea05b2963bd3"
+    },
+    {
+      "path": "targets/6.json",
+      "kind": "target-instance",
+      "id": "reuse-pump-melsec-target",
+      "version": "1.0.0",
+      "sha256": "df87ff16c9ab2ea516764d76e45135b0d304c19680d066dcec9bfb61d4298e1d"
+    },
+    {
+      "path": "targets/7.json",
+      "kind": "target-instance",
+      "id": "reuse-pump-ua-target",
+      "version": "1.0.1",
+      "sha256": "9e084167c270c72c752f20a9897ff80782dcd8d57765ef05a00dc59b6a11951c"
+    },
+    {
+      "path": "templateApplications/0.json",
+      "kind": "template-application",
+      "id": "application-pump-ab-r1",
+      "version": "1.0.0",
+      "sha256": "efee315ee8350b714322a3f8fcf9fa2062341594089955a267e5d40c6c7c164d"
+    },
+    {
+      "path": "templateApplications/2.json",
+      "kind": "template-application",
+      "id": "application-pump-db-r1",
+      "version": "1.0.0",
+      "sha256": "039d7812bd814f7abd7442232794acc43df4c35c78919f2d41ff9aa4c7d0f368"
+    },
+    {
+      "path": "templateApplications/3.json",
+      "kind": "template-application",
+      "id": "application-pump-melsec-r1",
+      "version": "1.0.0",
+      "sha256": "c6f429361a84e61eebd4b747ffd982c656ea14fdb066483ef717c84abbe9417c"
+    },
+    {
+      "path": "templateApplications/1.json",
+      "kind": "template-application",
+      "id": "application-pump-ua-r1",
+      "version": "1.0.0",
+      "sha256": "d9f38eca84e21ca81c3dce5e3981caad5e296438381e3d7d4bfbf1c7688cd324"
+    },
+    {
+      "path": "templateApplications/4.json",
+      "kind": "template-application",
+      "id": "application-pump-ua-r2",
+      "version": "1.0.0",
+      "sha256": "21d79feb4881a2aa4aeeb45d4f0b81413e6079c3c4f1b702d060a5f8b329d4cc"
+    },
+    {
+      "path": "graphs/16.json",
+      "kind": "value-graph",
+      "id": "reuse-pump-ab-r1-g0",
+      "version": "1.0.0",
+      "sha256": "394fbcc69bca89d5d416a486ab5f47d227dfde44555e8f8662b530a7aec46677"
+    },
+    {
+      "path": "graphs/17.json",
+      "kind": "value-graph",
+      "id": "reuse-pump-ab-r1-g1",
+      "version": "1.0.0",
+      "sha256": "b81ce9524a59884d2b704337d07270ab4497da306462f699d6976f667b452c56"
+    },
+    {
+      "path": "graphs/18.json",
+      "kind": "value-graph",
+      "id": "reuse-pump-ab-r1-g2",
+      "version": "1.0.0",
+      "sha256": "be5b8e63f7964a635abb0a96691418b292eb47c026641e1497fb6a6f4f9676ae"
+    },
+    {
+      "path": "graphs/22.json",
+      "kind": "value-graph",
+      "id": "reuse-pump-db-r1-g0",
+      "version": "1.0.0",
+      "sha256": "7ac7ea9e59bf5111afdde6de98a54c52f84dfb6f4d6212f9ba935792b157e851"
+    },
+    {
+      "path": "graphs/23.json",
+      "kind": "value-graph",
+      "id": "reuse-pump-db-r1-g1",
+      "version": "1.0.0",
+      "sha256": "6e86db772e985b76227c82b021ea73784c44b120f0fe5887e2d668ca9afedad8"
+    },
+    {
+      "path": "graphs/24.json",
+      "kind": "value-graph",
+      "id": "reuse-pump-db-r1-g2",
+      "version": "1.0.0",
+      "sha256": "7f2f090fcca4cca386656f3c9f899141304e3f485e412d538580ec9f0fe3b4bd"
+    },
+    {
+      "path": "graphs/25.json",
+      "kind": "value-graph",
+      "id": "reuse-pump-melsec-r1-g0",
+      "version": "1.0.0",
+      "sha256": "87a34a7217e0796970898d864b1c14b3b635706ed4cd09b75e1b1e7af34299fb"
+    },
+    {
+      "path": "graphs/26.json",
+      "kind": "value-graph",
+      "id": "reuse-pump-melsec-r1-g1",
+      "version": "1.0.0",
+      "sha256": "50db8c63f995361f200b3615d7e8daf0ffc56249f5eaabea6fe0dde4b77e474d"
+    },
+    {
+      "path": "graphs/27.json",
+      "kind": "value-graph",
+      "id": "reuse-pump-melsec-r1-g2",
+      "version": "1.0.0",
+      "sha256": "906b8254249a7e07d30639104f114a16c7a880a0cdd3a77cb119b366773ca694"
+    },
+    {
+      "path": "graphs/28.json",
+      "kind": "value-graph",
+      "id": "reuse-pump-ua-r2-g0",
+      "version": "1.0.1",
+      "sha256": "3c0c13ad648fed0d600f3ee800f05d54686c039c6d2297d2b51969d485805af3"
+    },
+    {
+      "path": "graphs/29.json",
+      "kind": "value-graph",
+      "id": "reuse-pump-ua-r2-g1",
+      "version": "1.0.1",
+      "sha256": "c31fe712c8d342abba0765921860db3d55a8855635aa5bba8c2160bb4fb5ed19"
+    },
+    {
+      "path": "graphs/30.json",
+      "kind": "value-graph",
+      "id": "reuse-pump-ua-r2-g2",
+      "version": "1.0.1",
+      "sha256": "29a905ef512f633529c6b8f350df1c47230f5efb661f3323360659768420a65a"
+    }
+  ]
+}

@@ -1,0 +1,142 @@
+{
+  "kind": "mapping-proposal",
+  "schemaVersion": "2.21.0",
+  "id": "local-workspace",
+  "version": "2.0.0",
+  "baseRelease": null,
+  "files": [
+    {
+      "path": "evidence/1.json",
+      "kind": "evidence-artifact",
+      "id": "manual-mixed-baseline",
+      "version": "1.0.0",
+      "sha256": "e20ddd3c13e608a50a6d8c3b34843193e5e67b4e6243a5ea1f23fe447421b916"
+    },
+    {
+      "path": "evidence/2.json",
+      "kind": "evidence-artifact",
+      "id": "manual-mixed-external-reference",
+      "version": "1.0.0",
+      "sha256": "50b1f8cb168f7c591ffaaadf42bbb2d60bdfc50721e1f382cb0cb29c99ead43c"
+    },
+    {
+      "path": "evidence/3.json",
+      "kind": "evidence-artifact",
+      "id": "manual-mixed-line-code",
+      "version": "1.0.0",
+      "sha256": "917642dd4838b4a706d2089a2f8fb205ac704edb89e0dbc4b86aeaad0132503f"
+    },
+    {
+      "path": "evidence/0.json",
+      "kind": "evidence-artifact",
+      "id": "manual-mixed-plc-pressure",
+      "version": "1.0.0",
+      "sha256": "1d81f64c7ffcd49834264fb0d045892ce878f123a3d6e27d889caa3d35098718"
+    },
+    {
+      "path": "evidence/4.json",
+      "kind": "evidence-artifact",
+      "id": "manual-record-field-402cc6a5a2ad6fe30100d639",
+      "version": "1.0.0",
+      "sha256": "aa2d8787ce17d9120dff9d16b746d9011ea58d0a9731962ba1992bd5cc7811a3"
+    },
+    {
+      "path": "records/evidence-1.json",
+      "kind": "evidence-artifact",
+      "id": "record-pressure-object-1-0-0",
+      "version": "1.0.0",
+      "sha256": "c4ef028eb26a34d5fc00080647f1e4d4af42181d437c9d4e03610983c5bdfbcd"
+    },
+    {
+      "path": "mappings/0.json",
+      "kind": "mapping-set",
+      "id": "reuse-combined-pump-mapping",
+      "version": "1.0.0",
+      "sha256": "86b1eee30f67976e3b6aed7735865731fa1c8c512834ec72cc78fcf766edfc3e"
+    },
+    {
+      "path": "mappingTemplates/1.json",
+      "kind": "mapping-template",
+      "id": "combined-pump-kit",
+      "version": "1.0.0",
+      "sha256": "5e98697e1c82bb6845889d8698f52b4ddf101e59ec9fe32237eedad5122d5825"
+    },
+    {
+      "path": "mappingTemplates/0.json",
+      "kind": "mapping-template",
+      "id": "pressure-record-template",
+      "version": "1.0.0",
+      "sha256": "c963e866ffb8f7d6c233a3452cfd000d1318759c5edec1858f7440218ca54677"
+    },
+    {
+      "path": "records/1.json",
+      "kind": "record-mapping",
+      "id": "pressure-object",
+      "version": "1.0.0",
+      "sha256": "8a1bad4a24fb746fefae3c60bddecddaf03d2ba60ccb80e8661a2b69f9e26a87"
+    },
+    {
+      "path": "semantics/1.json",
+      "kind": "semantic-definition",
+      "id": "records-model-1599af47e0aab12e7a7f278c",
+      "version": "1.0.0",
+      "sha256": "e92abf38655c81028ddbf3f80196083df825fec03cea0c6ede2be0db7a38e967"
+    },
+    {
+      "path": "semantics/3.json",
+      "kind": "semantic-definition",
+      "id": "reuse-combined-pump-r1-model",
+      "version": "1.0.0",
+      "sha256": "ba109aa81e0215fc25612b996ac3fe6e4893e5585c30285c85aff7f71f83eed0"
+    },
+    {
+      "path": "sources/1.json",
+      "kind": "source-definition",
+      "id": "mixed-baseline",
+      "version": "1.0.0",
+      "sha256": "2d054d0e3e769055b4c91eeb938f5033be19cd14e703c396f9e75ab1dd11b3f1"
+    },
+    {
+      "path": "sources/2.json",
+      "kind": "source-definition",
+      "id": "mixed-external-reference",
+      "version": "1.0.0",
+      "sha256": "2224c384914e18bf1653be19a736377795c96b1eabdb24c973de803d86e3bf16"
+    },
+    {
+      "path": "sources/3.json",
+      "kind": "source-definition",
+      "id": "mixed-line-code",
+      "version": "1.0.0",
+      "sha256": "e5a22f881c1553ed17de019819d048900bbf6424f1a20ac9562cfafda7444971"
+    },
+    {
+      "path": "sources/0.json",
+      "kind": "source-definition",
+      "id": "mixed-plc-pressure",
+      "version": "1.0.0",
+      "sha256": "3be720f7e855e474d6a28fc2ce0d3b79088d4489247d12ca8a2c11a08cb32538"
+    },
+    {
+      "path": "sources/4.json",
+      "kind": "source-definition",
+      "id": "record-field-402cc6a5a2ad6fe30100d639",
+      "version": "1.0.0",
+      "sha256": "1d9d3700fec6ae2beb89773767c79e9bfd00d392b84e30d8408aa395528def08"
+    },
+    {
+      "path": "targets/0.json",
+      "kind": "target-instance",
+      "id": "reuse-combined-pump-target",
+      "version": "1.0.0",
+      "sha256": "a385f84f0b83b16730349b75450e9f5700c5eda9cddd2a3969661a40bf6e6a24"
+    },
+    {
+      "path": "templateApplications/0.json",
+      "kind": "template-application",
+      "id": "application-combined-pump-r1",
+      "version": "1.0.0",
+      "sha256": "ed1ad5bc450c5044bba91621ec9ad3cdca159564ab6ab6a0fabd31e31a710a04"
+    }
+  ]
+}

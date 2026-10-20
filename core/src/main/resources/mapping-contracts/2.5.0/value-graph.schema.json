@@ -1,0 +1,468 @@
+{
+  "type": "object",
+  "properties": {
+    "kind": {
+      "const": "value-graph"
+    },
+    "schemaVersion": {
+      "const": "2.5.0"
+    },
+    "id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "version": {
+      "$ref": "common.schema.json#/$defs/version"
+    },
+    "equipmentInstanceId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "nodeId": {
+                "$ref": "common.schema.json#/$defs/id"
+              },
+              "op": {
+                "const": "decode-u32-words"
+              },
+              "inputs": {
+                "type": "object",
+                "properties": {
+                  "low": {
+                    "$ref": "common.schema.json#/$defs/nodeInput"
+                  },
+                  "high": {
+                    "$ref": "common.schema.json#/$defs/nodeInput"
+                  }
+                },
+                "required": [
+                  "low",
+                  "high"
+                ],
+                "additionalProperties": false
+              },
+              "valueType": {
+                "const": "UInt32"
+              },
+              "unit": {
+                "$ref": "common.schema.json#/$defs/unit"
+              },
+              "evidenceRefs": {
+                "type": "array",
+                "items": {
+                  "$ref": "common.schema.json#/$defs/evidenceRef"
+                },
+                "minItems": 1,
+                "maxItems": 256
+              }
+            },
+            "required": [
+              "nodeId",
+              "op",
+              "inputs",
+              "valueType",
+              "unit",
+              "evidenceRefs"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "nodeId": {
+                "$ref": "common.schema.json#/$defs/id"
+              },
+              "op": {
+                "const": "identity"
+              },
+              "inputs": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "$ref": "common.schema.json#/$defs/nodeInput"
+                  }
+                },
+                "required": [
+                  "value"
+                ],
+                "additionalProperties": false
+              },
+              "valueType": {
+                "$ref": "common.schema.json#/$defs/graphType"
+              },
+              "unit": {
+                "$ref": "common.schema.json#/$defs/unit"
+              },
+              "evidenceRefs": {
+                "type": "array",
+                "items": {
+                  "$ref": "common.schema.json#/$defs/evidenceRef"
+                },
+                "minItems": 1,
+                "maxItems": 256
+              }
+            },
+            "required": [
+              "nodeId",
+              "op",
+              "inputs",
+              "valueType",
+              "unit",
+              "evidenceRefs"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "nodeId": {
+                "$ref": "common.schema.json#/$defs/id"
+              },
+              "op": {
+                "const": "subtract"
+              },
+              "inputs": {
+                "type": "object",
+                "properties": {
+                  "left": {
+                    "$ref": "common.schema.json#/$defs/nodeInput"
+                  },
+                  "right": {
+                    "$ref": "common.schema.json#/$defs/nodeInput"
+                  }
+                },
+                "required": [
+                  "left",
+                  "right"
+                ],
+                "additionalProperties": false
+              },
+              "valueType": {
+                "const": "Decimal"
+              },
+              "unit": {
+                "$ref": "common.schema.json#/$defs/unit"
+              },
+              "evidenceRefs": {
+                "type": "array",
+                "items": {
+                  "$ref": "common.schema.json#/$defs/evidenceRef"
+                },
+                "minItems": 1,
+                "maxItems": 256
+              }
+            },
+            "required": [
+              "nodeId",
+              "op",
+              "inputs",
+              "valueType",
+              "unit",
+              "evidenceRefs"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "nodeId": {
+                "$ref": "common.schema.json#/$defs/id"
+              },
+              "op": {
+                "const": "linear"
+              },
+              "inputs": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "$ref": "common.schema.json#/$defs/nodeInput"
+                  }
+                },
+                "required": [
+                  "value"
+                ],
+                "additionalProperties": false
+              },
+              "valueType": {
+                "const": "Decimal"
+              },
+              "unit": {
+                "$ref": "common.schema.json#/$defs/unit"
+              },
+              "evidenceRefs": {
+                "type": "array",
+                "items": {
+                  "$ref": "common.schema.json#/$defs/evidenceRef"
+                },
+                "minItems": 1,
+                "maxItems": 256
+              },
+              "factor": {
+                "type": "string",
+                "maxLength": 256,
+                "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$"
+              },
+              "offset": {
+                "type": "string",
+                "maxLength": 256,
+                "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$"
+              }
+            },
+            "required": [
+              "nodeId",
+              "op",
+              "inputs",
+              "valueType",
+              "unit",
+              "evidenceRefs",
+              "factor",
+              "offset"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "nodeId": {
+                "$ref": "common.schema.json#/$defs/id"
+              },
+              "op": {
+                "const": "unit-convert"
+              },
+              "inputs": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "$ref": "common.schema.json#/$defs/nodeInput"
+                  }
+                },
+                "required": [
+                  "value"
+                ],
+                "additionalProperties": false
+              },
+              "valueType": {
+                "const": "Decimal"
+              },
+              "unit": {
+                "$ref": "common.schema.json#/$defs/unit"
+              },
+              "evidenceRefs": {
+                "type": "array",
+                "items": {
+                  "$ref": "common.schema.json#/$defs/evidenceRef"
+                },
+                "minItems": 1,
+                "maxItems": 256
+              },
+              "from": {
+                "enum": [
+                  "Pa",
+                  "kPa",
+                  "bar",
+                  "1/s",
+                  "rpm",
+                  "mN.m",
+                  "N.m",
+                  "K",
+                  "Cel"
+                ]
+              },
+              "to": {
+                "enum": [
+                  "Pa",
+                  "kPa",
+                  "bar",
+                  "1/s",
+                  "rpm",
+                  "mN.m",
+                  "N.m",
+                  "K",
+                  "Cel"
+                ]
+              }
+            },
+            "required": [
+              "nodeId",
+              "op",
+              "inputs",
+              "valueType",
+              "unit",
+              "evidenceRefs",
+              "from",
+              "to"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "nodeId": {
+                "$ref": "common.schema.json#/$defs/id"
+              },
+              "op": {
+                "const": "array-element"
+              },
+              "inputs": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "$ref": "common.schema.json#/$defs/nodeInput"
+                  }
+                },
+                "required": [
+                  "value"
+                ],
+                "additionalProperties": false
+              },
+              "valueType": {
+                "enum": [
+                  "Int16",
+                  "UInt16",
+                  "Int32",
+                  "UInt32",
+                  "Int64",
+                  "Float32",
+                  "Float64",
+                  "Boolean"
+                ]
+              },
+              "unit": {
+                "$ref": "common.schema.json#/$defs/unit"
+              },
+              "evidenceRefs": {
+                "type": "array",
+                "items": {
+                  "$ref": "common.schema.json#/$defs/evidenceRef"
+                },
+                "minItems": 1,
+                "maxItems": 256
+              },
+              "indices": {
+                "$ref": "common.schema.json#/$defs/arrayIndices"
+              }
+            },
+            "required": [
+              "nodeId",
+              "op",
+              "inputs",
+              "valueType",
+              "unit",
+              "evidenceRefs",
+              "indices"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "nodeId": {
+                "$ref": "common.schema.json#/$defs/id"
+              },
+              "op": {
+                "const": "bounded-selector"
+              },
+              "inputs": {
+                "type": "object",
+                "properties": {
+                  "index": {
+                    "$ref": "common.schema.json#/$defs/sourceValue"
+                  },
+                  "previousIndex": {
+                    "$ref": "common.schema.json#/$defs/sourceValue"
+                  }
+                },
+                "patternProperties": {
+                  "^candidate(?:[0-9]|[12][0-9]|3[01])$": {
+                    "$ref": "common.schema.json#/$defs/sourceValue"
+                  }
+                },
+                "required": [
+                  "index",
+                  "candidate0"
+                ],
+                "additionalProperties": false,
+                "maxProperties": 34
+              },
+              "valueType": {
+                "$ref": "common.schema.json#/$defs/graphType"
+              },
+              "unit": {
+                "$ref": "common.schema.json#/$defs/unit"
+              },
+              "evidenceRefs": {
+                "type": "array",
+                "items": {
+                  "$ref": "common.schema.json#/$defs/evidenceRef"
+                },
+                "minItems": 1,
+                "maxItems": 256
+              },
+              "outOfRange": {
+                "enum": [
+                  "reject",
+                  "default-candidate"
+                ]
+              },
+              "defaultCandidate": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 31
+              }
+            },
+            "required": [
+              "nodeId",
+              "op",
+              "inputs",
+              "valueType",
+              "unit",
+              "evidenceRefs",
+              "outOfRange"
+            ],
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "outOfRange": {
+                      "const": "default-candidate"
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "defaultCandidate"
+                  ]
+                },
+                "else": {
+                  "not": {
+                    "required": [
+                      "defaultCandidate"
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "minItems": 1,
+      "maxItems": 256
+    }
+  },
+  "required": [
+    "kind",
+    "schemaVersion",
+    "id",
+    "version",
+    "equipmentInstanceId",
+    "nodes"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:tyr:contract:2.5.0:value-graph"
+}

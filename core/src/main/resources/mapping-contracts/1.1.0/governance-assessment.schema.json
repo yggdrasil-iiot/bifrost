@@ -1,0 +1,195 @@
+{
+  "type": "object",
+  "properties": {
+    "kind": {
+      "const": "governance-assessment"
+    },
+    "schemaVersion": {
+      "const": "1.1.0"
+    },
+    "proposalSha256": {
+      "$ref": "common.schema.json#/$defs/sha256"
+    },
+    "bindings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "mappingId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "equipmentInstanceId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "meaning": {
+            "type": "object",
+            "properties": {
+              "semanticId": {
+                "type": "string",
+                "format": "uri"
+              },
+              "role": {
+                "enum": [
+                  "measurement",
+                  "status",
+                  "setpoint"
+                ]
+              },
+              "valueType": {
+                "$ref": "common.schema.json#/$defs/resultType"
+              },
+              "unit": {
+                "$ref": "common.schema.json#/$defs/unit"
+              }
+            },
+            "required": [
+              "semanticId",
+              "role",
+              "valueType",
+              "unit"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "mappingId",
+          "equipmentInstanceId",
+          "meaning"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "projectionLosses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "mappingId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "field": {
+            "type": "string",
+            "minLength": 1
+          },
+          "ruleCode": {
+            "const": "projection.field-loss"
+          }
+        },
+        "required": [
+          "mappingId",
+          "field",
+          "ruleCode"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "valueOutcomes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "mappingId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "value": {
+            "type": [
+              "string",
+              "boolean",
+              "null"
+            ]
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "required": [
+          "mappingId",
+          "value",
+          "issues"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "deviceCommunicationRequired": {
+      "const": false
+    },
+    "changeAssessments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "scenarioId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "changes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "mappingId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "field": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "category": {
+                  "enum": [
+                    "meaning",
+                    "constraint",
+                    "transform",
+                    "access",
+                    "decode",
+                    "context",
+                    "evidence",
+                    "presentation",
+                    "binding",
+                    "reference"
+                  ]
+                },
+                "reviewRequired": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "mappingId",
+                "field",
+                "category",
+                "reviewRequired"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "scenarioId",
+          "changes"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "kind",
+    "schemaVersion",
+    "proposalSha256",
+    "bindings",
+    "projectionLosses",
+    "valueOutcomes",
+    "deviceCommunicationRequired",
+    "changeAssessments"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:tyr:contract:1.1.0:governance-assessment"
+}

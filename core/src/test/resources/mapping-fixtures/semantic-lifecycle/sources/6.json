@@ -1,0 +1,40 @@
+{
+  "kind": "source-definition",
+  "schemaVersion": "2.7.0",
+  "id": "mixed-tag-setpoint",
+  "version": "1.0.0",
+  "sourceKind": "solution-tag",
+  "accessMode": "read-write",
+  "equipmentInstanceId": "mixed-line",
+  "connectionProfileRef": null,
+  "accessProfileRef": "solution-tag-v1",
+  "status": "ready",
+  "rawAddressText": "solution-tag:mixed-tag-setpoint",
+  "addressRadix": null,
+  "access": {
+    "kind": "solution-tag",
+    "solutionInstanceRef": "hmi-a",
+    "solutionName": "Synthetic HMI",
+    "solutionVersion": "1.0",
+    "tagPath": "Tank.Setpoint"
+  },
+  "rawRepresentation": {
+    "mode": "typed",
+    "valueType": "Double"
+  },
+  "inputStage": "already-engineered",
+  "unit": {
+    "status": "known",
+    "code": "kPa"
+  },
+  "evidenceRefs": [
+    {
+      "artifactId": "manual-mixed-tag-setpoint",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    }
+  ],
+  "viewOf": null
+}

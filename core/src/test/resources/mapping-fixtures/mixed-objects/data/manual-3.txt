@@ -1,0 +1,2 @@
+Field label: mixed-line-code
+Synthetic mixed source definition; no live provider or write execution

@@ -1,0 +1,299 @@
+{
+  "id": "legacy-clean",
+  "filename": "legacy-clean.json",
+  "format": "tyr-config-json-v1",
+  "bytesBase64": "eyJmb3JtYXQiOiAidHlyLWNvbmZpZy12MSIsICJyZWNvcmRzIjogW3siaWQiOiAic3BlZWQtYWIiLCAicHJvZmlsZSI6ICJhYi1sb2dpeC1zeW1ib2wtdjEiLCAiYWRkcmVzcyI6ICJNb3Rvci5BY3R1YWxTcGVlZCIsICJ0eXBlIjogIkZsb2F0MzIiLCAidW5pdCI6ICJycG0iLCAic3RhZ2UiOiAiYWxyZWFkeS1lbmdpbmVlcmVkIn0sIHsiaWQiOiAicHJlc3N1cmUtdWEiLCAicHJvZmlsZSI6ICJzNy0xNTAwLW9wY3VhLXYxIiwgImFkZHJlc3MiOiAiTGluZS5QcmVzc3VyZSIsICJuYW1lc3BhY2VVcmkiOiAidXJuOnR5cjpzeW50aGV0aWM6bGluZSIsICJpZGVudGlmaWVyVHlwZSI6ICJzdHJpbmciLCAidHlwZSI6ICJGbG9hdDMyIiwgInVuaXQiOiAia1BhIiwgInN0YWdlIjogImFscmVhZHktZW5naW5lZXJlZCJ9LCB7ImlkIjogInByZXNzdXJlLWRiIiwgInByb2ZpbGUiOiAiczctMzAwLWRiLXYxIiwgImFkZHJlc3MiOiAiREIxMC5EQkI2NCIsICJ0eXBlIjogIlVJbnQxNiIsICJ3aWR0aCI6IDIsICJ1bml0IjogImtQYSIsICJieXRlT3JkZXIiOiAiYmlnIiwgIndvcmRPcmRlciI6ICJoaWdoLWZpcnN0IiwgInN0YWdlIjogInJhdyJ9LCB7ImlkIjogInByZXNzdXJlLW1lbCIsICJwcm9maWxlIjogIm1lbHNlYy1kZXZpY2UtdjEiLCAiYWRkcmVzcyI6ICJEMTAwMCIsICJ0eXBlIjogIlVJbnQxNiIsICJ3aWR0aCI6IDEsICJ1bml0IjogImtQYSIsICJieXRlT3JkZXIiOiAibGl0dGxlIiwgIndvcmRPcmRlciI6ICJsb3ctZmlyc3QiLCAic3RhZ2UiOiAicmF3In1dfQ==",
+  "equipmentInstanceId": "import-line",
+  "capturedAt": "2026-10-17T00:00:00Z",
+  "origin": "synthetic",
+  "columnMap": {},
+  "contextConnections": [
+    {
+      "id": "import-0",
+      "label": "ab-logix-symbol-v1",
+      "equipmentInstanceId": "import-line",
+      "accessProfileRef": "ab-logix-symbol-v1"
+    },
+    {
+      "id": "import-1",
+      "label": "s7-1500-opcua-v1",
+      "equipmentInstanceId": "import-line",
+      "accessProfileRef": "s7-1500-opcua-v1"
+    },
+    {
+      "id": "import-2",
+      "label": "s7-300-db-v1",
+      "equipmentInstanceId": "import-line",
+      "accessProfileRef": "s7-300-db-v1"
+    },
+    {
+      "id": "import-3",
+      "label": "melsec-device-v1",
+      "equipmentInstanceId": "import-line",
+      "accessProfileRef": "melsec-device-v1"
+    }
+  ],
+  "kind": "import-batch",
+  "schemaVersion": "2.6.0",
+  "version": "1.0.0",
+  "parser": {
+    "name": "tyr-bounded-files",
+    "version": "1.0.0"
+  },
+  "sha256": "755fb7f065128e0171f7b64e451d1a4ca9774dd88dc1c44b75a7da6c2804667c",
+  "observations": [
+    {
+      "id": "row-0",
+      "raw": {
+        "id": "speed-ab",
+        "profile": "ab-logix-symbol-v1",
+        "address": "Motor.ActualSpeed",
+        "type": "Float32",
+        "unit": "rpm",
+        "stage": "already-engineered"
+      },
+      "locator": {
+        "kind": "json-pointer",
+        "pointer": "/records/0"
+      },
+      "derivation": [
+        {
+          "kind": "json-pointer",
+          "pointer": "/records/0"
+        }
+      ],
+      "issues": [],
+      "assumptions": [],
+      "draft": {
+        "kind": "source-definition",
+        "schemaVersion": "2.2.0",
+        "id": "imp-legacy-clean-speed-ab",
+        "version": "1.0.0",
+        "equipmentInstanceId": "import-line",
+        "connectionProfileRef": "import-0",
+        "accessProfileRef": "ab-logix-symbol-v1",
+        "status": "draft",
+        "rawAddressText": "Motor.ActualSpeed",
+        "addressRadix": null,
+        "access": {
+          "kind": "symbol",
+          "symbolPath": "Motor.ActualSpeed"
+        },
+        "rawRepresentation": {
+          "mode": "typed",
+          "valueType": "Float32"
+        },
+        "inputStage": "already-engineered",
+        "unit": {
+          "status": "known",
+          "code": "rpm"
+        },
+        "evidenceRefs": [
+          {
+            "artifactId": "import-legacy-clean",
+            "locator": {
+              "kind": "json-pointer",
+              "pointer": "/records/0"
+            }
+          }
+        ],
+        "viewOf": null
+      }
+    },
+    {
+      "id": "row-1",
+      "raw": {
+        "id": "pressure-ua",
+        "profile": "s7-1500-opcua-v1",
+        "address": "Line.Pressure",
+        "namespaceUri": "urn:tyr:synthetic:line",
+        "identifierType": "string",
+        "type": "Float32",
+        "unit": "kPa",
+        "stage": "already-engineered"
+      },
+      "locator": {
+        "kind": "json-pointer",
+        "pointer": "/records/1"
+      },
+      "derivation": [
+        {
+          "kind": "json-pointer",
+          "pointer": "/records/1"
+        }
+      ],
+      "issues": [],
+      "assumptions": [],
+      "draft": {
+        "kind": "source-definition",
+        "schemaVersion": "2.2.0",
+        "id": "imp-legacy-clean-pressure-ua",
+        "version": "1.0.0",
+        "equipmentInstanceId": "import-line",
+        "connectionProfileRef": "import-1",
+        "accessProfileRef": "s7-1500-opcua-v1",
+        "status": "draft",
+        "rawAddressText": "Line.Pressure",
+        "addressRadix": null,
+        "access": {
+          "kind": "opcua-node",
+          "namespaceUri": "urn:tyr:synthetic:line",
+          "identifierType": "string",
+          "identifier": "Line.Pressure"
+        },
+        "rawRepresentation": {
+          "mode": "typed",
+          "valueType": "Float32"
+        },
+        "inputStage": "already-engineered",
+        "unit": {
+          "status": "known",
+          "code": "kPa"
+        },
+        "evidenceRefs": [
+          {
+            "artifactId": "import-legacy-clean",
+            "locator": {
+              "kind": "json-pointer",
+              "pointer": "/records/1"
+            }
+          }
+        ],
+        "viewOf": null
+      }
+    },
+    {
+      "id": "row-2",
+      "raw": {
+        "id": "pressure-db",
+        "profile": "s7-300-db-v1",
+        "address": "DB10.DBB64",
+        "type": "UInt16",
+        "width": 2,
+        "unit": "kPa",
+        "byteOrder": "big",
+        "wordOrder": "high-first",
+        "stage": "raw"
+      },
+      "locator": {
+        "kind": "json-pointer",
+        "pointer": "/records/2"
+      },
+      "derivation": [
+        {
+          "kind": "json-pointer",
+          "pointer": "/records/2"
+        }
+      ],
+      "issues": [],
+      "assumptions": [],
+      "draft": {
+        "kind": "source-definition",
+        "schemaVersion": "2.2.0",
+        "id": "imp-legacy-clean-pressure-db",
+        "version": "1.0.0",
+        "equipmentInstanceId": "import-line",
+        "connectionProfileRef": "import-2",
+        "accessProfileRef": "s7-300-db-v1",
+        "status": "draft",
+        "rawAddressText": "DB10.DBB64",
+        "addressRadix": null,
+        "access": {
+          "kind": "db-offset",
+          "dbNumber": 10,
+          "byteOffset": 64,
+          "byteLength": 2,
+          "bitOffset": null
+        },
+        "rawRepresentation": {
+          "mode": "bytes",
+          "valueType": "UInt16",
+          "byteOrder": "big",
+          "wordOrder": "high-first"
+        },
+        "inputStage": "raw",
+        "unit": {
+          "status": "known",
+          "code": "kPa"
+        },
+        "evidenceRefs": [
+          {
+            "artifactId": "import-legacy-clean",
+            "locator": {
+              "kind": "json-pointer",
+              "pointer": "/records/2"
+            }
+          }
+        ],
+        "viewOf": null
+      }
+    },
+    {
+      "id": "row-3",
+      "raw": {
+        "id": "pressure-mel",
+        "profile": "melsec-device-v1",
+        "address": "D1000",
+        "type": "UInt16",
+        "width": 1,
+        "unit": "kPa",
+        "byteOrder": "little",
+        "wordOrder": "low-first",
+        "stage": "raw"
+      },
+      "locator": {
+        "kind": "json-pointer",
+        "pointer": "/records/3"
+      },
+      "derivation": [
+        {
+          "kind": "json-pointer",
+          "pointer": "/records/3"
+        }
+      ],
+      "issues": [],
+      "assumptions": [],
+      "draft": {
+        "kind": "source-definition",
+        "schemaVersion": "2.2.0",
+        "id": "imp-legacy-clean-pressure-mel",
+        "version": "1.0.0",
+        "equipmentInstanceId": "import-line",
+        "connectionProfileRef": "import-3",
+        "accessProfileRef": "melsec-device-v1",
+        "status": "draft",
+        "rawAddressText": "D1000",
+        "addressRadix": 10,
+        "access": {
+          "kind": "device-register",
+          "deviceArea": "D",
+          "addressIndex": 1000,
+          "addressUnit": "word16",
+          "wordCount": 1,
+          "bitOffset": null
+        },
+        "rawRepresentation": {
+          "mode": "bytes",
+          "valueType": "UInt16",
+          "byteOrder": "little",
+          "wordOrder": "low-first"
+        },
+        "inputStage": "raw",
+        "unit": {
+          "status": "known",
+          "code": "kPa"
+        },
+        "evidenceRefs": [
+          {
+            "artifactId": "import-legacy-clean",
+            "locator": {
+              "kind": "json-pointer",
+              "pointer": "/records/3"
+            }
+          }
+        ],
+        "viewOf": null
+      }
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "kind": "target-instance",
+  "schemaVersion": "2.0.0",
+  "id": "reuse-pump-db-target",
+  "version": "1.0.0",
+  "label": "재사용 압력 객체 db",
+  "equipmentInstanceId": "line-a-motor-db",
+  "semanticDefinitionRef": {
+    "id": "reuse-pump-db-r1-model",
+    "version": "1.0.0"
+  },
+  "evidenceRefs": [
+    {
+      "artifactId": "manual-structure-db-target",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    },
+    {
+      "artifactId": "manual-arithmetic-db-gain",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    },
+    {
+      "artifactId": "manual-structure-db-actual",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    }
+  ]
+}

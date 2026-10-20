@@ -1,0 +1,2 @@
+Field label: PLC setpoint destination · definition only
+Synthetic pressure definition; engineering scale declared in graph

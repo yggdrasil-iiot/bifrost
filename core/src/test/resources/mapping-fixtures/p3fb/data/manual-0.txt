@@ -1,0 +1,2 @@
+Field label: 상류 압력
+Synthetic pressure definition; engineering scale declared in graph

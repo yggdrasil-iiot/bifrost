@@ -1,0 +1,2 @@
+Field label: imp-review-base-unresolved
+Imported draft. SHA256 64cac491fd40d4c9ede000878e966032ef1a5ecfba9873173edbec82f2fc926b Review offline-reviewer: Synthetic engineering correction; explicit D4000 from independent fixture oracle

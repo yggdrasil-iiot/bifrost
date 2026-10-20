@@ -1,0 +1,89 @@
+{
+  "type": "object",
+  "properties": {
+    "kind": {
+      "const": "mapping-set"
+    },
+    "schemaVersion": {
+      "const": "2.12.0"
+    },
+    "id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "version": {
+      "$ref": "common.schema.json#/$defs/version"
+    },
+    "equipmentInstanceId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "targetInstanceRef": {
+      "$ref": "common.schema.json#/$defs/documentRef"
+    },
+    "mappings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "mappingId": {
+            "$ref": "common.schema.json#/$defs/id"
+          },
+          "valueRef": {
+            "$ref": "common.schema.json#/$defs/bindingValue"
+          },
+          "memberPath": {
+            "$ref": "common.schema.json#/$defs/memberPath"
+          },
+          "transform": {
+            "type": "array",
+            "items": {
+              "$ref": "common.schema.json#/$defs/transform"
+            },
+            "minItems": 0,
+            "maxItems": 32
+          },
+          "outputUnit": {
+            "$ref": "common.schema.json#/$defs/unit"
+          },
+          "invalidValuePolicy": {
+            "const": "bad-quality"
+          },
+          "evidenceRefs": {
+            "type": "array",
+            "items": {
+              "$ref": "common.schema.json#/$defs/evidenceRef"
+            },
+            "minItems": 1,
+            "maxItems": 256
+          },
+          "temporalPolicy": {
+            "$ref": "common.schema.json#/$defs/temporalPolicy"
+          }
+        },
+        "required": [
+          "mappingId",
+          "valueRef",
+          "memberPath",
+          "transform",
+          "outputUnit",
+          "invalidValuePolicy",
+          "evidenceRefs"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1,
+      "maxItems": 256
+    }
+  },
+  "required": [
+    "kind",
+    "schemaVersion",
+    "id",
+    "version",
+    "equipmentInstanceId",
+    "targetInstanceRef",
+    "mappings"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:tyr:contract:2.12.0:mapping-set"
+}

@@ -1,0 +1,102 @@
+{
+  "kind": "source-observation",
+  "schemaVersion": "1.1.0",
+  "id": "import-legacy-clean-row-1",
+  "version": "1.0.0",
+  "evidenceRefs": [
+    {
+      "artifactId": "import-legacy-clean",
+      "locator": {
+        "kind": "json-pointer",
+        "pointer": "/records/1"
+      }
+    }
+  ],
+  "extractor": {
+    "name": "tyr-bounded-files",
+    "version": "1.0.0"
+  },
+  "claims": [
+    {
+      "field": "raw",
+      "value": {
+        "id": "pressure-ua",
+        "profile": "s7-1500-opcua-v1",
+        "address": "Line.Pressure",
+        "namespaceUri": "urn:tyr:synthetic:line",
+        "identifierType": "string",
+        "type": "Float32",
+        "unit": "kPa",
+        "stage": "already-engineered"
+      },
+      "certainty": "explicit"
+    },
+    {
+      "field": "derivation",
+      "value": {
+        "id": "row-1",
+        "raw": {
+          "id": "pressure-ua",
+          "profile": "s7-1500-opcua-v1",
+          "address": "Line.Pressure",
+          "namespaceUri": "urn:tyr:synthetic:line",
+          "identifierType": "string",
+          "type": "Float32",
+          "unit": "kPa",
+          "stage": "already-engineered"
+        },
+        "locator": {
+          "kind": "json-pointer",
+          "pointer": "/records/1"
+        },
+        "derivation": [
+          {
+            "kind": "json-pointer",
+            "pointer": "/records/1"
+          }
+        ],
+        "issues": [],
+        "assumptions": [],
+        "draft": {
+          "kind": "source-definition",
+          "schemaVersion": "2.2.0",
+          "id": "imp-legacy-clean-pressure-ua",
+          "version": "1.0.0",
+          "equipmentInstanceId": "import-line",
+          "connectionProfileRef": "import-1",
+          "accessProfileRef": "s7-1500-opcua-v1",
+          "status": "draft",
+          "rawAddressText": "Line.Pressure",
+          "addressRadix": null,
+          "access": {
+            "kind": "opcua-node",
+            "namespaceUri": "urn:tyr:synthetic:line",
+            "identifierType": "string",
+            "identifier": "Line.Pressure"
+          },
+          "rawRepresentation": {
+            "mode": "typed",
+            "valueType": "Float32"
+          },
+          "inputStage": "already-engineered",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "evidenceRefs": [
+            {
+              "artifactId": "import-legacy-clean",
+              "locator": {
+                "kind": "json-pointer",
+                "pointer": "/records/1"
+              }
+            }
+          ],
+          "viewOf": null
+        }
+      },
+      "certainty": "inferred"
+    }
+  ],
+  "status": "partial"
+}

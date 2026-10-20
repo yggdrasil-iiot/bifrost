@@ -1,0 +1,58 @@
+{
+  "kind": "mapping-proposal",
+  "schemaVersion": "2.0.0",
+  "id": "local-workspace",
+  "version": "2.0.0",
+  "baseRelease": null,
+  "files": [
+    {
+      "path": "evidence/1.json",
+      "kind": "evidence-artifact",
+      "id": "manual-pressure-down",
+      "version": "1.0.0",
+      "sha256": "5d264173794b2350fd765a32064bc08f2495f9917caa8e41e5fdfed4b71a5402"
+    },
+    {
+      "path": "evidence/0.json",
+      "kind": "evidence-artifact",
+      "id": "manual-pressure-up",
+      "version": "1.0.0",
+      "sha256": "7eb515a3110bbc7bffa9529bc949b8a88aeaf76c899457fe712052ad2a9cd362"
+    },
+    {
+      "path": "mappings/0.json",
+      "kind": "mapping-set",
+      "id": "pressure-direct-mapping",
+      "version": "1.0.0",
+      "sha256": "0d88921552a9a3c1f1d60cf459fa919d6614801b395039dafc823b530d5d4881"
+    },
+    {
+      "path": "semantics/0.json",
+      "kind": "semantic-definition",
+      "id": "filter-pressure-model",
+      "version": "1.0.0",
+      "sha256": "4e4406758e8d9cce07ca6a530ac8e6c11d243f477544ff7ee78bc0d2a9946d8c"
+    },
+    {
+      "path": "sources/0.json",
+      "kind": "source-definition",
+      "id": "pressure-up",
+      "version": "1.0.0",
+      "sha256": "0434d83fdf8ad46b50ee49e75478f368fa5d2858640ca5ea2f95ec23b77da7b5"
+    },
+    {
+      "path": "targets/0.json",
+      "kind": "target-instance",
+      "id": "filter-direct",
+      "version": "1.0.0",
+      "sha256": "ce7dda6e0aaca3e48b5fd6c53cf11132e1d8a6a10ddeed47041dc4fab9568ae1"
+    },
+    {
+      "path": "graphs/0.json",
+      "kind": "value-graph",
+      "id": "pressure-direct",
+      "version": "1.0.0",
+      "sha256": "72859a782cef7b9d992ad7cd3bcf3098d2817be077c7880d52840b4ea2bdc71e"
+    }
+  ]
+}

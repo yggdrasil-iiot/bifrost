@@ -1,0 +1,63 @@
+{
+  "kind": "value-graph",
+  "schemaVersion": "2.2.0",
+  "id": "a07-melsec-graph",
+  "version": "1.0.0",
+  "equipmentInstanceId": "line-a-motor-melsec",
+  "nodes": [
+    {
+      "nodeId": "alarm",
+      "op": "identity",
+      "inputs": {
+        "value": {
+          "kind": "source",
+          "sourceRef": {
+            "id": "a07-melsec-alarm-alias",
+            "version": "1.0.0"
+          }
+        }
+      },
+      "valueType": "Boolean",
+      "unit": {
+        "status": "not-applicable"
+      },
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-a07-melsec-word",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-a07-melsec-word-alias",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-a07-melsec-running",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-a07-melsec-alarm",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-a07-melsec-alarm-alias",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    }
+  ]
+}

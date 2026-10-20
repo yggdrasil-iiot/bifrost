@@ -1,0 +1,81 @@
+{
+  "kind": "value-graph",
+  "schemaVersion": "2.11.0",
+  "id": "pressure-direct",
+  "version": "1.0.0",
+  "equipmentInstanceId": "line-a-motor-melsec",
+  "nodes": [
+    {
+      "nodeId": "difference",
+      "op": "sqrt",
+      "inputs": {
+        "value": {
+          "kind": "source",
+          "sourceRef": {
+            "id": "pressure-up",
+            "version": "1.0.0"
+          }
+        }
+      },
+      "valueType": "Decimal",
+      "unit": {
+        "status": "known",
+        "code": "1"
+      },
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-pressure-up",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-pressure-down",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ],
+      "precision": 34,
+      "rounding": "half-even"
+    },
+    {
+      "nodeId": "limited",
+      "op": "clamp",
+      "inputs": {
+        "value": {
+          "kind": "source",
+          "sourceRef": {
+            "id": "pressure-up",
+            "version": "1.0.0"
+          }
+        }
+      },
+      "valueType": "Decimal",
+      "unit": {
+        "status": "known",
+        "code": "1"
+      },
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-pressure-up",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-pressure-down",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ],
+      "low": "0",
+      "high": "10"
+    }
+  ]
+}

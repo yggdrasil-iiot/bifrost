@@ -1,0 +1,136 @@
+{
+  "type": "object",
+  "properties": {
+    "kind": {
+      "const": "value-graph"
+    },
+    "schemaVersion": {
+      "const": "2.0.0"
+    },
+    "id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "version": {
+      "$ref": "common.schema.json#/$defs/version"
+    },
+    "equipmentInstanceId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "nodeId": {
+                "$ref": "common.schema.json#/$defs/id"
+              },
+              "op": {
+                "const": "decode-u32-words"
+              },
+              "inputs": {
+                "type": "object",
+                "properties": {
+                  "low": {
+                    "$ref": "common.schema.json#/$defs/nodeInput"
+                  },
+                  "high": {
+                    "$ref": "common.schema.json#/$defs/nodeInput"
+                  }
+                },
+                "required": [
+                  "low",
+                  "high"
+                ],
+                "additionalProperties": false
+              },
+              "valueType": {
+                "const": "UInt32"
+              },
+              "unit": {
+                "$ref": "common.schema.json#/$defs/unit"
+              },
+              "evidenceRefs": {
+                "type": "array",
+                "items": {
+                  "$ref": "common.schema.json#/$defs/evidenceRef"
+                },
+                "minItems": 1,
+                "maxItems": 256
+              }
+            },
+            "required": [
+              "nodeId",
+              "op",
+              "inputs",
+              "valueType",
+              "unit",
+              "evidenceRefs"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "nodeId": {
+                "$ref": "common.schema.json#/$defs/id"
+              },
+              "op": {
+                "const": "identity"
+              },
+              "inputs": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "$ref": "common.schema.json#/$defs/nodeInput"
+                  }
+                },
+                "required": [
+                  "value"
+                ],
+                "additionalProperties": false
+              },
+              "valueType": {
+                "$ref": "common.schema.json#/$defs/graphType"
+              },
+              "unit": {
+                "$ref": "common.schema.json#/$defs/unit"
+              },
+              "evidenceRefs": {
+                "type": "array",
+                "items": {
+                  "$ref": "common.schema.json#/$defs/evidenceRef"
+                },
+                "minItems": 1,
+                "maxItems": 256
+              }
+            },
+            "required": [
+              "nodeId",
+              "op",
+              "inputs",
+              "valueType",
+              "unit",
+              "evidenceRefs"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "minItems": 1,
+      "maxItems": 256
+    }
+  },
+  "required": [
+    "kind",
+    "schemaVersion",
+    "id",
+    "version",
+    "equipmentInstanceId",
+    "nodes"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:tyr:contract:2.0.0:value-graph"
+}

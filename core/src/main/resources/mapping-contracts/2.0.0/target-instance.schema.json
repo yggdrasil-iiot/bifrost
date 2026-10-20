@@ -1,0 +1,48 @@
+{
+  "type": "object",
+  "properties": {
+    "kind": {
+      "const": "target-instance"
+    },
+    "schemaVersion": {
+      "const": "2.0.0"
+    },
+    "id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "version": {
+      "$ref": "common.schema.json#/$defs/version"
+    },
+    "equipmentInstanceId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "label": {
+      "type": "string",
+      "minLength": 1
+    },
+    "semanticDefinitionRef": {
+      "$ref": "common.schema.json#/$defs/documentRef"
+    },
+    "evidenceRefs": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/evidenceRef"
+      },
+      "minItems": 1,
+      "maxItems": 256
+    }
+  },
+  "required": [
+    "kind",
+    "schemaVersion",
+    "id",
+    "version",
+    "equipmentInstanceId",
+    "label",
+    "semanticDefinitionRef",
+    "evidenceRefs"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:tyr:contract:2.0.0:target-instance"
+}

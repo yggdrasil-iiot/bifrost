@@ -1,0 +1,339 @@
+{
+  "kind": "mapping-set",
+  "schemaVersion": "2.2.0",
+  "id": "a07-ab-mapping",
+  "version": "1.0.0",
+  "equipmentInstanceId": "line-a-motor-ab",
+  "targetInstanceRef": {
+    "id": "a07-ab-status",
+    "version": "1.0.0"
+  },
+  "mappings": [
+    {
+      "mappingId": "ab-word",
+      "valueRef": {
+        "kind": "source",
+        "sourceRef": {
+          "id": "a07-ab-word",
+          "version": "1.0.0"
+        }
+      },
+      "memberPath": [
+        {
+          "kind": "member",
+          "memberId": "word"
+        }
+      ],
+      "transform": [
+        {
+          "op": "cast",
+          "to": "Int32",
+          "rounding": "exact",
+          "overflow": "error"
+        }
+      ],
+      "outputUnit": {
+        "status": "not-applicable"
+      },
+      "invalidValuePolicy": "bad-quality",
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-a07-ab-word",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-a07-ab-word-alias",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-a07-ab-running",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-a07-ab-alarm",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-a07-ab-alarm-alias",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    },
+    {
+      "mappingId": "ab-word-alias",
+      "valueRef": {
+        "kind": "source",
+        "sourceRef": {
+          "id": "a07-ab-word-alias",
+          "version": "1.0.0"
+        }
+      },
+      "memberPath": [
+        {
+          "kind": "member",
+          "memberId": "word-alias"
+        }
+      ],
+      "transform": [
+        {
+          "op": "cast",
+          "to": "Int32",
+          "rounding": "exact",
+          "overflow": "error"
+        }
+      ],
+      "outputUnit": {
+        "status": "not-applicable"
+      },
+      "invalidValuePolicy": "bad-quality",
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-a07-ab-word",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-a07-ab-word-alias",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-a07-ab-running",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-a07-ab-alarm",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-a07-ab-alarm-alias",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    },
+    {
+      "mappingId": "ab-running",
+      "valueRef": {
+        "kind": "source",
+        "sourceRef": {
+          "id": "a07-ab-running",
+          "version": "1.0.0"
+        }
+      },
+      "memberPath": [
+        {
+          "kind": "member",
+          "memberId": "running"
+        }
+      ],
+      "transform": [
+        {
+          "op": "cast",
+          "to": "Boolean",
+          "rounding": "exact",
+          "overflow": "error"
+        }
+      ],
+      "outputUnit": {
+        "status": "not-applicable"
+      },
+      "invalidValuePolicy": "bad-quality",
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-a07-ab-word",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-a07-ab-word-alias",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-a07-ab-running",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-a07-ab-alarm",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-a07-ab-alarm-alias",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    },
+    {
+      "mappingId": "ab-alarm",
+      "valueRef": {
+        "kind": "source",
+        "sourceRef": {
+          "id": "a07-ab-alarm",
+          "version": "1.0.0"
+        }
+      },
+      "memberPath": [
+        {
+          "kind": "member",
+          "memberId": "alarm"
+        }
+      ],
+      "transform": [
+        {
+          "op": "cast",
+          "to": "Boolean",
+          "rounding": "exact",
+          "overflow": "error"
+        }
+      ],
+      "outputUnit": {
+        "status": "not-applicable"
+      },
+      "invalidValuePolicy": "bad-quality",
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-a07-ab-word",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-a07-ab-word-alias",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-a07-ab-running",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-a07-ab-alarm",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-a07-ab-alarm-alias",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    },
+    {
+      "mappingId": "ab-alarm-alias",
+      "valueRef": {
+        "kind": "graph",
+        "graphRef": {
+          "id": "a07-ab-graph",
+          "version": "1.0.0"
+        },
+        "nodeId": "alarm"
+      },
+      "memberPath": [
+        {
+          "kind": "member",
+          "memberId": "alarm-alias"
+        }
+      ],
+      "transform": [
+        {
+          "op": "cast",
+          "to": "Boolean",
+          "rounding": "exact",
+          "overflow": "error"
+        }
+      ],
+      "outputUnit": {
+        "status": "not-applicable"
+      },
+      "invalidValuePolicy": "bad-quality",
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-a07-ab-word",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-a07-ab-word-alias",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-a07-ab-running",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-a07-ab-alarm",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-a07-ab-alarm-alias",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    }
+  ]
+}

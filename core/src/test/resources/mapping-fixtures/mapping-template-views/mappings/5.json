@@ -1,0 +1,65 @@
+{
+  "kind": "mapping-set",
+  "schemaVersion": "2.2.0",
+  "id": "reuse-view-melsec-mapping",
+  "version": "1.0.0",
+  "equipmentInstanceId": "line-a-motor-melsec",
+  "targetInstanceRef": {
+    "id": "reuse-view-melsec-target",
+    "version": "1.0.0"
+  },
+  "mappings": [
+    {
+      "mappingId": "reuse-view-melsec-b319fe81e0faa",
+      "valueRef": {
+        "kind": "graph",
+        "graphRef": {
+          "id": "reuse-view-melsec-r1-g0",
+          "version": "1.0.0"
+        },
+        "nodeId": "alarm"
+      },
+      "memberPath": [
+        {
+          "kind": "member",
+          "memberId": "alarm-alias"
+        }
+      ],
+      "transform": [
+        {
+          "op": "cast",
+          "to": "Boolean",
+          "rounding": "exact",
+          "overflow": "error"
+        }
+      ],
+      "outputUnit": {
+        "status": "not-applicable"
+      },
+      "invalidValuePolicy": "bad-quality",
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-a07-melsec-alarm-alias",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-a07-melsec-word",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-a07-melsec-alarm",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    }
+  ]
+}

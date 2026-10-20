@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:tyr:contract:2.8.0:review-baseline",
+  "type": "object",
+  "properties": {
+    "kind": {
+      "const": "review-baseline"
+    },
+    "schemaVersion": {
+      "const": "2.8.0"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9._/-]*$",
+      "maxLength": 128
+    },
+    "label": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "workspaceRevision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "workspaceSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "capturedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "workspace": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "kind",
+    "schemaVersion",
+    "id",
+    "label",
+    "workspaceRevision",
+    "workspaceSha256",
+    "capturedAt",
+    "workspace"
+  ]
+}

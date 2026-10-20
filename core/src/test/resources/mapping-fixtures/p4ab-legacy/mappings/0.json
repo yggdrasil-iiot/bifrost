@@ -1,0 +1,58 @@
+{
+  "kind": "mapping-set",
+  "schemaVersion": "2.2.0",
+  "id": "import-speed-mapping",
+  "version": "1.0.0",
+  "equipmentInstanceId": "import-line",
+  "targetInstanceRef": {
+    "id": "import-motor",
+    "version": "1.0.0"
+  },
+  "mappings": [
+    {
+      "mappingId": "speed-binding",
+      "valueRef": {
+        "kind": "source",
+        "sourceRef": {
+          "id": "imp-legacy-clean-speed-ab",
+          "version": "1.0.0"
+        }
+      },
+      "memberPath": [
+        {
+          "kind": "member",
+          "memberId": "speed"
+        }
+      ],
+      "transform": [
+        {
+          "op": "cast",
+          "to": "Double",
+          "overflow": "error",
+          "rounding": "exact"
+        }
+      ],
+      "outputUnit": {
+        "status": "known",
+        "code": "rpm"
+      },
+      "invalidValuePolicy": "bad-quality",
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-imp-legacy-clean-speed-ab",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "import-legacy-clean",
+          "locator": {
+            "kind": "json-pointer",
+            "pointer": "/records/0"
+          }
+        }
+      ]
+    }
+  ]
+}

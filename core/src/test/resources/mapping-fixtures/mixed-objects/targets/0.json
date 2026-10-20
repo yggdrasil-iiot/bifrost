@@ -1,0 +1,49 @@
+{
+  "kind": "target-instance",
+  "schemaVersion": "2.0.0",
+  "id": "reuse-combined-pump-target",
+  "version": "1.0.0",
+  "equipmentInstanceId": "record-line-b",
+  "label": "PLC·레코드·상수·외부 값 통합 객체",
+  "semanticDefinitionRef": {
+    "id": "reuse-combined-pump-r1-model",
+    "version": "1.0.0"
+  },
+  "evidenceRefs": [
+    {
+      "artifactId": "manual-mixed-baseline",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    },
+    {
+      "artifactId": "manual-record-field-402cc6a5a2ad6fe30100d639",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    },
+    {
+      "artifactId": "manual-mixed-line-code",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    },
+    {
+      "artifactId": "manual-mixed-plc-pressure",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    },
+    {
+      "artifactId": "manual-mixed-external-reference",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    }
+  ]
+}

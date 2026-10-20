@@ -1,0 +1,17 @@
+{
+  "kind": "evidence-artifact",
+  "schemaVersion": "1.0.0",
+  "id": "manual-mixed-plc-write",
+  "version": "1.0.0",
+  "origin": "synthetic",
+  "file": {
+    "path": "data/manual-7.txt",
+    "sha256": "d7feb80f7ffca161d6ff769a5216ca2a11c1fa7859d9b9f487cb79080cb490a5",
+    "mediaType": "text/plain"
+  },
+  "capturedAt": "2026-10-17T00:00:00Z",
+  "product": null,
+  "scope": [
+    "mixed-line"
+  ]
+}

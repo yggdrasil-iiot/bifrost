@@ -1,0 +1,374 @@
+{
+  "type": "object",
+  "properties": {
+    "kind": {
+      "const": "record-mapping"
+    },
+    "schemaVersion": {
+      "const": "2.20.0"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9._-]{0,63}$"
+    },
+    "version": {
+      "$ref": "common.schema.json#/$defs/version"
+    },
+    "label": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "equipmentInstanceId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "templateRef": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "version": {
+          "$ref": "common.schema.json#/$defs/version"
+        },
+        "sha256": {
+          "$ref": "common.schema.json#/$defs/sha256"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "sha256"
+      ],
+      "additionalProperties": false
+    },
+    "semanticDefinitionRef": {
+      "$ref": "common.schema.json#/$defs/documentRef"
+    },
+    "previousMappingRef": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "common.schema.json#/$defs/id"
+            },
+            "version": {
+              "$ref": "common.schema.json#/$defs/version"
+            },
+            "sha256": {
+              "$ref": "common.schema.json#/$defs/sha256"
+            }
+          },
+          "required": [
+            "id",
+            "version",
+            "sha256"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "resultSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "version": {
+          "$ref": "common.schema.json#/$defs/version"
+        },
+        "providerRef": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "valueKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "query": {
+          "type": "object",
+          "properties": {
+            "language": {
+              "enum": [
+                "none",
+                "opaque",
+                "sql"
+              ]
+            },
+            "text": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "maxLength": 16384
+            }
+          },
+          "required": [
+            "language",
+            "text"
+          ],
+          "additionalProperties": false
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "fieldId": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "valueType": {
+                "enum": [
+                  "Double",
+                  "Int32",
+                  "Boolean",
+                  "String"
+                ]
+              },
+              "unit": {
+                "$ref": "common.schema.json#/$defs/unit"
+              },
+              "inputStage": {
+                "enum": [
+                  "raw",
+                  "already-engineered"
+                ]
+              },
+              "nullable": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "fieldId",
+              "name",
+              "valueType",
+              "unit",
+              "inputStage",
+              "nullable"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 32
+        },
+        "keyFields": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "minItems": 1,
+          "maxItems": 4
+        },
+        "unknownFields": {
+          "enum": [
+            "reject",
+            "preserve"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "providerRef",
+        "valueKey",
+        "query",
+        "fields",
+        "keyFields",
+        "unknownFields"
+      ],
+      "additionalProperties": false
+    },
+    "bindings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "slotId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "fieldId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "nullPolicy": {
+            "enum": [
+              "reject",
+              "default"
+            ]
+          },
+          "defaultValue": {
+            "type": [
+              "string",
+              "boolean",
+              "null"
+            ],
+            "maxLength": 4096
+          }
+        },
+        "required": [
+          "slotId",
+          "fieldId",
+          "nullPolicy",
+          "defaultValue"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1,
+      "maxItems": 32
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "enum": [
+            "object",
+            "array"
+          ]
+        },
+        "zeroPolicy": {
+          "enum": [
+            "reject",
+            "null",
+            "empty"
+          ]
+        },
+        "manyPolicy": {
+          "enum": [
+            "reject",
+            "all"
+          ]
+        },
+        "maxRows": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64
+        },
+        "order": {
+          "const": "canonical-key-utf8"
+        }
+      },
+      "required": [
+        "mode",
+        "zeroPolicy",
+        "manyPolicy",
+        "maxRows",
+        "order"
+      ],
+      "additionalProperties": false
+    },
+    "selection": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "all",
+            "key"
+          ]
+        },
+        "key": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "minItems": 0,
+          "maxItems": 4
+        }
+      },
+      "required": [
+        "kind",
+        "key"
+      ],
+      "additionalProperties": false
+    },
+    "authoredBy": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "authoredAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "provenance": {
+      "type": "object",
+      "properties": {
+        "origin": {
+          "enum": [
+            "synthetic",
+            "field"
+          ]
+        },
+        "capturedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "note": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16384
+        }
+      },
+      "required": [
+        "origin",
+        "capturedAt",
+        "note"
+      ],
+      "additionalProperties": false
+    },
+    "evidenceRefs": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/evidenceRef"
+      },
+      "minItems": 1,
+      "maxItems": 1
+    }
+  },
+  "required": [
+    "kind",
+    "schemaVersion",
+    "id",
+    "version",
+    "label",
+    "equipmentInstanceId",
+    "templateRef",
+    "semanticDefinitionRef",
+    "previousMappingRef",
+    "resultSchema",
+    "bindings",
+    "output",
+    "selection",
+    "authoredBy",
+    "authoredAt",
+    "reason",
+    "provenance",
+    "evidenceRefs"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:tyr:contract:2.20.0:record-mapping"
+}

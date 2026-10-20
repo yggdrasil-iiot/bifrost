@@ -1,0 +1,28 @@
+{
+  "kind": "target-instance",
+  "schemaVersion": "2.0.0",
+  "id": "import-motor",
+  "version": "1.0.0",
+  "equipmentInstanceId": "import-line",
+  "label": "Filter direct",
+  "semanticDefinitionRef": {
+    "id": "import-speed-model",
+    "version": "1.0.0"
+  },
+  "evidenceRefs": [
+    {
+      "artifactId": "manual-imp-legacy-clean-speed-ab",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    },
+    {
+      "artifactId": "import-legacy-clean",
+      "locator": {
+        "kind": "json-pointer",
+        "pointer": "/records/0"
+      }
+    }
+  ]
+}

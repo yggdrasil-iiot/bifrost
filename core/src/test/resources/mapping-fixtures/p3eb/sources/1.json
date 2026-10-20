@@ -1,0 +1,56 @@
+{
+  "kind": "source-definition",
+  "schemaVersion": "2.4.0",
+  "id": "array-pressures-ua",
+  "version": "1.0.0",
+  "equipmentInstanceId": "line-a-motor-ua",
+  "connectionProfileRef": "logical-ua",
+  "accessProfileRef": "s7-1500-opcua-v1",
+  "status": "ready",
+  "rawAddressText": "nsu=urn:fixture;Filter.Pressures",
+  "addressRadix": null,
+  "access": {
+    "kind": "opcua-node",
+    "namespaceUri": "urn:tyr:sample:s7-1500",
+    "identifierType": "string",
+    "identifier": "Filter.Pressures"
+  },
+  "rawRepresentation": {
+    "mode": "typed",
+    "valueType": "Float32"
+  },
+  "inputStage": "raw",
+  "unit": {
+    "status": "known",
+    "code": "kPa"
+  },
+  "evidenceRefs": [
+    {
+      "artifactId": "manual-array-pressures-ua",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    }
+  ],
+  "viewOf": null,
+  "fixedArray": {
+    "shape": [
+      2,
+      3
+    ],
+    "lowerBounds": [
+      0,
+      0
+    ],
+    "strides": [
+      4,
+      1
+    ],
+    "strideUnit": "element",
+    "range": {
+      "start": 0,
+      "endExclusive": 7
+    }
+  }
+}

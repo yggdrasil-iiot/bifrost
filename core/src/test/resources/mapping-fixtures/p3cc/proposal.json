@@ -1,0 +1,268 @@
+{
+  "kind": "mapping-proposal",
+  "schemaVersion": "2.0.0",
+  "id": "local-workspace",
+  "version": "2.0.0",
+  "baseRelease": null,
+  "files": [
+    {
+      "path": "evidence/2.json",
+      "kind": "evidence-artifact",
+      "id": "manual-arithmetic-ab-gain",
+      "version": "1.0.0",
+      "sha256": "068594e80fa6b4af9fbbed711132e7e5e13be3fb8ab5ac810304fa2a56e239ed"
+    },
+    {
+      "path": "evidence/8.json",
+      "kind": "evidence-artifact",
+      "id": "manual-arithmetic-db-gain",
+      "version": "1.0.0",
+      "sha256": "dca8b5db574483129de82ce99b10ad95ddaf2cea10cdafce18ab5b5a7582cdd1"
+    },
+    {
+      "path": "evidence/11.json",
+      "kind": "evidence-artifact",
+      "id": "manual-arithmetic-melsec-gain",
+      "version": "1.0.0",
+      "sha256": "63b22daf8271fd2cff3fcf4c8eaf6d0ca7a00f8f7b1b80d67b042cec44f700d6"
+    },
+    {
+      "path": "evidence/5.json",
+      "kind": "evidence-artifact",
+      "id": "manual-arithmetic-ua-gain",
+      "version": "1.0.0",
+      "sha256": "9e87f3f85d30febba63b690a7a4d7b1d25175566396cb5c50244ab3468933a10"
+    },
+    {
+      "path": "evidence/0.json",
+      "kind": "evidence-artifact",
+      "id": "manual-structure-ab-actual",
+      "version": "1.0.0",
+      "sha256": "d273fe0d8c7474b9d066ef0d2b7db79b2720ad67618c609a0759070683dbc58c"
+    },
+    {
+      "path": "evidence/1.json",
+      "kind": "evidence-artifact",
+      "id": "manual-structure-ab-target",
+      "version": "1.0.0",
+      "sha256": "74a8caf14801d1ae0d44d88e54a84145270c5ce7a89b3154064f25cf0424451f"
+    },
+    {
+      "path": "evidence/6.json",
+      "kind": "evidence-artifact",
+      "id": "manual-structure-db-actual",
+      "version": "1.0.0",
+      "sha256": "b51c83781344bd744088c309c98c4cbe6879612e1436fe1580d16027da85c5eb"
+    },
+    {
+      "path": "evidence/7.json",
+      "kind": "evidence-artifact",
+      "id": "manual-structure-db-target",
+      "version": "1.0.0",
+      "sha256": "5cd6854e79397e53852384faebf49dacdc2b35c7fbfe1b7e40d0f29b5dfca0f2"
+    },
+    {
+      "path": "evidence/9.json",
+      "kind": "evidence-artifact",
+      "id": "manual-structure-melsec-actual",
+      "version": "1.0.0",
+      "sha256": "1ce5edaea0f96e1dca0b19adf6aeac7e20258eea318508ed596d5302fa0db837"
+    },
+    {
+      "path": "evidence/10.json",
+      "kind": "evidence-artifact",
+      "id": "manual-structure-melsec-target",
+      "version": "1.0.0",
+      "sha256": "3dcf3292d3715edf829c0c283cf5a6d6817b86a864e3696229bae9fb48b03a8f"
+    },
+    {
+      "path": "evidence/3.json",
+      "kind": "evidence-artifact",
+      "id": "manual-structure-ua-actual",
+      "version": "1.0.0",
+      "sha256": "4fe6a25d010f548e13735bf65d32b77bfbc36cb90b4a35d7845860982160dff8"
+    },
+    {
+      "path": "evidence/4.json",
+      "kind": "evidence-artifact",
+      "id": "manual-structure-ua-target",
+      "version": "1.0.0",
+      "sha256": "1155112e5013ac446ec2db9c0f017ff7e369bfdcb891732cb3fa56f83be2e5cd"
+    },
+    {
+      "path": "mappings/0.json",
+      "kind": "mapping-set",
+      "id": "arithmetic-mapping-ab",
+      "version": "1.0.0",
+      "sha256": "e1d59b0bde0bfa728776a6e65bc220d1ccda8368cb9fa73a412de6ffe1f4c074"
+    },
+    {
+      "path": "mappings/2.json",
+      "kind": "mapping-set",
+      "id": "arithmetic-mapping-db",
+      "version": "1.0.0",
+      "sha256": "30270fba63b47691778abfa322d248539ba038b8f342b141c9e4468cead4fa58"
+    },
+    {
+      "path": "mappings/3.json",
+      "kind": "mapping-set",
+      "id": "arithmetic-mapping-melsec",
+      "version": "1.0.0",
+      "sha256": "252f7f3faec587c9c7dffe8e3839a5f111a9644ea0afb1c90612ec189bdc0f3b"
+    },
+    {
+      "path": "mappings/1.json",
+      "kind": "mapping-set",
+      "id": "arithmetic-mapping-ua",
+      "version": "1.0.0",
+      "sha256": "c16d5f0310be9374133393e3bc6d00ee8b0dff5e3783b6ca47d0acadffdee2c0"
+    },
+    {
+      "path": "semantics/0.json",
+      "kind": "semantic-definition",
+      "id": "arithmetic-model",
+      "version": "1.0.0",
+      "sha256": "3df5ce3871a09df70144f695da8970d5605e91526d0a572d52b704bc4f31611f"
+    },
+    {
+      "path": "sources/2.json",
+      "kind": "source-definition",
+      "id": "arithmetic-ab-gain",
+      "version": "1.0.0",
+      "sha256": "730e4bb11d44b8d97ba5332c7adcef6045540b3a9a3805f695891c387804f107"
+    },
+    {
+      "path": "sources/8.json",
+      "kind": "source-definition",
+      "id": "arithmetic-db-gain",
+      "version": "1.0.0",
+      "sha256": "990262a747d4f2d4969292568d74c79206b57ead4e93c8d252c9bcd0d1d756a6"
+    },
+    {
+      "path": "sources/11.json",
+      "kind": "source-definition",
+      "id": "arithmetic-melsec-gain",
+      "version": "1.0.0",
+      "sha256": "1aacc85390bdb53c831338ac39096bf9ebd3b95c7f6192a25ac1f53336c88e75"
+    },
+    {
+      "path": "sources/5.json",
+      "kind": "source-definition",
+      "id": "arithmetic-ua-gain",
+      "version": "1.0.0",
+      "sha256": "a0a270b1398f10588e4195308ceb0709378e90792b6f7215ec5b17ecab45d1c1"
+    },
+    {
+      "path": "sources/0.json",
+      "kind": "source-definition",
+      "id": "structure-ab-actual",
+      "version": "1.0.0",
+      "sha256": "6c9db4d73588313c781895209264a36a5f8a21521842a26c56caddad4ff91691"
+    },
+    {
+      "path": "sources/1.json",
+      "kind": "source-definition",
+      "id": "structure-ab-target",
+      "version": "1.0.0",
+      "sha256": "77c14792414104629348f20493fe1d0698811dfb8d742048865113ab46139ad4"
+    },
+    {
+      "path": "sources/6.json",
+      "kind": "source-definition",
+      "id": "structure-db-actual",
+      "version": "1.0.0",
+      "sha256": "4626511f31b09947c899acf32eddc627d58419a67270e05730ed88da35121854"
+    },
+    {
+      "path": "sources/7.json",
+      "kind": "source-definition",
+      "id": "structure-db-target",
+      "version": "1.0.0",
+      "sha256": "b089a7355075002c208004a41b05cd3da2ed95090a19cbd75de95a238ad89e55"
+    },
+    {
+      "path": "sources/9.json",
+      "kind": "source-definition",
+      "id": "structure-melsec-actual",
+      "version": "1.0.0",
+      "sha256": "c00bd54961540776ed8fef5e747df31dfe82498d534a39de0ffba4197264ec24"
+    },
+    {
+      "path": "sources/10.json",
+      "kind": "source-definition",
+      "id": "structure-melsec-target",
+      "version": "1.0.0",
+      "sha256": "599e0582003e2dea068ccef3171de6d2c5c0b076fbc7f593914eb299210c44a8"
+    },
+    {
+      "path": "sources/3.json",
+      "kind": "source-definition",
+      "id": "structure-ua-actual",
+      "version": "1.0.0",
+      "sha256": "eb01304f14502361756419a1f858a60def86b828dff930770c3c791e46825b70"
+    },
+    {
+      "path": "sources/4.json",
+      "kind": "source-definition",
+      "id": "structure-ua-target",
+      "version": "1.0.0",
+      "sha256": "e34a27c99841af20e5effad028f0c85c3f0fcdd139028b1be781d9d3285951e2"
+    },
+    {
+      "path": "targets/0.json",
+      "kind": "target-instance",
+      "id": "arithmetic-object-ab",
+      "version": "1.0.0",
+      "sha256": "01ffe9b5debc7a1f7bca00534e961ff37951596b53478b4eb481c20ce28c03ef"
+    },
+    {
+      "path": "targets/2.json",
+      "kind": "target-instance",
+      "id": "arithmetic-object-db",
+      "version": "1.0.0",
+      "sha256": "29d268c2ce7746e64a904381eb08d4a62c04ea4bec762ed5edc238472b5b5dbb"
+    },
+    {
+      "path": "targets/3.json",
+      "kind": "target-instance",
+      "id": "arithmetic-object-melsec",
+      "version": "1.0.0",
+      "sha256": "55ad7bbd54f2ad89b8c507a943a90409c2e7e6b09adff3d1d4a3e96c137bdb6f"
+    },
+    {
+      "path": "targets/1.json",
+      "kind": "target-instance",
+      "id": "arithmetic-object-ua",
+      "version": "1.0.0",
+      "sha256": "cba083af285be1328ada2367b3e79e757a6e4989d824bc7760c4189f5444168f"
+    },
+    {
+      "path": "graphs/0.json",
+      "kind": "value-graph",
+      "id": "arithmetic-ab",
+      "version": "1.0.0",
+      "sha256": "ff779244740a34d3fd87866f2f79a957eaf8f4c94700fc14f18fe1aa16129c73"
+    },
+    {
+      "path": "graphs/2.json",
+      "kind": "value-graph",
+      "id": "arithmetic-db",
+      "version": "1.0.0",
+      "sha256": "219250f7b89d6bf92398b14b2b63932ec580680c43302fb31ac1c654651ee335"
+    },
+    {
+      "path": "graphs/3.json",
+      "kind": "value-graph",
+      "id": "arithmetic-melsec",
+      "version": "1.0.0",
+      "sha256": "c782866db5e599ae950a8510015bea744ed3e429d4dea54deb668fabf4adf774"
+    },
+    {
+      "path": "graphs/1.json",
+      "kind": "value-graph",
+      "id": "arithmetic-ua",
+      "version": "1.0.0",
+      "sha256": "c596a9e4c55d99719ea61adcf33bfdbe92adc49a22a3ebf7392d7455216a6963"
+    }
+  ]
+}

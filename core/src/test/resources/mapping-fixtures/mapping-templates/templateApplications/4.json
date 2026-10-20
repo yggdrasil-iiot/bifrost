@@ -1,0 +1,799 @@
+{
+  "kind": "template-application",
+  "schemaVersion": "2.19.0",
+  "id": "application-pump-ua-r2",
+  "version": "1.0.0",
+  "applicationId": "pump-ua",
+  "revision": 2,
+  "previousApplicationRef": {
+    "id": "application-pump-ua-r1",
+    "version": "1.0.0",
+    "sha256": "a1f6bab64725d8a85533f8598d2942dbb5af3970271379c821cfc2942bfa67ab"
+  },
+  "templateRef": {
+    "id": "pressure-kit",
+    "version": "1.1.0",
+    "sha256": "53995f7a5279629360166a4d5bf75052520941fc11907215059a815d417ff7ef"
+  },
+  "equipmentInstanceId": "line-a-motor-ua",
+  "targetLabel": "재사용 압력 객체 ua",
+  "bindings": [
+    {
+      "slotId": "input-1",
+      "sourceRef": {
+        "id": "arithmetic-ua-gain",
+        "version": "1.0.0"
+      }
+    },
+    {
+      "slotId": "input-2",
+      "sourceRef": {
+        "id": "structure-ua-actual",
+        "version": "1.0.0"
+      }
+    },
+    {
+      "slotId": "input-3",
+      "sourceRef": {
+        "id": "structure-ua-target",
+        "version": "1.0.0"
+      }
+    }
+  ],
+  "sourceSnapshots": [
+    {
+      "kind": "source-definition",
+      "schemaVersion": "2.2.0",
+      "id": "arithmetic-ua-gain",
+      "version": "1.0.0",
+      "equipmentInstanceId": "line-a-motor-ua",
+      "connectionProfileRef": "logical-ua",
+      "accessProfileRef": "s7-1500-opcua-v1",
+      "status": "ready",
+      "rawAddressText": "nsu=urn:tyr:fixture:skid;s=Skid.flags",
+      "addressRadix": null,
+      "access": {
+        "kind": "opcua-node",
+        "namespaceUri": "urn:tyr:fixture:skid",
+        "identifierType": "string",
+        "identifier": "Skid.flags"
+      },
+      "rawRepresentation": {
+        "mode": "typed",
+        "valueType": "UInt16"
+      },
+      "inputStage": "raw",
+      "unit": {
+        "status": "known",
+        "code": "1"
+      },
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-arithmetic-ua-gain",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ],
+      "viewOf": null
+    },
+    {
+      "kind": "source-definition",
+      "schemaVersion": "2.2.0",
+      "id": "structure-ua-actual",
+      "version": "1.0.0",
+      "equipmentInstanceId": "line-a-motor-ua",
+      "connectionProfileRef": "logical-ua",
+      "accessProfileRef": "s7-1500-opcua-v1",
+      "status": "ready",
+      "rawAddressText": "nsu=urn:tyr:fixture:skid;s=Skid.actual",
+      "addressRadix": null,
+      "access": {
+        "kind": "opcua-node",
+        "namespaceUri": "urn:tyr:fixture:skid",
+        "identifierType": "string",
+        "identifier": "Skid.actual"
+      },
+      "rawRepresentation": {
+        "mode": "typed",
+        "valueType": "UInt16"
+      },
+      "inputStage": "raw",
+      "unit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-structure-ua-actual",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ],
+      "viewOf": null
+    },
+    {
+      "kind": "source-definition",
+      "schemaVersion": "2.2.0",
+      "id": "structure-ua-target",
+      "version": "1.0.0",
+      "equipmentInstanceId": "line-a-motor-ua",
+      "connectionProfileRef": "logical-ua",
+      "accessProfileRef": "s7-1500-opcua-v1",
+      "status": "ready",
+      "rawAddressText": "nsu=urn:tyr:fixture:skid;s=Skid.target",
+      "addressRadix": null,
+      "access": {
+        "kind": "opcua-node",
+        "namespaceUri": "urn:tyr:fixture:skid",
+        "identifierType": "string",
+        "identifier": "Skid.target"
+      },
+      "rawRepresentation": {
+        "mode": "typed",
+        "valueType": "UInt16"
+      },
+      "inputStage": "raw",
+      "unit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-structure-ua-target",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ],
+      "viewOf": null
+    }
+  ],
+  "generated": [
+    {
+      "kind": "semantic-definition",
+      "schemaVersion": "2.2.0",
+      "id": "reuse-pump-ua-r2-model",
+      "version": "1.0.1",
+      "members": [
+        {
+          "memberId": "sum",
+          "name": "sum",
+          "semanticId": "urn:tyr:synthetic:sum",
+          "description": "Synthetic arithmetic oracle, not field engineering truth",
+          "valueType": "Double",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "role": "measurement",
+          "range": null
+        },
+        {
+          "memberId": "scaled",
+          "name": "scaled",
+          "semanticId": "urn:tyr:synthetic:scaled",
+          "description": "Synthetic arithmetic oracle, not field engineering truth",
+          "valueType": "Double",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "role": "measurement",
+          "range": null
+        },
+        {
+          "memberId": "quotient",
+          "name": "quotient",
+          "semanticId": "urn:tyr:synthetic:quotient",
+          "description": "Synthetic arithmetic oracle, not field engineering truth",
+          "valueType": "Double",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "role": "measurement",
+          "range": null
+        },
+        {
+          "memberId": "ratio",
+          "name": "ratio",
+          "semanticId": "urn:tyr:synthetic:ratio",
+          "description": "Synthetic arithmetic oracle, not field engineering truth",
+          "valueType": "Double",
+          "unit": {
+            "status": "known",
+            "code": "1"
+          },
+          "role": "measurement",
+          "range": null
+        }
+      ]
+    },
+    {
+      "kind": "target-instance",
+      "schemaVersion": "2.0.0",
+      "id": "reuse-pump-ua-target",
+      "version": "1.0.1",
+      "label": "재사용 압력 객체 ua",
+      "equipmentInstanceId": "line-a-motor-ua",
+      "semanticDefinitionRef": {
+        "id": "reuse-pump-ua-r2-model",
+        "version": "1.0.1"
+      },
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-arithmetic-ua-gain",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-structure-ua-target",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-structure-ua-actual",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    },
+    {
+      "kind": "value-graph",
+      "version": "1.0.1",
+      "equipmentInstanceId": "line-a-motor-ua",
+      "id": "reuse-pump-ua-r2-g0",
+      "schemaVersion": "2.17.0",
+      "nodes": [
+        {
+          "nodeId": "sum",
+          "op": "add",
+          "inputs": {
+            "left": {
+              "kind": "graph",
+              "graphRef": {
+                "id": "reuse-pump-ua-r2-g2",
+                "version": "1.0.1"
+              },
+              "nodeId": "delta"
+            },
+            "right": {
+              "kind": "graph",
+              "graphRef": {
+                "id": "reuse-pump-ua-r2-g2",
+                "version": "1.0.1"
+              },
+              "nodeId": "delta"
+            }
+          },
+          "valueType": "Decimal",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "evidenceRefs": [
+            {
+              "artifactId": "manual-arithmetic-ua-gain",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            },
+            {
+              "artifactId": "manual-structure-ua-target",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            },
+            {
+              "artifactId": "manual-structure-ua-actual",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "scaled",
+          "op": "multiply",
+          "inputs": {
+            "left": {
+              "kind": "graph",
+              "graphRef": {
+                "id": "reuse-pump-ua-r2-g2",
+                "version": "1.0.1"
+              },
+              "nodeId": "delta"
+            },
+            "right": {
+              "kind": "source",
+              "sourceRef": {
+                "id": "arithmetic-ua-gain",
+                "version": "1.0.0"
+              }
+            }
+          },
+          "valueType": "Decimal",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "evidenceRefs": [
+            {
+              "artifactId": "manual-arithmetic-ua-gain",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            },
+            {
+              "artifactId": "manual-structure-ua-target",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            },
+            {
+              "artifactId": "manual-structure-ua-actual",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            }
+          ]
+        },
+        {
+          "nodeId": "quotient",
+          "op": "divide",
+          "inputs": {
+            "left": {
+              "kind": "graph",
+              "graphRef": {
+                "id": "reuse-pump-ua-r2-g2",
+                "version": "1.0.1"
+              },
+              "nodeId": "delta"
+            },
+            "right": {
+              "kind": "source",
+              "sourceRef": {
+                "id": "arithmetic-ua-gain",
+                "version": "1.0.0"
+              }
+            }
+          },
+          "valueType": "Decimal",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "evidenceRefs": [
+            {
+              "artifactId": "manual-arithmetic-ua-gain",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            },
+            {
+              "artifactId": "manual-structure-ua-target",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            },
+            {
+              "artifactId": "manual-structure-ua-actual",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            }
+          ],
+          "precision": 34,
+          "rounding": "half-even"
+        },
+        {
+          "nodeId": "ratio",
+          "op": "divide",
+          "inputs": {
+            "left": {
+              "kind": "graph",
+              "graphRef": {
+                "id": "reuse-pump-ua-r2-g2",
+                "version": "1.0.1"
+              },
+              "nodeId": "delta"
+            },
+            "right": {
+              "kind": "graph",
+              "graphRef": {
+                "id": "reuse-pump-ua-r2-g2",
+                "version": "1.0.1"
+              },
+              "nodeId": "delta"
+            }
+          },
+          "valueType": "Decimal",
+          "unit": {
+            "status": "known",
+            "code": "1"
+          },
+          "evidenceRefs": [
+            {
+              "artifactId": "manual-arithmetic-ua-gain",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            },
+            {
+              "artifactId": "manual-structure-ua-target",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            },
+            {
+              "artifactId": "manual-structure-ua-actual",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            }
+          ],
+          "precision": 34,
+          "rounding": "half-even"
+        }
+      ]
+    },
+    {
+      "kind": "value-graph",
+      "version": "1.0.1",
+      "equipmentInstanceId": "line-a-motor-ua",
+      "id": "reuse-pump-ua-r2-g1",
+      "schemaVersion": "2.17.0",
+      "nodes": [
+        {
+          "nodeId": "result",
+          "op": "identity",
+          "inputs": {
+            "value": {
+              "kind": "graph",
+              "graphRef": {
+                "id": "reuse-pump-ua-r2-g0",
+                "version": "1.0.1"
+              },
+              "nodeId": "quotient"
+            }
+          },
+          "valueType": "Decimal",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "evidenceRefs": [
+            {
+              "artifactId": "manual-arithmetic-ua-gain",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            },
+            {
+              "artifactId": "manual-structure-ua-target",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            },
+            {
+              "artifactId": "manual-structure-ua-actual",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "value-graph",
+      "version": "1.0.1",
+      "equipmentInstanceId": "line-a-motor-ua",
+      "id": "reuse-pump-ua-r2-g2",
+      "schemaVersion": "2.15.0",
+      "nodes": [
+        {
+          "nodeId": "delta",
+          "op": "add",
+          "inputs": {
+            "left": {
+              "kind": "source",
+              "sourceRef": {
+                "id": "structure-ua-actual",
+                "version": "1.0.0"
+              }
+            },
+            "right": {
+              "kind": "source",
+              "sourceRef": {
+                "id": "structure-ua-target",
+                "version": "1.0.0"
+              }
+            }
+          },
+          "valueType": "Decimal",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "evidenceRefs": [
+            {
+              "artifactId": "manual-arithmetic-ua-gain",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            },
+            {
+              "artifactId": "manual-structure-ua-target",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            },
+            {
+              "artifactId": "manual-structure-ua-actual",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "mapping-set",
+      "schemaVersion": "2.2.0",
+      "id": "reuse-pump-ua-mapping",
+      "version": "1.0.1",
+      "equipmentInstanceId": "line-a-motor-ua",
+      "targetInstanceRef": {
+        "id": "reuse-pump-ua-target",
+        "version": "1.0.1"
+      },
+      "mappings": [
+        {
+          "mappingId": "reuse-pump-ua-ba44b3a21eb7a",
+          "memberPath": [
+            {
+              "kind": "member",
+              "memberId": "sum"
+            }
+          ],
+          "valueRef": {
+            "kind": "graph",
+            "graphRef": {
+              "id": "reuse-pump-ua-r2-g0",
+              "version": "1.0.1"
+            },
+            "nodeId": "sum"
+          },
+          "transform": [
+            {
+              "op": "cast",
+              "to": "Double",
+              "overflow": "error",
+              "rounding": "half-even"
+            }
+          ],
+          "outputUnit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "invalidValuePolicy": "bad-quality",
+          "evidenceRefs": [
+            {
+              "artifactId": "manual-arithmetic-ua-gain",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            },
+            {
+              "artifactId": "manual-structure-ua-target",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            },
+            {
+              "artifactId": "manual-structure-ua-actual",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            }
+          ]
+        },
+        {
+          "mappingId": "reuse-pump-ua-b82eb617f7f12",
+          "memberPath": [
+            {
+              "kind": "member",
+              "memberId": "scaled"
+            }
+          ],
+          "valueRef": {
+            "kind": "graph",
+            "graphRef": {
+              "id": "reuse-pump-ua-r2-g0",
+              "version": "1.0.1"
+            },
+            "nodeId": "scaled"
+          },
+          "transform": [
+            {
+              "op": "cast",
+              "to": "Double",
+              "overflow": "error",
+              "rounding": "half-even"
+            }
+          ],
+          "outputUnit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "invalidValuePolicy": "bad-quality",
+          "evidenceRefs": [
+            {
+              "artifactId": "manual-arithmetic-ua-gain",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            },
+            {
+              "artifactId": "manual-structure-ua-target",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            },
+            {
+              "artifactId": "manual-structure-ua-actual",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            }
+          ]
+        },
+        {
+          "mappingId": "reuse-pump-ua-b3fd86417f419",
+          "memberPath": [
+            {
+              "kind": "member",
+              "memberId": "quotient"
+            }
+          ],
+          "valueRef": {
+            "kind": "graph",
+            "graphRef": {
+              "id": "reuse-pump-ua-r2-g1",
+              "version": "1.0.1"
+            },
+            "nodeId": "result"
+          },
+          "transform": [
+            {
+              "op": "cast",
+              "to": "Double",
+              "overflow": "error",
+              "rounding": "half-even"
+            }
+          ],
+          "outputUnit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "invalidValuePolicy": "bad-quality",
+          "evidenceRefs": [
+            {
+              "artifactId": "manual-arithmetic-ua-gain",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            },
+            {
+              "artifactId": "manual-structure-ua-target",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            },
+            {
+              "artifactId": "manual-structure-ua-actual",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            }
+          ]
+        },
+        {
+          "mappingId": "reuse-pump-ua-b9a75a8959d8d",
+          "memberPath": [
+            {
+              "kind": "member",
+              "memberId": "ratio"
+            }
+          ],
+          "valueRef": {
+            "kind": "graph",
+            "graphRef": {
+              "id": "reuse-pump-ua-r2-g0",
+              "version": "1.0.1"
+            },
+            "nodeId": "ratio"
+          },
+          "transform": [
+            {
+              "op": "cast",
+              "to": "Double",
+              "overflow": "error",
+              "rounding": "half-even"
+            }
+          ],
+          "outputUnit": {
+            "status": "known",
+            "code": "1"
+          },
+          "invalidValuePolicy": "bad-quality",
+          "evidenceRefs": [
+            {
+              "artifactId": "manual-arithmetic-ua-gain",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            },
+            {
+              "artifactId": "manual-structure-ua-target",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            },
+            {
+              "artifactId": "manual-structure-ua-actual",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "authoredBy": "fixture-author",
+  "authoredAt": "2026-10-18T03:00:00Z"
+}

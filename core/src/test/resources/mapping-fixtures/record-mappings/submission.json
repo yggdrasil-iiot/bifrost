@@ -1,0 +1,25 @@
+{
+  "kind": "mapping-submission",
+  "schemaVersion": "2.9.0",
+  "id": "record-fixture",
+  "streamId": "record-line",
+  "version": "1.0.0",
+  "workspaceSha256": "62dd77f9775d118b73ad58effe006b03b7f0017d842830a0277108af1c23f1f1",
+  "proposalSha256": "a7f1b29aef846331fadf196d868ca47577e265571911957d1c9701e0795d9eec",
+  "baseRelease": null,
+  "proposedBy": "proposer",
+  "execution": "excluded",
+  "context": {
+    "equipment": [
+      {
+        "id": "record-line-a",
+        "label": "합성 설비 A"
+      },
+      {
+        "id": "record-line-b",
+        "label": "합성 설비 B"
+      }
+    ],
+    "connections": []
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "type": "object",
+  "properties": {
+    "kind": {
+      "const": "observation-bundle"
+    },
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "version": {
+      "$ref": "common.schema.json#/$defs/version"
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "$ref": "evidence-artifact.schema.json"
+      },
+      "minItems": 1
+    },
+    "observations": {
+      "type": "array",
+      "items": {
+        "$ref": "source-observation.schema.json"
+      },
+      "minItems": 1
+    },
+    "inputCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "processedCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "unsupportedCount": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "required": [
+    "kind",
+    "schemaVersion",
+    "id",
+    "version",
+    "artifacts",
+    "observations",
+    "inputCount",
+    "processedCount",
+    "unsupportedCount"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:tyr:contract:1.0.0:observation-bundle"
+}

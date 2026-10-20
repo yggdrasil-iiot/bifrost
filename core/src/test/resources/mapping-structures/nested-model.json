@@ -1,0 +1,53 @@
+{
+  "kind": "semantic-definition",
+  "schemaVersion": "2.12.0",
+  "id": "nested",
+  "version": "1.0.0",
+  "members": [
+    {
+      "memberId": "racks",
+      "name": "racks",
+      "semanticId": "urn:fixture:racks",
+      "description": "Logical only; no native layout",
+      "valueType": "StructureArray",
+      "shape": [
+        2
+      ],
+      "lowerBounds": [
+        -1
+      ],
+      "members": [
+        {
+          "memberId": "slots",
+          "name": "slots",
+          "semanticId": "urn:fixture:slots",
+          "description": "Logical only; no native layout",
+          "valueType": "StructureArray",
+          "shape": [
+            2,
+            2
+          ],
+          "lowerBounds": [
+            1,
+            3
+          ],
+          "members": [
+            {
+              "memberId": "value",
+              "name": "value",
+              "semanticId": "urn:fixture:value",
+              "description": "Synthetic logical value",
+              "valueType": "Double",
+              "unit": {
+                "status": "known",
+                "code": "kPa"
+              },
+              "role": "measurement",
+              "range": null
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "kind": "mapping-submission",
+  "schemaVersion": "2.9.0",
+  "id": "lifecycle-fixture",
+  "streamId": "mixed-line",
+  "version": "1.0.0",
+  "workspaceSha256": "b8a93dccb474e3f8a8623f88a7289532334ea937f834565b197800735f0b5156",
+  "proposalSha256": "99c4967b44d58361b972686756124c42643f62d9b888c37c4a85b235ef212dc2",
+  "baseRelease": null,
+  "proposedBy": "proposer",
+  "execution": "excluded",
+  "context": {
+    "equipment": [
+      {
+        "id": "mixed-line",
+        "label": "Mixed synthetic line"
+      }
+    ],
+    "connections": [
+      {
+        "id": "mixed-melsec",
+        "label": "MELSEC metadata only",
+        "equipmentInstanceId": "mixed-line",
+        "accessProfileRef": "melsec-device-v1"
+      }
+    ]
+  }
+}

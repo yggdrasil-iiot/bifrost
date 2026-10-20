@@ -1,0 +1,73 @@
+{
+  "kind": "mapping-set",
+  "schemaVersion": "2.2.0",
+  "id": "bounded-pressure-mapping",
+  "version": "1.0.0",
+  "equipmentInstanceId": "line-a-motor-melsec",
+  "targetInstanceRef": {
+    "id": "bounded-pressure-target",
+    "version": "1.0.0"
+  },
+  "mappings": [
+    {
+      "mappingId": "selected-pressure",
+      "valueRef": {
+        "kind": "graph",
+        "graphRef": {
+          "id": "bounded-pressure",
+          "version": "1.0.0"
+        },
+        "nodeId": "selected"
+      },
+      "memberPath": [
+        {
+          "kind": "member",
+          "memberId": "selected-pressure"
+        }
+      ],
+      "transform": [
+        {
+          "op": "cast",
+          "to": "Double",
+          "overflow": "error",
+          "rounding": "exact"
+        }
+      ],
+      "outputUnit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "invalidValuePolicy": "bad-quality",
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-pressure-up",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-pressure-down",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-selector-index",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-selector-previous",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,108 @@
+{
+  "type": "object",
+  "properties": {
+    "kind": {
+      "const": "source-definition"
+    },
+    "schemaVersion": {
+      "const": "1.1.0"
+    },
+    "id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "version": {
+      "$ref": "common.schema.json#/$defs/version"
+    },
+    "equipmentInstanceId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "connectionProfileRef": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "accessProfileRef": {
+      "enum": [
+        "ab-logix-symbol-v1",
+        "s7-1500-opcua-v1",
+        "s7-300-db-v1",
+        "melsec-device-v1"
+      ]
+    },
+    "status": {
+      "enum": [
+        "draft",
+        "ready"
+      ]
+    },
+    "rawAddressText": {
+      "type": "string",
+      "minLength": 1
+    },
+    "addressRadix": {
+      "anyOf": [
+        {
+          "enum": [
+            8,
+            10,
+            16
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "access": {
+      "$ref": "common.schema.json#/$defs/access"
+    },
+    "rawRepresentation": {
+      "$ref": "common.schema.json#/$defs/rawRepresentation"
+    },
+    "inputStage": {
+      "enum": [
+        "raw",
+        "already-engineered"
+      ]
+    },
+    "unit": {
+      "$ref": "common.schema.json#/$defs/unit"
+    },
+    "evidenceRefs": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/evidenceRef"
+      },
+      "minItems": 1
+    },
+    "viewOf": {
+      "anyOf": [
+        {
+          "$ref": "common.schema.json#/$defs/documentRef"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "kind",
+    "schemaVersion",
+    "id",
+    "version",
+    "equipmentInstanceId",
+    "connectionProfileRef",
+    "accessProfileRef",
+    "status",
+    "rawAddressText",
+    "addressRadix",
+    "access",
+    "rawRepresentation",
+    "inputStage",
+    "unit",
+    "evidenceRefs",
+    "viewOf"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:tyr:contract:1.1.0:source-definition"
+}

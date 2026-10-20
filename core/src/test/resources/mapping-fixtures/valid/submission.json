@@ -1,0 +1,28 @@
+{
+  "kind": "mapping-submission",
+  "schemaVersion": "2.9.0",
+  "id": "mixed-first",
+  "streamId": "mixed-line",
+  "version": "1.0.0",
+  "workspaceSha256": "04d29e653d15b7ffb78fccbd21bc5085582d2de2c3a5ffb1a1939d43639567cf",
+  "proposalSha256": "fd7145e10edfeeb2292064545fc76ffb003abfebc346beb55937299bb60bd7aa",
+  "baseRelease": null,
+  "proposedBy": "proposer",
+  "execution": "excluded",
+  "context": {
+    "equipment": [
+      {
+        "id": "mixed-line",
+        "label": "mixed-line"
+      }
+    ],
+    "connections": [
+      {
+        "id": "mixed-melsec",
+        "label": "mixed-melsec",
+        "equipmentInstanceId": "mixed-line",
+        "accessProfileRef": "melsec-device-v1"
+      }
+    ]
+  }
+}

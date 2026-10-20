@@ -1,0 +1,2 @@
+Field label: Synthetic dimensionless gain
+Synthetic coefficient word, not live PLC flags

@@ -1,0 +1,174 @@
+{
+  "kind": "value-graph",
+  "schemaVersion": "2.5.0",
+  "id": "structure-ua-graph",
+  "version": "1.0.0",
+  "equipmentInstanceId": "line-a-motor-ua",
+  "nodes": [
+    {
+      "nodeId": "first",
+      "op": "array-element",
+      "inputs": {
+        "value": {
+          "kind": "source",
+          "sourceRef": {
+            "id": "array-pressures-ua",
+            "version": "1.0.0"
+          }
+        }
+      },
+      "indices": [
+        0,
+        0
+      ],
+      "valueType": "Float32",
+      "unit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-array-pressures-ua",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    },
+    {
+      "nodeId": "last",
+      "op": "array-element",
+      "inputs": {
+        "value": {
+          "kind": "source",
+          "sourceRef": {
+            "id": "array-pressures-ua",
+            "version": "1.0.0"
+          }
+        }
+      },
+      "indices": [
+        1,
+        2
+      ],
+      "valueType": "Float32",
+      "unit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-array-pressures-ua",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    },
+    {
+      "nodeId": "first-target",
+      "op": "array-element",
+      "inputs": {
+        "value": {
+          "kind": "source",
+          "sourceRef": {
+            "id": "array-pressures-ua",
+            "version": "1.0.0"
+          }
+        }
+      },
+      "indices": [
+        0,
+        1
+      ],
+      "valueType": "Float32",
+      "unit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-array-pressures-ua",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    },
+    {
+      "nodeId": "last-target",
+      "op": "array-element",
+      "inputs": {
+        "value": {
+          "kind": "source",
+          "sourceRef": {
+            "id": "array-pressures-ua",
+            "version": "1.0.0"
+          }
+        }
+      },
+      "indices": [
+        1,
+        1
+      ],
+      "valueType": "Float32",
+      "unit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-array-pressures-ua",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    },
+    {
+      "nodeId": "deviation",
+      "op": "subtract",
+      "inputs": {
+        "left": {
+          "kind": "source",
+          "sourceRef": {
+            "id": "structure-ua-actual",
+            "version": "1.0.0"
+          }
+        },
+        "right": {
+          "kind": "source",
+          "sourceRef": {
+            "id": "structure-ua-target",
+            "version": "1.0.0"
+          }
+        }
+      },
+      "valueType": "Decimal",
+      "unit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-structure-ua-actual",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-structure-ua-target",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    }
+  ]
+}

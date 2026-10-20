@@ -1,0 +1,3982 @@
+{
+  "id": "review-next",
+  "filename": "review-next.json",
+  "format": "tyr-config-json-v1",
+  "bytesBase64": "eyJmb3JtYXQiOiAidHlyLWNvbmZpZy12MSIsICJyZWNvcmRzIjogW3siaWQiOiAicHVtcCIsICJraW5kIjogInRlbXBsYXRlIiwgInByb2ZpbGUiOiAibWVsc2VjLWRldmljZS12MSIsICJhZGRyZXNzIjogIkR7b2Zmc2V0fSIsICJiYXNlIjogNTAwMCwgInN0cmlkZSI6IDIsICJjb3VudCI6IDIsICJ0eXBlIjogIlVJbnQxNiIsICJ1bml0IjogImtQYSIsICJzdGFnZSI6ICJyYXciLCAiYnl0ZU9yZGVyIjogImxpdHRsZSIsICJ3b3JkT3JkZXIiOiAibG93LWZpcnN0IiwgIndpZHRoIjogMSwgIm92ZXJyaWRlcyI6IHsiMSI6IHsiYWRkcmVzcyI6ICJENTk5OSJ9fX0sIHsiaWQiOiAicHJlc3N1cmUtbWVsIiwgInByb2ZpbGUiOiAibWVsc2VjLWRldmljZS12MSIsICJhZGRyZXNzIjogIkQxMDAwIiwgInR5cGUiOiAiVUludDE2IiwgIndpZHRoIjogMSwgInVuaXQiOiAia1BhIiwgImJ5dGVPcmRlciI6ICJsaXR0bGUiLCAid29yZE9yZGVyIjogImxvdy1maXJzdCIsICJzdGFnZSI6ICJyYXcifSwgeyJpZCI6ICJzcGVlZC1hYiIsICJwcm9maWxlIjogImFiLWxvZ2l4LXN5bWJvbC12MSIsICJhZGRyZXNzIjogIk1vdG9yLkFjdHVhbFNwZWVkVjIiLCAidHlwZSI6ICJGbG9hdDMyIiwgInVuaXQiOiAicnBtIiwgInN0YWdlIjogImFscmVhZHktZW5naW5lZXJlZCJ9LCB7ImlkIjogInByZXNzdXJlLXVhIiwgInByb2ZpbGUiOiAiczctMTUwMC1vcGN1YS12MSIsICJhZGRyZXNzIjogIkxpbmUuSW5jb21pbmdQcmVzc3VyZSIsICJuYW1lc3BhY2VVcmkiOiAidXJuOnR5cjpzeW50aGV0aWM6bGluZSIsICJpZGVudGlmaWVyVHlwZSI6ICJzdHJpbmciLCAidHlwZSI6ICJGbG9hdDMyIiwgInVuaXQiOiAia1BhIiwgInN0YWdlIjogImFscmVhZHktZW5naW5lZXJlZCJ9LCB7ImlkIjogInVucmVzb2x2ZWQiLCAia2luZCI6ICJzb3VyY2UiLCAicHJvZmlsZSI6ICJtZWxzZWMtZGV2aWNlLXYxIiwgImFkZHJlc3MiOiAiRDQwMDEiLCAidHlwZSI6ICJVSW50MTYiLCAidW5pdCI6ICJrUGEiLCAic3RhZ2UiOiAicmF3IiwgImJ5dGVPcmRlciI6ICJsaXR0bGUiLCAid29yZE9yZGVyIjogImxvdy1maXJzdCIsICJ3aWR0aCI6IDF9LCB7ImlkIjogImFsaWFzIiwgImtpbmQiOiAiYWxpYXMiLCAidGFyZ2V0IjogInB1bXAtMSJ9LCB7ImlkIjogIm5ldy1zaWduYWwiLCAia2luZCI6ICJzb3VyY2UiLCAicHJvZmlsZSI6ICJtZWxzZWMtZGV2aWNlLXYxIiwgImFkZHJlc3MiOiAiRDcwMDAiLCAidHlwZSI6ICJVSW50MTYiLCAidW5pdCI6ICJrUGEiLCAic3RhZ2UiOiAicmF3IiwgImJ5dGVPcmRlciI6ICJsaXR0bGUiLCAid29yZE9yZGVyIjogImxvdy1maXJzdCIsICJ3aWR0aCI6IDF9XX0=",
+  "equipmentInstanceId": "import-line",
+  "capturedAt": "2026-10-17T00:00:00Z",
+  "origin": "synthetic",
+  "columnMap": {},
+  "contextConnections": [
+    {
+      "id": "import-0",
+      "label": "ab-logix-symbol-v1",
+      "equipmentInstanceId": "import-line",
+      "accessProfileRef": "ab-logix-symbol-v1"
+    },
+    {
+      "id": "import-1",
+      "label": "s7-1500-opcua-v1",
+      "equipmentInstanceId": "import-line",
+      "accessProfileRef": "s7-1500-opcua-v1"
+    },
+    {
+      "id": "import-2",
+      "label": "s7-300-db-v1",
+      "equipmentInstanceId": "import-line",
+      "accessProfileRef": "s7-300-db-v1"
+    },
+    {
+      "id": "import-3",
+      "label": "melsec-device-v1",
+      "equipmentInstanceId": "import-line",
+      "accessProfileRef": "melsec-device-v1"
+    }
+  ],
+  "kind": "import-batch",
+  "schemaVersion": "2.14.0",
+  "version": "1.0.0",
+  "parser": {
+    "name": "tyr-bounded-files",
+    "version": "1.0.0"
+  },
+  "sha256": "5bfd8f66ec93b969b389b43ccf8972a44f9969b648bf62c14b64421ca20978be",
+  "observations": [
+    {
+      "id": "row-0",
+      "raw": {
+        "id": "pump-0",
+        "kind": "source",
+        "profile": "melsec-device-v1",
+        "address": "D5000",
+        "type": "UInt16",
+        "unit": "kPa",
+        "stage": "raw",
+        "byteOrder": "little",
+        "wordOrder": "low-first",
+        "width": 1
+      },
+      "locator": {
+        "kind": "json-pointer",
+        "pointer": "/records/0"
+      },
+      "derivation": [
+        {
+          "kind": "json-pointer",
+          "pointer": "/records/0"
+        }
+      ],
+      "issues": [],
+      "assumptions": [],
+      "draft": {
+        "kind": "source-definition",
+        "schemaVersion": "2.2.0",
+        "id": "imp-review-next-pump-0",
+        "version": "1.0.0",
+        "equipmentInstanceId": "import-line",
+        "connectionProfileRef": "import-3",
+        "accessProfileRef": "melsec-device-v1",
+        "status": "draft",
+        "rawAddressText": "D5000",
+        "addressRadix": 10,
+        "access": {
+          "kind": "device-register",
+          "deviceArea": "D",
+          "addressIndex": 5000,
+          "addressUnit": "word16",
+          "wordCount": 1,
+          "bitOffset": null
+        },
+        "rawRepresentation": {
+          "mode": "bytes",
+          "valueType": "UInt16",
+          "byteOrder": "little",
+          "wordOrder": "low-first"
+        },
+        "inputStage": "raw",
+        "unit": {
+          "status": "known",
+          "code": "kPa"
+        },
+        "evidenceRefs": [
+          {
+            "artifactId": "import-review-next",
+            "locator": {
+              "kind": "json-pointer",
+              "pointer": "/records/0"
+            }
+          }
+        ],
+        "viewOf": null
+      },
+      "template": {
+        "id": "pump",
+        "kind": "template",
+        "profile": "melsec-device-v1",
+        "address": "D{offset}",
+        "base": 5000,
+        "stride": 2,
+        "count": 2,
+        "type": "UInt16",
+        "unit": "kPa",
+        "stage": "raw",
+        "byteOrder": "little",
+        "wordOrder": "low-first",
+        "width": 1,
+        "overrides": {
+          "1": {
+            "address": "D5999"
+          }
+        }
+      }
+    },
+    {
+      "id": "row-1",
+      "raw": {
+        "id": "pump-1",
+        "kind": "source",
+        "profile": "melsec-device-v1",
+        "address": "D5999",
+        "type": "UInt16",
+        "unit": "kPa",
+        "stage": "raw",
+        "byteOrder": "little",
+        "wordOrder": "low-first",
+        "width": 1
+      },
+      "locator": {
+        "kind": "json-pointer",
+        "pointer": "/records/0"
+      },
+      "derivation": [
+        {
+          "kind": "json-pointer",
+          "pointer": "/records/0"
+        }
+      ],
+      "issues": [],
+      "assumptions": [],
+      "draft": {
+        "kind": "source-definition",
+        "schemaVersion": "2.2.0",
+        "id": "imp-review-next-pump-1",
+        "version": "1.0.0",
+        "equipmentInstanceId": "import-line",
+        "connectionProfileRef": "import-3",
+        "accessProfileRef": "melsec-device-v1",
+        "status": "draft",
+        "rawAddressText": "D5999",
+        "addressRadix": 10,
+        "access": {
+          "kind": "device-register",
+          "deviceArea": "D",
+          "addressIndex": 5999,
+          "addressUnit": "word16",
+          "wordCount": 1,
+          "bitOffset": null
+        },
+        "rawRepresentation": {
+          "mode": "bytes",
+          "valueType": "UInt16",
+          "byteOrder": "little",
+          "wordOrder": "low-first"
+        },
+        "inputStage": "raw",
+        "unit": {
+          "status": "known",
+          "code": "kPa"
+        },
+        "evidenceRefs": [
+          {
+            "artifactId": "import-review-next",
+            "locator": {
+              "kind": "json-pointer",
+              "pointer": "/records/0"
+            }
+          }
+        ],
+        "viewOf": null
+      },
+      "template": {
+        "id": "pump",
+        "kind": "template",
+        "profile": "melsec-device-v1",
+        "address": "D{offset}",
+        "base": 5000,
+        "stride": 2,
+        "count": 2,
+        "type": "UInt16",
+        "unit": "kPa",
+        "stage": "raw",
+        "byteOrder": "little",
+        "wordOrder": "low-first",
+        "width": 1,
+        "overrides": {
+          "1": {
+            "address": "D5999"
+          }
+        }
+      }
+    },
+    {
+      "id": "row-2",
+      "raw": {
+        "id": "pressure-mel",
+        "profile": "melsec-device-v1",
+        "address": "D1000",
+        "type": "UInt16",
+        "width": 1,
+        "unit": "kPa",
+        "byteOrder": "little",
+        "wordOrder": "low-first",
+        "stage": "raw"
+      },
+      "locator": {
+        "kind": "json-pointer",
+        "pointer": "/records/1"
+      },
+      "derivation": [
+        {
+          "kind": "json-pointer",
+          "pointer": "/records/1"
+        }
+      ],
+      "issues": [],
+      "assumptions": [],
+      "draft": {
+        "kind": "source-definition",
+        "schemaVersion": "2.2.0",
+        "id": "imp-review-next-pressure-mel",
+        "version": "1.0.0",
+        "equipmentInstanceId": "import-line",
+        "connectionProfileRef": "import-3",
+        "accessProfileRef": "melsec-device-v1",
+        "status": "draft",
+        "rawAddressText": "D1000",
+        "addressRadix": 10,
+        "access": {
+          "kind": "device-register",
+          "deviceArea": "D",
+          "addressIndex": 1000,
+          "addressUnit": "word16",
+          "wordCount": 1,
+          "bitOffset": null
+        },
+        "rawRepresentation": {
+          "mode": "bytes",
+          "valueType": "UInt16",
+          "byteOrder": "little",
+          "wordOrder": "low-first"
+        },
+        "inputStage": "raw",
+        "unit": {
+          "status": "known",
+          "code": "kPa"
+        },
+        "evidenceRefs": [
+          {
+            "artifactId": "import-review-next",
+            "locator": {
+              "kind": "json-pointer",
+              "pointer": "/records/1"
+            }
+          }
+        ],
+        "viewOf": null
+      }
+    },
+    {
+      "id": "row-3",
+      "raw": {
+        "id": "speed-ab",
+        "profile": "ab-logix-symbol-v1",
+        "address": "Motor.ActualSpeedV2",
+        "type": "Float32",
+        "unit": "rpm",
+        "stage": "already-engineered"
+      },
+      "locator": {
+        "kind": "json-pointer",
+        "pointer": "/records/2"
+      },
+      "derivation": [
+        {
+          "kind": "json-pointer",
+          "pointer": "/records/2"
+        }
+      ],
+      "issues": [],
+      "assumptions": [],
+      "draft": {
+        "kind": "source-definition",
+        "schemaVersion": "2.2.0",
+        "id": "imp-review-next-speed-ab",
+        "version": "1.0.0",
+        "equipmentInstanceId": "import-line",
+        "connectionProfileRef": "import-0",
+        "accessProfileRef": "ab-logix-symbol-v1",
+        "status": "draft",
+        "rawAddressText": "Motor.ActualSpeedV2",
+        "addressRadix": null,
+        "access": {
+          "kind": "symbol",
+          "symbolPath": "Motor.ActualSpeedV2"
+        },
+        "rawRepresentation": {
+          "mode": "typed",
+          "valueType": "Float32"
+        },
+        "inputStage": "already-engineered",
+        "unit": {
+          "status": "known",
+          "code": "rpm"
+        },
+        "evidenceRefs": [
+          {
+            "artifactId": "import-review-next",
+            "locator": {
+              "kind": "json-pointer",
+              "pointer": "/records/2"
+            }
+          }
+        ],
+        "viewOf": null
+      }
+    },
+    {
+      "id": "row-4",
+      "raw": {
+        "id": "pressure-ua",
+        "profile": "s7-1500-opcua-v1",
+        "address": "Line.IncomingPressure",
+        "namespaceUri": "urn:tyr:synthetic:line",
+        "identifierType": "string",
+        "type": "Float32",
+        "unit": "kPa",
+        "stage": "already-engineered"
+      },
+      "locator": {
+        "kind": "json-pointer",
+        "pointer": "/records/3"
+      },
+      "derivation": [
+        {
+          "kind": "json-pointer",
+          "pointer": "/records/3"
+        }
+      ],
+      "issues": [],
+      "assumptions": [],
+      "draft": {
+        "kind": "source-definition",
+        "schemaVersion": "2.2.0",
+        "id": "imp-review-next-pressure-ua",
+        "version": "1.0.0",
+        "equipmentInstanceId": "import-line",
+        "connectionProfileRef": "import-1",
+        "accessProfileRef": "s7-1500-opcua-v1",
+        "status": "draft",
+        "rawAddressText": "Line.IncomingPressure",
+        "addressRadix": null,
+        "access": {
+          "kind": "opcua-node",
+          "namespaceUri": "urn:tyr:synthetic:line",
+          "identifierType": "string",
+          "identifier": "Line.IncomingPressure"
+        },
+        "rawRepresentation": {
+          "mode": "typed",
+          "valueType": "Float32"
+        },
+        "inputStage": "already-engineered",
+        "unit": {
+          "status": "known",
+          "code": "kPa"
+        },
+        "evidenceRefs": [
+          {
+            "artifactId": "import-review-next",
+            "locator": {
+              "kind": "json-pointer",
+              "pointer": "/records/3"
+            }
+          }
+        ],
+        "viewOf": null
+      }
+    },
+    {
+      "id": "row-5",
+      "raw": {
+        "id": "unresolved",
+        "kind": "source",
+        "profile": "melsec-device-v1",
+        "address": "D4001",
+        "type": "UInt16",
+        "unit": "kPa",
+        "stage": "raw",
+        "byteOrder": "little",
+        "wordOrder": "low-first",
+        "width": 1
+      },
+      "locator": {
+        "kind": "json-pointer",
+        "pointer": "/records/4"
+      },
+      "derivation": [
+        {
+          "kind": "json-pointer",
+          "pointer": "/records/4"
+        }
+      ],
+      "issues": [],
+      "assumptions": [],
+      "draft": {
+        "kind": "source-definition",
+        "schemaVersion": "2.2.0",
+        "id": "imp-review-next-unresolved",
+        "version": "1.0.0",
+        "equipmentInstanceId": "import-line",
+        "connectionProfileRef": "import-3",
+        "accessProfileRef": "melsec-device-v1",
+        "status": "draft",
+        "rawAddressText": "D4001",
+        "addressRadix": 10,
+        "access": {
+          "kind": "device-register",
+          "deviceArea": "D",
+          "addressIndex": 4001,
+          "addressUnit": "word16",
+          "wordCount": 1,
+          "bitOffset": null
+        },
+        "rawRepresentation": {
+          "mode": "bytes",
+          "valueType": "UInt16",
+          "byteOrder": "little",
+          "wordOrder": "low-first"
+        },
+        "inputStage": "raw",
+        "unit": {
+          "status": "known",
+          "code": "kPa"
+        },
+        "evidenceRefs": [
+          {
+            "artifactId": "import-review-next",
+            "locator": {
+              "kind": "json-pointer",
+              "pointer": "/records/4"
+            }
+          }
+        ],
+        "viewOf": null
+      }
+    },
+    {
+      "id": "row-6",
+      "raw": {
+        "id": "alias",
+        "kind": "alias",
+        "target": "pump-1"
+      },
+      "locator": {
+        "kind": "json-pointer",
+        "pointer": "/records/5"
+      },
+      "derivation": [
+        {
+          "kind": "json-pointer",
+          "pointer": "/records/5"
+        },
+        {
+          "kind": "json-pointer",
+          "pointer": "/records/0"
+        }
+      ],
+      "issues": [],
+      "assumptions": [],
+      "draft": {
+        "kind": "source-definition",
+        "schemaVersion": "2.2.0",
+        "id": "imp-review-next-alias",
+        "version": "1.0.0",
+        "equipmentInstanceId": "import-line",
+        "connectionProfileRef": "import-3",
+        "accessProfileRef": "melsec-device-v1",
+        "status": "draft",
+        "rawAddressText": "D5999",
+        "addressRadix": 10,
+        "access": {
+          "kind": "device-register",
+          "deviceArea": "D",
+          "addressIndex": 5999,
+          "addressUnit": "word16",
+          "wordCount": 1,
+          "bitOffset": null
+        },
+        "rawRepresentation": {
+          "mode": "bytes",
+          "valueType": "UInt16",
+          "byteOrder": "little",
+          "wordOrder": "low-first"
+        },
+        "inputStage": "raw",
+        "unit": {
+          "status": "known",
+          "code": "kPa"
+        },
+        "evidenceRefs": [
+          {
+            "artifactId": "import-review-next",
+            "locator": {
+              "kind": "json-pointer",
+              "pointer": "/records/5"
+            }
+          },
+          {
+            "artifactId": "import-review-next",
+            "locator": {
+              "kind": "json-pointer",
+              "pointer": "/records/0"
+            }
+          }
+        ],
+        "viewOf": null
+      }
+    },
+    {
+      "id": "row-7",
+      "raw": {
+        "id": "new-signal",
+        "kind": "source",
+        "profile": "melsec-device-v1",
+        "address": "D7000",
+        "type": "UInt16",
+        "unit": "kPa",
+        "stage": "raw",
+        "byteOrder": "little",
+        "wordOrder": "low-first",
+        "width": 1
+      },
+      "locator": {
+        "kind": "json-pointer",
+        "pointer": "/records/6"
+      },
+      "derivation": [
+        {
+          "kind": "json-pointer",
+          "pointer": "/records/6"
+        }
+      ],
+      "issues": [],
+      "assumptions": [],
+      "draft": {
+        "kind": "source-definition",
+        "schemaVersion": "2.2.0",
+        "id": "imp-review-next-new-signal",
+        "version": "1.0.0",
+        "equipmentInstanceId": "import-line",
+        "connectionProfileRef": "import-3",
+        "accessProfileRef": "melsec-device-v1",
+        "status": "draft",
+        "rawAddressText": "D7000",
+        "addressRadix": 10,
+        "access": {
+          "kind": "device-register",
+          "deviceArea": "D",
+          "addressIndex": 7000,
+          "addressUnit": "word16",
+          "wordCount": 1,
+          "bitOffset": null
+        },
+        "rawRepresentation": {
+          "mode": "bytes",
+          "valueType": "UInt16",
+          "byteOrder": "little",
+          "wordOrder": "low-first"
+        },
+        "inputStage": "raw",
+        "unit": {
+          "status": "known",
+          "code": "kPa"
+        },
+        "evidenceRefs": [
+          {
+            "artifactId": "import-review-next",
+            "locator": {
+              "kind": "json-pointer",
+              "pointer": "/records/6"
+            }
+          }
+        ],
+        "viewOf": null
+      }
+    }
+  ],
+  "reviews": [],
+  "adoptions": [
+    {
+      "observationId": "row-0",
+      "recordKey": "pump-0",
+      "sourceId": "imp-review-base-pump-0",
+      "imported": {
+        "schemaVersion": "2.2.0",
+        "connectionProfileRef": "import-3",
+        "accessProfileRef": "melsec-device-v1",
+        "rawAddressText": "D5000",
+        "addressRadix": 10,
+        "access": {
+          "kind": "device-register",
+          "deviceArea": "D",
+          "addressIndex": 5000,
+          "addressUnit": "word16",
+          "wordCount": 1,
+          "bitOffset": null
+        },
+        "rawRepresentation": {
+          "mode": "bytes",
+          "valueType": "UInt16",
+          "byteOrder": "little",
+          "wordOrder": "low-first"
+        },
+        "inputStage": "raw",
+        "unit": {
+          "status": "known",
+          "code": "kPa"
+        },
+        "viewOf": null,
+        "label": "imp-review-base-pump-0"
+      }
+    },
+    {
+      "observationId": "row-1",
+      "recordKey": "pump-1",
+      "sourceId": "imp-review-base-pump-1",
+      "imported": {
+        "schemaVersion": "2.2.0",
+        "connectionProfileRef": "import-3",
+        "accessProfileRef": "melsec-device-v1",
+        "rawAddressText": "D5999",
+        "addressRadix": 10,
+        "access": {
+          "kind": "device-register",
+          "deviceArea": "D",
+          "addressIndex": 5999,
+          "addressUnit": "word16",
+          "wordCount": 1,
+          "bitOffset": null
+        },
+        "rawRepresentation": {
+          "mode": "bytes",
+          "valueType": "UInt16",
+          "byteOrder": "little",
+          "wordOrder": "low-first"
+        },
+        "inputStage": "raw",
+        "unit": {
+          "status": "known",
+          "code": "kPa"
+        },
+        "viewOf": null,
+        "label": "imp-review-base-pump-1"
+      }
+    },
+    {
+      "observationId": "row-2",
+      "recordKey": "pressure-mel",
+      "sourceId": "imp-review-base-pressure-mel",
+      "imported": {
+        "schemaVersion": "2.2.0",
+        "connectionProfileRef": "import-3",
+        "accessProfileRef": "melsec-device-v1",
+        "rawAddressText": "D1000",
+        "addressRadix": 10,
+        "access": {
+          "kind": "device-register",
+          "deviceArea": "D",
+          "addressIndex": 1000,
+          "addressUnit": "word16",
+          "wordCount": 1,
+          "bitOffset": null
+        },
+        "rawRepresentation": {
+          "mode": "bytes",
+          "valueType": "UInt16",
+          "byteOrder": "little",
+          "wordOrder": "low-first"
+        },
+        "inputStage": "raw",
+        "unit": {
+          "status": "known",
+          "code": "kPa"
+        },
+        "viewOf": null,
+        "label": "imp-review-base-pressure-mel"
+      }
+    },
+    {
+      "observationId": "row-3",
+      "recordKey": "speed-ab",
+      "sourceId": "imp-review-base-speed-ab",
+      "imported": {
+        "schemaVersion": "2.2.0",
+        "connectionProfileRef": "import-0",
+        "accessProfileRef": "ab-logix-symbol-v1",
+        "rawAddressText": "Motor.ActualSpeedV2",
+        "addressRadix": null,
+        "access": {
+          "kind": "symbol",
+          "symbolPath": "Motor.ActualSpeedV2"
+        },
+        "rawRepresentation": {
+          "mode": "typed",
+          "valueType": "Float32"
+        },
+        "inputStage": "already-engineered",
+        "unit": {
+          "status": "known",
+          "code": "rpm"
+        },
+        "viewOf": null,
+        "label": "imp-review-base-speed-ab"
+      }
+    },
+    {
+      "observationId": "row-4",
+      "recordKey": "pressure-ua",
+      "sourceId": "imp-review-base-pressure-ua",
+      "imported": {
+        "schemaVersion": "2.2.0",
+        "connectionProfileRef": "import-1",
+        "accessProfileRef": "s7-1500-opcua-v1",
+        "rawAddressText": "Line.IncomingPressure",
+        "addressRadix": null,
+        "access": {
+          "kind": "opcua-node",
+          "namespaceUri": "urn:tyr:synthetic:line",
+          "identifierType": "string",
+          "identifier": "Line.IncomingPressure"
+        },
+        "rawRepresentation": {
+          "mode": "typed",
+          "valueType": "Float32"
+        },
+        "inputStage": "already-engineered",
+        "unit": {
+          "status": "known",
+          "code": "kPa"
+        },
+        "viewOf": null,
+        "label": "imp-review-base-pressure-ua"
+      }
+    },
+    {
+      "observationId": "row-5",
+      "recordKey": "unresolved",
+      "sourceId": "imp-review-base-unresolved",
+      "imported": {
+        "schemaVersion": "2.2.0",
+        "connectionProfileRef": "import-3",
+        "accessProfileRef": "melsec-device-v1",
+        "rawAddressText": "D4001",
+        "addressRadix": 10,
+        "access": {
+          "kind": "device-register",
+          "deviceArea": "D",
+          "addressIndex": 4001,
+          "addressUnit": "word16",
+          "wordCount": 1,
+          "bitOffset": null
+        },
+        "rawRepresentation": {
+          "mode": "bytes",
+          "valueType": "UInt16",
+          "byteOrder": "little",
+          "wordOrder": "low-first"
+        },
+        "inputStage": "raw",
+        "unit": {
+          "status": "known",
+          "code": "kPa"
+        },
+        "viewOf": null,
+        "label": "imp-review-base-unresolved"
+      }
+    },
+    {
+      "observationId": "row-6",
+      "recordKey": "alias",
+      "sourceId": "imp-review-base-alias",
+      "imported": {
+        "schemaVersion": "2.2.0",
+        "connectionProfileRef": "import-3",
+        "accessProfileRef": "melsec-device-v1",
+        "rawAddressText": "D5999",
+        "addressRadix": 10,
+        "access": {
+          "kind": "device-register",
+          "deviceArea": "D",
+          "addressIndex": 5999,
+          "addressUnit": "word16",
+          "wordCount": 1,
+          "bitOffset": null
+        },
+        "rawRepresentation": {
+          "mode": "bytes",
+          "valueType": "UInt16",
+          "byteOrder": "little",
+          "wordOrder": "low-first"
+        },
+        "inputStage": "raw",
+        "unit": {
+          "status": "known",
+          "code": "kPa"
+        },
+        "viewOf": null,
+        "label": "imp-review-base-alias"
+      }
+    },
+    {
+      "observationId": "row-7",
+      "recordKey": "new-signal",
+      "sourceId": "imp-review-next-new-signal",
+      "imported": {
+        "schemaVersion": "2.2.0",
+        "connectionProfileRef": "import-3",
+        "accessProfileRef": "melsec-device-v1",
+        "rawAddressText": "D7000",
+        "addressRadix": 10,
+        "access": {
+          "kind": "device-register",
+          "deviceArea": "D",
+          "addressIndex": 7000,
+          "addressUnit": "word16",
+          "wordCount": 1,
+          "bitOffset": null
+        },
+        "rawRepresentation": {
+          "mode": "bytes",
+          "valueType": "UInt16",
+          "byteOrder": "little",
+          "wordOrder": "low-first"
+        },
+        "inputStage": "raw",
+        "unit": {
+          "status": "known",
+          "code": "kPa"
+        },
+        "viewOf": null,
+        "label": "imp-review-next-new-signal"
+      }
+    },
+    {
+      "observationId": null,
+      "recordKey": "pressure-db",
+      "sourceId": "imp-review-base-pressure-db",
+      "imported": {
+        "schemaVersion": "2.2.0",
+        "connectionProfileRef": "import-2",
+        "accessProfileRef": "s7-300-db-v1",
+        "rawAddressText": "DB10.DBB64",
+        "addressRadix": null,
+        "access": {
+          "kind": "db-offset",
+          "dbNumber": 10,
+          "byteOffset": 64,
+          "byteLength": 2,
+          "bitOffset": null
+        },
+        "rawRepresentation": {
+          "mode": "bytes",
+          "valueType": "UInt16",
+          "byteOrder": "big",
+          "wordOrder": "high-first"
+        },
+        "inputStage": "raw",
+        "unit": {
+          "status": "known",
+          "code": "kPa"
+        },
+        "viewOf": null,
+        "label": "imp-review-base-pressure-db"
+      }
+    }
+  ],
+  "reconciliation": {
+    "previousBatchRef": {
+      "id": "review-base",
+      "version": "1.0.0"
+    },
+    "previousBatchSha256": "0cd4701d8edcd9f5f4215bbb5094b87125681720e98d2441baf9d6675faf215a",
+    "workspaceSha256": "ba658a7e2e273fa95509451aeb407e1d13a42c2b4bcdf69ef71e7ab72b23476d",
+    "ours": [
+      {
+        "definition": {
+          "kind": "source-definition",
+          "schemaVersion": "2.2.0",
+          "id": "imp-review-base-speed-ab",
+          "version": "1.0.0",
+          "equipmentInstanceId": "import-line",
+          "connectionProfileRef": "import-0",
+          "accessProfileRef": "ab-logix-symbol-v1",
+          "status": "ready",
+          "rawAddressText": "Motor.ActualSpeed",
+          "addressRadix": null,
+          "access": {
+            "kind": "symbol",
+            "symbolPath": "Motor.ActualSpeed"
+          },
+          "rawRepresentation": {
+            "mode": "typed",
+            "valueType": "Float32"
+          },
+          "inputStage": "already-engineered",
+          "unit": {
+            "status": "known",
+            "code": "rpm"
+          },
+          "evidenceRefs": [
+            {
+              "artifactId": "manual-imp-review-base-speed-ab",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            },
+            {
+              "artifactId": "import-review-base",
+              "locator": {
+                "kind": "json-pointer",
+                "pointer": "/records/0"
+              }
+            }
+          ],
+          "viewOf": null
+        },
+        "label": "Local speed label",
+        "note": "Imported draft. Review decoding assumptions. SHA256 64cac491fd40d4c9ede000878e966032ef1a5ecfba9873173edbec82f2fc926b",
+        "origin": "synthetic",
+        "capturedAt": "2026-10-17T00:00:00Z",
+        "importRef": {
+          "batchId": "review-base",
+          "observationId": "row-0"
+        }
+      },
+      {
+        "definition": {
+          "kind": "source-definition",
+          "schemaVersion": "2.2.0",
+          "id": "imp-review-base-pressure-ua",
+          "version": "1.0.0",
+          "equipmentInstanceId": "import-line",
+          "connectionProfileRef": "import-1",
+          "accessProfileRef": "s7-1500-opcua-v1",
+          "status": "ready",
+          "rawAddressText": "Line.LocalPressure",
+          "addressRadix": null,
+          "access": {
+            "kind": "opcua-node",
+            "namespaceUri": "urn:tyr:synthetic:line",
+            "identifierType": "string",
+            "identifier": "Line.LocalPressure"
+          },
+          "rawRepresentation": {
+            "mode": "typed",
+            "valueType": "Float32"
+          },
+          "inputStage": "already-engineered",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "evidenceRefs": [
+            {
+              "artifactId": "manual-imp-review-base-pressure-ua",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            },
+            {
+              "artifactId": "import-review-base",
+              "locator": {
+                "kind": "json-pointer",
+                "pointer": "/records/1"
+              }
+            }
+          ],
+          "viewOf": null
+        },
+        "label": "imp-review-base-pressure-ua",
+        "note": "Local engineering note must survive",
+        "origin": "synthetic",
+        "capturedAt": "2026-10-17T00:00:00Z",
+        "importRef": {
+          "batchId": "review-base",
+          "observationId": "row-1"
+        }
+      },
+      {
+        "definition": {
+          "kind": "source-definition",
+          "schemaVersion": "2.2.0",
+          "id": "imp-review-base-pressure-db",
+          "version": "1.0.0",
+          "equipmentInstanceId": "import-line",
+          "connectionProfileRef": "import-2",
+          "accessProfileRef": "s7-300-db-v1",
+          "status": "ready",
+          "rawAddressText": "DB10.DBB64",
+          "addressRadix": null,
+          "access": {
+            "kind": "db-offset",
+            "dbNumber": 10,
+            "byteOffset": 64,
+            "byteLength": 2,
+            "bitOffset": null
+          },
+          "rawRepresentation": {
+            "mode": "bytes",
+            "valueType": "UInt16",
+            "byteOrder": "big",
+            "wordOrder": "high-first"
+          },
+          "inputStage": "raw",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "evidenceRefs": [
+            {
+              "artifactId": "manual-imp-review-base-pressure-db",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            },
+            {
+              "artifactId": "import-review-base",
+              "locator": {
+                "kind": "json-pointer",
+                "pointer": "/records/2"
+              }
+            }
+          ],
+          "viewOf": null
+        },
+        "label": "imp-review-base-pressure-db",
+        "note": "Imported draft. Review decoding assumptions. SHA256 64cac491fd40d4c9ede000878e966032ef1a5ecfba9873173edbec82f2fc926b",
+        "origin": "synthetic",
+        "capturedAt": "2026-10-17T00:00:00Z",
+        "importRef": {
+          "batchId": "review-base",
+          "observationId": "row-2"
+        }
+      },
+      {
+        "definition": {
+          "kind": "source-definition",
+          "schemaVersion": "2.2.0",
+          "id": "imp-review-base-pressure-mel",
+          "version": "1.0.0",
+          "equipmentInstanceId": "import-line",
+          "connectionProfileRef": "import-3",
+          "accessProfileRef": "melsec-device-v1",
+          "status": "ready",
+          "rawAddressText": "D1000",
+          "addressRadix": 10,
+          "access": {
+            "kind": "device-register",
+            "deviceArea": "D",
+            "addressIndex": 1000,
+            "addressUnit": "word16",
+            "wordCount": 1,
+            "bitOffset": null
+          },
+          "rawRepresentation": {
+            "mode": "bytes",
+            "valueType": "UInt16",
+            "byteOrder": "little",
+            "wordOrder": "low-first"
+          },
+          "inputStage": "raw",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "evidenceRefs": [
+            {
+              "artifactId": "manual-imp-review-base-pressure-mel",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            },
+            {
+              "artifactId": "import-review-base",
+              "locator": {
+                "kind": "json-pointer",
+                "pointer": "/records/3"
+              }
+            }
+          ],
+          "viewOf": null
+        },
+        "label": "imp-review-base-pressure-mel",
+        "note": "Imported draft. Review decoding assumptions. SHA256 64cac491fd40d4c9ede000878e966032ef1a5ecfba9873173edbec82f2fc926b",
+        "origin": "synthetic",
+        "capturedAt": "2026-10-17T00:00:00Z",
+        "importRef": {
+          "batchId": "review-base",
+          "observationId": "row-3"
+        }
+      },
+      {
+        "definition": {
+          "kind": "source-definition",
+          "schemaVersion": "2.2.0",
+          "id": "imp-review-base-pump-0",
+          "version": "1.0.0",
+          "equipmentInstanceId": "import-line",
+          "connectionProfileRef": "import-3",
+          "accessProfileRef": "melsec-device-v1",
+          "status": "ready",
+          "rawAddressText": "D5000",
+          "addressRadix": 10,
+          "access": {
+            "kind": "device-register",
+            "deviceArea": "D",
+            "addressIndex": 5000,
+            "addressUnit": "word16",
+            "wordCount": 1,
+            "bitOffset": null
+          },
+          "rawRepresentation": {
+            "mode": "bytes",
+            "valueType": "UInt16",
+            "byteOrder": "little",
+            "wordOrder": "low-first"
+          },
+          "inputStage": "raw",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "evidenceRefs": [
+            {
+              "artifactId": "manual-imp-review-base-pump-0",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            },
+            {
+              "artifactId": "import-review-base",
+              "locator": {
+                "kind": "json-pointer",
+                "pointer": "/records/5"
+              }
+            }
+          ],
+          "viewOf": null
+        },
+        "label": "imp-review-base-pump-0",
+        "note": "Imported draft. Review decoding assumptions. SHA256 64cac491fd40d4c9ede000878e966032ef1a5ecfba9873173edbec82f2fc926b",
+        "origin": "synthetic",
+        "capturedAt": "2026-10-17T00:00:00Z",
+        "importRef": {
+          "batchId": "review-base",
+          "observationId": "row-5"
+        }
+      },
+      {
+        "definition": {
+          "kind": "source-definition",
+          "schemaVersion": "2.2.0",
+          "id": "imp-review-base-pump-1",
+          "version": "1.0.0",
+          "equipmentInstanceId": "import-line",
+          "connectionProfileRef": "import-3",
+          "accessProfileRef": "melsec-device-v1",
+          "status": "ready",
+          "rawAddressText": "D5002",
+          "addressRadix": 10,
+          "access": {
+            "kind": "device-register",
+            "deviceArea": "D",
+            "addressIndex": 5002,
+            "addressUnit": "word16",
+            "wordCount": 1,
+            "bitOffset": null
+          },
+          "rawRepresentation": {
+            "mode": "bytes",
+            "valueType": "UInt16",
+            "byteOrder": "little",
+            "wordOrder": "low-first"
+          },
+          "inputStage": "raw",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "evidenceRefs": [
+            {
+              "artifactId": "manual-imp-review-base-pump-1",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            },
+            {
+              "artifactId": "import-review-base",
+              "locator": {
+                "kind": "json-pointer",
+                "pointer": "/records/5"
+              }
+            }
+          ],
+          "viewOf": null
+        },
+        "label": "imp-review-base-pump-1",
+        "note": "Imported draft. Review decoding assumptions. SHA256 64cac491fd40d4c9ede000878e966032ef1a5ecfba9873173edbec82f2fc926b",
+        "origin": "synthetic",
+        "capturedAt": "2026-10-17T00:00:00Z",
+        "importRef": {
+          "batchId": "review-base",
+          "observationId": "row-6"
+        }
+      },
+      {
+        "definition": {
+          "kind": "source-definition",
+          "schemaVersion": "2.2.0",
+          "id": "imp-review-base-alias",
+          "version": "1.0.0",
+          "equipmentInstanceId": "import-line",
+          "connectionProfileRef": "import-3",
+          "accessProfileRef": "melsec-device-v1",
+          "status": "ready",
+          "rawAddressText": "D5002",
+          "addressRadix": 10,
+          "access": {
+            "kind": "device-register",
+            "deviceArea": "D",
+            "addressIndex": 5002,
+            "addressUnit": "word16",
+            "wordCount": 1,
+            "bitOffset": null
+          },
+          "rawRepresentation": {
+            "mode": "bytes",
+            "valueType": "UInt16",
+            "byteOrder": "little",
+            "wordOrder": "low-first"
+          },
+          "inputStage": "raw",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "evidenceRefs": [
+            {
+              "artifactId": "manual-imp-review-base-alias",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            },
+            {
+              "artifactId": "import-review-base",
+              "locator": {
+                "kind": "json-pointer",
+                "pointer": "/records/6"
+              }
+            },
+            {
+              "artifactId": "import-review-base",
+              "locator": {
+                "kind": "json-pointer",
+                "pointer": "/records/5"
+              }
+            }
+          ],
+          "viewOf": null
+        },
+        "label": "imp-review-base-alias",
+        "note": "Imported draft. Review decoding assumptions. SHA256 64cac491fd40d4c9ede000878e966032ef1a5ecfba9873173edbec82f2fc926b",
+        "origin": "synthetic",
+        "capturedAt": "2026-10-17T00:00:00Z",
+        "importRef": {
+          "batchId": "review-base",
+          "observationId": "row-7"
+        }
+      },
+      {
+        "definition": {
+          "kind": "source-definition",
+          "schemaVersion": "2.2.0",
+          "id": "imp-review-base-unresolved",
+          "version": "1.0.0",
+          "equipmentInstanceId": "import-line",
+          "connectionProfileRef": "import-3",
+          "accessProfileRef": "melsec-device-v1",
+          "status": "ready",
+          "rawAddressText": "D4000",
+          "addressRadix": 10,
+          "access": {
+            "kind": "device-register",
+            "deviceArea": "D",
+            "addressIndex": 4000,
+            "addressUnit": "word16",
+            "wordCount": 1,
+            "bitOffset": null
+          },
+          "rawRepresentation": {
+            "mode": "bytes",
+            "valueType": "UInt16",
+            "byteOrder": "little",
+            "wordOrder": "low-first"
+          },
+          "inputStage": "raw",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "evidenceRefs": [
+            {
+              "artifactId": "manual-imp-review-base-unresolved",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            },
+            {
+              "artifactId": "import-review-base",
+              "locator": {
+                "kind": "json-pointer",
+                "pointer": "/records/4"
+              }
+            }
+          ],
+          "viewOf": null
+        },
+        "label": "imp-review-base-unresolved",
+        "note": "Imported draft. SHA256 64cac491fd40d4c9ede000878e966032ef1a5ecfba9873173edbec82f2fc926b Review offline-reviewer: Synthetic engineering correction; explicit D4000 from independent fixture oracle",
+        "origin": "synthetic",
+        "capturedAt": "2026-10-17T00:00:00Z",
+        "importRef": {
+          "batchId": "review-base",
+          "observationId": "row-4"
+        }
+      }
+    ],
+    "actions": [
+      {
+        "key": "pump-0",
+        "observationId": "row-0",
+        "recordKey": "pump-0",
+        "sourceId": "imp-review-base-pump-0",
+        "classification": "unchanged",
+        "base": {
+          "schemaVersion": "2.2.0",
+          "connectionProfileRef": "import-3",
+          "accessProfileRef": "melsec-device-v1",
+          "rawAddressText": "D5000",
+          "addressRadix": 10,
+          "access": {
+            "kind": "device-register",
+            "deviceArea": "D",
+            "addressIndex": 5000,
+            "addressUnit": "word16",
+            "wordCount": 1,
+            "bitOffset": null
+          },
+          "rawRepresentation": {
+            "mode": "bytes",
+            "valueType": "UInt16",
+            "byteOrder": "little",
+            "wordOrder": "low-first"
+          },
+          "inputStage": "raw",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "viewOf": null,
+          "label": "imp-review-base-pump-0"
+        },
+        "ours": {
+          "schemaVersion": "2.2.0",
+          "connectionProfileRef": "import-3",
+          "accessProfileRef": "melsec-device-v1",
+          "rawAddressText": "D5000",
+          "addressRadix": 10,
+          "access": {
+            "kind": "device-register",
+            "deviceArea": "D",
+            "addressIndex": 5000,
+            "addressUnit": "word16",
+            "wordCount": 1,
+            "bitOffset": null
+          },
+          "rawRepresentation": {
+            "mode": "bytes",
+            "valueType": "UInt16",
+            "byteOrder": "little",
+            "wordOrder": "low-first"
+          },
+          "inputStage": "raw",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "viewOf": null,
+          "label": "imp-review-base-pump-0"
+        },
+        "incoming": {
+          "schemaVersion": "2.2.0",
+          "connectionProfileRef": "import-3",
+          "accessProfileRef": "melsec-device-v1",
+          "rawAddressText": "D5000",
+          "addressRadix": 10,
+          "access": {
+            "kind": "device-register",
+            "deviceArea": "D",
+            "addressIndex": 5000,
+            "addressUnit": "word16",
+            "wordCount": 1,
+            "bitOffset": null
+          },
+          "rawRepresentation": {
+            "mode": "bytes",
+            "valueType": "UInt16",
+            "byteOrder": "little",
+            "wordOrder": "low-first"
+          },
+          "inputStage": "raw",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "viewOf": null,
+          "label": "imp-review-base-pump-0"
+        },
+        "fields": [
+          {
+            "field": "access",
+            "base": {
+              "present": true,
+              "value": {
+                "kind": "device-register",
+                "deviceArea": "D",
+                "addressIndex": 5000,
+                "addressUnit": "word16",
+                "wordCount": 1,
+                "bitOffset": null
+              }
+            },
+            "ours": {
+              "present": true,
+              "value": {
+                "kind": "device-register",
+                "deviceArea": "D",
+                "addressIndex": 5000,
+                "addressUnit": "word16",
+                "wordCount": 1,
+                "bitOffset": null
+              }
+            },
+            "incoming": {
+              "present": true,
+              "value": {
+                "kind": "device-register",
+                "deviceArea": "D",
+                "addressIndex": 5000,
+                "addressUnit": "word16",
+                "wordCount": 1,
+                "bitOffset": null
+              }
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "accessProfileRef",
+            "base": {
+              "present": true,
+              "value": "melsec-device-v1"
+            },
+            "ours": {
+              "present": true,
+              "value": "melsec-device-v1"
+            },
+            "incoming": {
+              "present": true,
+              "value": "melsec-device-v1"
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "addressRadix",
+            "base": {
+              "present": true,
+              "value": 10
+            },
+            "ours": {
+              "present": true,
+              "value": 10
+            },
+            "incoming": {
+              "present": true,
+              "value": 10
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "connectionProfileRef",
+            "base": {
+              "present": true,
+              "value": "import-3"
+            },
+            "ours": {
+              "present": true,
+              "value": "import-3"
+            },
+            "incoming": {
+              "present": true,
+              "value": "import-3"
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "inputStage",
+            "base": {
+              "present": true,
+              "value": "raw"
+            },
+            "ours": {
+              "present": true,
+              "value": "raw"
+            },
+            "incoming": {
+              "present": true,
+              "value": "raw"
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "label",
+            "base": {
+              "present": true,
+              "value": "imp-review-base-pump-0"
+            },
+            "ours": {
+              "present": true,
+              "value": "imp-review-base-pump-0"
+            },
+            "incoming": {
+              "present": true,
+              "value": "imp-review-base-pump-0"
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "rawAddressText",
+            "base": {
+              "present": true,
+              "value": "D5000"
+            },
+            "ours": {
+              "present": true,
+              "value": "D5000"
+            },
+            "incoming": {
+              "present": true,
+              "value": "D5000"
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "rawRepresentation",
+            "base": {
+              "present": true,
+              "value": {
+                "mode": "bytes",
+                "valueType": "UInt16",
+                "byteOrder": "little",
+                "wordOrder": "low-first"
+              }
+            },
+            "ours": {
+              "present": true,
+              "value": {
+                "mode": "bytes",
+                "valueType": "UInt16",
+                "byteOrder": "little",
+                "wordOrder": "low-first"
+              }
+            },
+            "incoming": {
+              "present": true,
+              "value": {
+                "mode": "bytes",
+                "valueType": "UInt16",
+                "byteOrder": "little",
+                "wordOrder": "low-first"
+              }
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "schemaVersion",
+            "base": {
+              "present": true,
+              "value": "2.2.0"
+            },
+            "ours": {
+              "present": true,
+              "value": "2.2.0"
+            },
+            "incoming": {
+              "present": true,
+              "value": "2.2.0"
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "unit",
+            "base": {
+              "present": true,
+              "value": {
+                "status": "known",
+                "code": "kPa"
+              }
+            },
+            "ours": {
+              "present": true,
+              "value": {
+                "status": "known",
+                "code": "kPa"
+              }
+            },
+            "incoming": {
+              "present": true,
+              "value": {
+                "status": "known",
+                "code": "kPa"
+              }
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "viewOf",
+            "base": {
+              "present": true,
+              "value": null
+            },
+            "ours": {
+              "present": true,
+              "value": null
+            },
+            "incoming": {
+              "present": true,
+              "value": null
+            },
+            "conflict": false,
+            "suggested": "ours"
+          }
+        ]
+      },
+      {
+        "key": "pump-1",
+        "observationId": "row-1",
+        "recordKey": "pump-1",
+        "sourceId": "imp-review-base-pump-1",
+        "classification": "incoming-only",
+        "base": {
+          "schemaVersion": "2.2.0",
+          "connectionProfileRef": "import-3",
+          "accessProfileRef": "melsec-device-v1",
+          "rawAddressText": "D5002",
+          "addressRadix": 10,
+          "access": {
+            "kind": "device-register",
+            "deviceArea": "D",
+            "addressIndex": 5002,
+            "addressUnit": "word16",
+            "wordCount": 1,
+            "bitOffset": null
+          },
+          "rawRepresentation": {
+            "mode": "bytes",
+            "valueType": "UInt16",
+            "byteOrder": "little",
+            "wordOrder": "low-first"
+          },
+          "inputStage": "raw",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "viewOf": null,
+          "label": "imp-review-base-pump-1"
+        },
+        "ours": {
+          "schemaVersion": "2.2.0",
+          "connectionProfileRef": "import-3",
+          "accessProfileRef": "melsec-device-v1",
+          "rawAddressText": "D5002",
+          "addressRadix": 10,
+          "access": {
+            "kind": "device-register",
+            "deviceArea": "D",
+            "addressIndex": 5002,
+            "addressUnit": "word16",
+            "wordCount": 1,
+            "bitOffset": null
+          },
+          "rawRepresentation": {
+            "mode": "bytes",
+            "valueType": "UInt16",
+            "byteOrder": "little",
+            "wordOrder": "low-first"
+          },
+          "inputStage": "raw",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "viewOf": null,
+          "label": "imp-review-base-pump-1"
+        },
+        "incoming": {
+          "schemaVersion": "2.2.0",
+          "connectionProfileRef": "import-3",
+          "accessProfileRef": "melsec-device-v1",
+          "rawAddressText": "D5999",
+          "addressRadix": 10,
+          "access": {
+            "kind": "device-register",
+            "deviceArea": "D",
+            "addressIndex": 5999,
+            "addressUnit": "word16",
+            "wordCount": 1,
+            "bitOffset": null
+          },
+          "rawRepresentation": {
+            "mode": "bytes",
+            "valueType": "UInt16",
+            "byteOrder": "little",
+            "wordOrder": "low-first"
+          },
+          "inputStage": "raw",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "viewOf": null,
+          "label": "imp-review-base-pump-1"
+        },
+        "fields": [
+          {
+            "field": "access",
+            "base": {
+              "present": true,
+              "value": {
+                "kind": "device-register",
+                "deviceArea": "D",
+                "addressIndex": 5002,
+                "addressUnit": "word16",
+                "wordCount": 1,
+                "bitOffset": null
+              }
+            },
+            "ours": {
+              "present": true,
+              "value": {
+                "kind": "device-register",
+                "deviceArea": "D",
+                "addressIndex": 5002,
+                "addressUnit": "word16",
+                "wordCount": 1,
+                "bitOffset": null
+              }
+            },
+            "incoming": {
+              "present": true,
+              "value": {
+                "kind": "device-register",
+                "deviceArea": "D",
+                "addressIndex": 5999,
+                "addressUnit": "word16",
+                "wordCount": 1,
+                "bitOffset": null
+              }
+            },
+            "conflict": false,
+            "suggested": "incoming"
+          },
+          {
+            "field": "accessProfileRef",
+            "base": {
+              "present": true,
+              "value": "melsec-device-v1"
+            },
+            "ours": {
+              "present": true,
+              "value": "melsec-device-v1"
+            },
+            "incoming": {
+              "present": true,
+              "value": "melsec-device-v1"
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "addressRadix",
+            "base": {
+              "present": true,
+              "value": 10
+            },
+            "ours": {
+              "present": true,
+              "value": 10
+            },
+            "incoming": {
+              "present": true,
+              "value": 10
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "connectionProfileRef",
+            "base": {
+              "present": true,
+              "value": "import-3"
+            },
+            "ours": {
+              "present": true,
+              "value": "import-3"
+            },
+            "incoming": {
+              "present": true,
+              "value": "import-3"
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "inputStage",
+            "base": {
+              "present": true,
+              "value": "raw"
+            },
+            "ours": {
+              "present": true,
+              "value": "raw"
+            },
+            "incoming": {
+              "present": true,
+              "value": "raw"
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "label",
+            "base": {
+              "present": true,
+              "value": "imp-review-base-pump-1"
+            },
+            "ours": {
+              "present": true,
+              "value": "imp-review-base-pump-1"
+            },
+            "incoming": {
+              "present": true,
+              "value": "imp-review-base-pump-1"
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "rawAddressText",
+            "base": {
+              "present": true,
+              "value": "D5002"
+            },
+            "ours": {
+              "present": true,
+              "value": "D5002"
+            },
+            "incoming": {
+              "present": true,
+              "value": "D5999"
+            },
+            "conflict": false,
+            "suggested": "incoming"
+          },
+          {
+            "field": "rawRepresentation",
+            "base": {
+              "present": true,
+              "value": {
+                "mode": "bytes",
+                "valueType": "UInt16",
+                "byteOrder": "little",
+                "wordOrder": "low-first"
+              }
+            },
+            "ours": {
+              "present": true,
+              "value": {
+                "mode": "bytes",
+                "valueType": "UInt16",
+                "byteOrder": "little",
+                "wordOrder": "low-first"
+              }
+            },
+            "incoming": {
+              "present": true,
+              "value": {
+                "mode": "bytes",
+                "valueType": "UInt16",
+                "byteOrder": "little",
+                "wordOrder": "low-first"
+              }
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "schemaVersion",
+            "base": {
+              "present": true,
+              "value": "2.2.0"
+            },
+            "ours": {
+              "present": true,
+              "value": "2.2.0"
+            },
+            "incoming": {
+              "present": true,
+              "value": "2.2.0"
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "unit",
+            "base": {
+              "present": true,
+              "value": {
+                "status": "known",
+                "code": "kPa"
+              }
+            },
+            "ours": {
+              "present": true,
+              "value": {
+                "status": "known",
+                "code": "kPa"
+              }
+            },
+            "incoming": {
+              "present": true,
+              "value": {
+                "status": "known",
+                "code": "kPa"
+              }
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "viewOf",
+            "base": {
+              "present": true,
+              "value": null
+            },
+            "ours": {
+              "present": true,
+              "value": null
+            },
+            "incoming": {
+              "present": true,
+              "value": null
+            },
+            "conflict": false,
+            "suggested": "ours"
+          }
+        ]
+      },
+      {
+        "key": "pressure-mel",
+        "observationId": "row-2",
+        "recordKey": "pressure-mel",
+        "sourceId": "imp-review-base-pressure-mel",
+        "classification": "unchanged",
+        "base": {
+          "schemaVersion": "2.2.0",
+          "connectionProfileRef": "import-3",
+          "accessProfileRef": "melsec-device-v1",
+          "rawAddressText": "D1000",
+          "addressRadix": 10,
+          "access": {
+            "kind": "device-register",
+            "deviceArea": "D",
+            "addressIndex": 1000,
+            "addressUnit": "word16",
+            "wordCount": 1,
+            "bitOffset": null
+          },
+          "rawRepresentation": {
+            "mode": "bytes",
+            "valueType": "UInt16",
+            "byteOrder": "little",
+            "wordOrder": "low-first"
+          },
+          "inputStage": "raw",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "viewOf": null,
+          "label": "imp-review-base-pressure-mel"
+        },
+        "ours": {
+          "schemaVersion": "2.2.0",
+          "connectionProfileRef": "import-3",
+          "accessProfileRef": "melsec-device-v1",
+          "rawAddressText": "D1000",
+          "addressRadix": 10,
+          "access": {
+            "kind": "device-register",
+            "deviceArea": "D",
+            "addressIndex": 1000,
+            "addressUnit": "word16",
+            "wordCount": 1,
+            "bitOffset": null
+          },
+          "rawRepresentation": {
+            "mode": "bytes",
+            "valueType": "UInt16",
+            "byteOrder": "little",
+            "wordOrder": "low-first"
+          },
+          "inputStage": "raw",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "viewOf": null,
+          "label": "imp-review-base-pressure-mel"
+        },
+        "incoming": {
+          "schemaVersion": "2.2.0",
+          "connectionProfileRef": "import-3",
+          "accessProfileRef": "melsec-device-v1",
+          "rawAddressText": "D1000",
+          "addressRadix": 10,
+          "access": {
+            "kind": "device-register",
+            "deviceArea": "D",
+            "addressIndex": 1000,
+            "addressUnit": "word16",
+            "wordCount": 1,
+            "bitOffset": null
+          },
+          "rawRepresentation": {
+            "mode": "bytes",
+            "valueType": "UInt16",
+            "byteOrder": "little",
+            "wordOrder": "low-first"
+          },
+          "inputStage": "raw",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "viewOf": null,
+          "label": "imp-review-base-pressure-mel"
+        },
+        "fields": [
+          {
+            "field": "access",
+            "base": {
+              "present": true,
+              "value": {
+                "kind": "device-register",
+                "deviceArea": "D",
+                "addressIndex": 1000,
+                "addressUnit": "word16",
+                "wordCount": 1,
+                "bitOffset": null
+              }
+            },
+            "ours": {
+              "present": true,
+              "value": {
+                "kind": "device-register",
+                "deviceArea": "D",
+                "addressIndex": 1000,
+                "addressUnit": "word16",
+                "wordCount": 1,
+                "bitOffset": null
+              }
+            },
+            "incoming": {
+              "present": true,
+              "value": {
+                "kind": "device-register",
+                "deviceArea": "D",
+                "addressIndex": 1000,
+                "addressUnit": "word16",
+                "wordCount": 1,
+                "bitOffset": null
+              }
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "accessProfileRef",
+            "base": {
+              "present": true,
+              "value": "melsec-device-v1"
+            },
+            "ours": {
+              "present": true,
+              "value": "melsec-device-v1"
+            },
+            "incoming": {
+              "present": true,
+              "value": "melsec-device-v1"
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "addressRadix",
+            "base": {
+              "present": true,
+              "value": 10
+            },
+            "ours": {
+              "present": true,
+              "value": 10
+            },
+            "incoming": {
+              "present": true,
+              "value": 10
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "connectionProfileRef",
+            "base": {
+              "present": true,
+              "value": "import-3"
+            },
+            "ours": {
+              "present": true,
+              "value": "import-3"
+            },
+            "incoming": {
+              "present": true,
+              "value": "import-3"
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "inputStage",
+            "base": {
+              "present": true,
+              "value": "raw"
+            },
+            "ours": {
+              "present": true,
+              "value": "raw"
+            },
+            "incoming": {
+              "present": true,
+              "value": "raw"
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "label",
+            "base": {
+              "present": true,
+              "value": "imp-review-base-pressure-mel"
+            },
+            "ours": {
+              "present": true,
+              "value": "imp-review-base-pressure-mel"
+            },
+            "incoming": {
+              "present": true,
+              "value": "imp-review-base-pressure-mel"
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "rawAddressText",
+            "base": {
+              "present": true,
+              "value": "D1000"
+            },
+            "ours": {
+              "present": true,
+              "value": "D1000"
+            },
+            "incoming": {
+              "present": true,
+              "value": "D1000"
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "rawRepresentation",
+            "base": {
+              "present": true,
+              "value": {
+                "mode": "bytes",
+                "valueType": "UInt16",
+                "byteOrder": "little",
+                "wordOrder": "low-first"
+              }
+            },
+            "ours": {
+              "present": true,
+              "value": {
+                "mode": "bytes",
+                "valueType": "UInt16",
+                "byteOrder": "little",
+                "wordOrder": "low-first"
+              }
+            },
+            "incoming": {
+              "present": true,
+              "value": {
+                "mode": "bytes",
+                "valueType": "UInt16",
+                "byteOrder": "little",
+                "wordOrder": "low-first"
+              }
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "schemaVersion",
+            "base": {
+              "present": true,
+              "value": "2.2.0"
+            },
+            "ours": {
+              "present": true,
+              "value": "2.2.0"
+            },
+            "incoming": {
+              "present": true,
+              "value": "2.2.0"
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "unit",
+            "base": {
+              "present": true,
+              "value": {
+                "status": "known",
+                "code": "kPa"
+              }
+            },
+            "ours": {
+              "present": true,
+              "value": {
+                "status": "known",
+                "code": "kPa"
+              }
+            },
+            "incoming": {
+              "present": true,
+              "value": {
+                "status": "known",
+                "code": "kPa"
+              }
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "viewOf",
+            "base": {
+              "present": true,
+              "value": null
+            },
+            "ours": {
+              "present": true,
+              "value": null
+            },
+            "incoming": {
+              "present": true,
+              "value": null
+            },
+            "conflict": false,
+            "suggested": "ours"
+          }
+        ]
+      },
+      {
+        "key": "speed-ab",
+        "observationId": "row-3",
+        "recordKey": "speed-ab",
+        "sourceId": "imp-review-base-speed-ab",
+        "classification": "mergeable",
+        "base": {
+          "schemaVersion": "2.2.0",
+          "connectionProfileRef": "import-0",
+          "accessProfileRef": "ab-logix-symbol-v1",
+          "rawAddressText": "Motor.ActualSpeed",
+          "addressRadix": null,
+          "access": {
+            "kind": "symbol",
+            "symbolPath": "Motor.ActualSpeed"
+          },
+          "rawRepresentation": {
+            "mode": "typed",
+            "valueType": "Float32"
+          },
+          "inputStage": "already-engineered",
+          "unit": {
+            "status": "known",
+            "code": "rpm"
+          },
+          "viewOf": null,
+          "label": "imp-review-base-speed-ab"
+        },
+        "ours": {
+          "schemaVersion": "2.2.0",
+          "connectionProfileRef": "import-0",
+          "accessProfileRef": "ab-logix-symbol-v1",
+          "rawAddressText": "Motor.ActualSpeed",
+          "addressRadix": null,
+          "access": {
+            "kind": "symbol",
+            "symbolPath": "Motor.ActualSpeed"
+          },
+          "rawRepresentation": {
+            "mode": "typed",
+            "valueType": "Float32"
+          },
+          "inputStage": "already-engineered",
+          "unit": {
+            "status": "known",
+            "code": "rpm"
+          },
+          "viewOf": null,
+          "label": "Local speed label"
+        },
+        "incoming": {
+          "schemaVersion": "2.2.0",
+          "connectionProfileRef": "import-0",
+          "accessProfileRef": "ab-logix-symbol-v1",
+          "rawAddressText": "Motor.ActualSpeedV2",
+          "addressRadix": null,
+          "access": {
+            "kind": "symbol",
+            "symbolPath": "Motor.ActualSpeedV2"
+          },
+          "rawRepresentation": {
+            "mode": "typed",
+            "valueType": "Float32"
+          },
+          "inputStage": "already-engineered",
+          "unit": {
+            "status": "known",
+            "code": "rpm"
+          },
+          "viewOf": null,
+          "label": "imp-review-base-speed-ab"
+        },
+        "fields": [
+          {
+            "field": "access",
+            "base": {
+              "present": true,
+              "value": {
+                "kind": "symbol",
+                "symbolPath": "Motor.ActualSpeed"
+              }
+            },
+            "ours": {
+              "present": true,
+              "value": {
+                "kind": "symbol",
+                "symbolPath": "Motor.ActualSpeed"
+              }
+            },
+            "incoming": {
+              "present": true,
+              "value": {
+                "kind": "symbol",
+                "symbolPath": "Motor.ActualSpeedV2"
+              }
+            },
+            "conflict": false,
+            "suggested": "incoming"
+          },
+          {
+            "field": "accessProfileRef",
+            "base": {
+              "present": true,
+              "value": "ab-logix-symbol-v1"
+            },
+            "ours": {
+              "present": true,
+              "value": "ab-logix-symbol-v1"
+            },
+            "incoming": {
+              "present": true,
+              "value": "ab-logix-symbol-v1"
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "addressRadix",
+            "base": {
+              "present": true,
+              "value": null
+            },
+            "ours": {
+              "present": true,
+              "value": null
+            },
+            "incoming": {
+              "present": true,
+              "value": null
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "connectionProfileRef",
+            "base": {
+              "present": true,
+              "value": "import-0"
+            },
+            "ours": {
+              "present": true,
+              "value": "import-0"
+            },
+            "incoming": {
+              "present": true,
+              "value": "import-0"
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "inputStage",
+            "base": {
+              "present": true,
+              "value": "already-engineered"
+            },
+            "ours": {
+              "present": true,
+              "value": "already-engineered"
+            },
+            "incoming": {
+              "present": true,
+              "value": "already-engineered"
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "label",
+            "base": {
+              "present": true,
+              "value": "imp-review-base-speed-ab"
+            },
+            "ours": {
+              "present": true,
+              "value": "Local speed label"
+            },
+            "incoming": {
+              "present": true,
+              "value": "imp-review-base-speed-ab"
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "rawAddressText",
+            "base": {
+              "present": true,
+              "value": "Motor.ActualSpeed"
+            },
+            "ours": {
+              "present": true,
+              "value": "Motor.ActualSpeed"
+            },
+            "incoming": {
+              "present": true,
+              "value": "Motor.ActualSpeedV2"
+            },
+            "conflict": false,
+            "suggested": "incoming"
+          },
+          {
+            "field": "rawRepresentation",
+            "base": {
+              "present": true,
+              "value": {
+                "mode": "typed",
+                "valueType": "Float32"
+              }
+            },
+            "ours": {
+              "present": true,
+              "value": {
+                "mode": "typed",
+                "valueType": "Float32"
+              }
+            },
+            "incoming": {
+              "present": true,
+              "value": {
+                "mode": "typed",
+                "valueType": "Float32"
+              }
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "schemaVersion",
+            "base": {
+              "present": true,
+              "value": "2.2.0"
+            },
+            "ours": {
+              "present": true,
+              "value": "2.2.0"
+            },
+            "incoming": {
+              "present": true,
+              "value": "2.2.0"
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "unit",
+            "base": {
+              "present": true,
+              "value": {
+                "status": "known",
+                "code": "rpm"
+              }
+            },
+            "ours": {
+              "present": true,
+              "value": {
+                "status": "known",
+                "code": "rpm"
+              }
+            },
+            "incoming": {
+              "present": true,
+              "value": {
+                "status": "known",
+                "code": "rpm"
+              }
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "viewOf",
+            "base": {
+              "present": true,
+              "value": null
+            },
+            "ours": {
+              "present": true,
+              "value": null
+            },
+            "incoming": {
+              "present": true,
+              "value": null
+            },
+            "conflict": false,
+            "suggested": "ours"
+          }
+        ]
+      },
+      {
+        "key": "pressure-ua",
+        "observationId": "row-4",
+        "recordKey": "pressure-ua",
+        "sourceId": "imp-review-base-pressure-ua",
+        "classification": "conflict",
+        "base": {
+          "schemaVersion": "2.2.0",
+          "connectionProfileRef": "import-1",
+          "accessProfileRef": "s7-1500-opcua-v1",
+          "rawAddressText": "Line.Pressure",
+          "addressRadix": null,
+          "access": {
+            "kind": "opcua-node",
+            "namespaceUri": "urn:tyr:synthetic:line",
+            "identifierType": "string",
+            "identifier": "Line.Pressure"
+          },
+          "rawRepresentation": {
+            "mode": "typed",
+            "valueType": "Float32"
+          },
+          "inputStage": "already-engineered",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "viewOf": null,
+          "label": "imp-review-base-pressure-ua"
+        },
+        "ours": {
+          "schemaVersion": "2.2.0",
+          "connectionProfileRef": "import-1",
+          "accessProfileRef": "s7-1500-opcua-v1",
+          "rawAddressText": "Line.LocalPressure",
+          "addressRadix": null,
+          "access": {
+            "kind": "opcua-node",
+            "namespaceUri": "urn:tyr:synthetic:line",
+            "identifierType": "string",
+            "identifier": "Line.LocalPressure"
+          },
+          "rawRepresentation": {
+            "mode": "typed",
+            "valueType": "Float32"
+          },
+          "inputStage": "already-engineered",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "viewOf": null,
+          "label": "imp-review-base-pressure-ua"
+        },
+        "incoming": {
+          "schemaVersion": "2.2.0",
+          "connectionProfileRef": "import-1",
+          "accessProfileRef": "s7-1500-opcua-v1",
+          "rawAddressText": "Line.IncomingPressure",
+          "addressRadix": null,
+          "access": {
+            "kind": "opcua-node",
+            "namespaceUri": "urn:tyr:synthetic:line",
+            "identifierType": "string",
+            "identifier": "Line.IncomingPressure"
+          },
+          "rawRepresentation": {
+            "mode": "typed",
+            "valueType": "Float32"
+          },
+          "inputStage": "already-engineered",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "viewOf": null,
+          "label": "imp-review-base-pressure-ua"
+        },
+        "fields": [
+          {
+            "field": "access",
+            "base": {
+              "present": true,
+              "value": {
+                "kind": "opcua-node",
+                "namespaceUri": "urn:tyr:synthetic:line",
+                "identifierType": "string",
+                "identifier": "Line.Pressure"
+              }
+            },
+            "ours": {
+              "present": true,
+              "value": {
+                "kind": "opcua-node",
+                "namespaceUri": "urn:tyr:synthetic:line",
+                "identifierType": "string",
+                "identifier": "Line.LocalPressure"
+              }
+            },
+            "incoming": {
+              "present": true,
+              "value": {
+                "kind": "opcua-node",
+                "namespaceUri": "urn:tyr:synthetic:line",
+                "identifierType": "string",
+                "identifier": "Line.IncomingPressure"
+              }
+            },
+            "conflict": true,
+            "suggested": "incoming"
+          },
+          {
+            "field": "accessProfileRef",
+            "base": {
+              "present": true,
+              "value": "s7-1500-opcua-v1"
+            },
+            "ours": {
+              "present": true,
+              "value": "s7-1500-opcua-v1"
+            },
+            "incoming": {
+              "present": true,
+              "value": "s7-1500-opcua-v1"
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "addressRadix",
+            "base": {
+              "present": true,
+              "value": null
+            },
+            "ours": {
+              "present": true,
+              "value": null
+            },
+            "incoming": {
+              "present": true,
+              "value": null
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "connectionProfileRef",
+            "base": {
+              "present": true,
+              "value": "import-1"
+            },
+            "ours": {
+              "present": true,
+              "value": "import-1"
+            },
+            "incoming": {
+              "present": true,
+              "value": "import-1"
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "inputStage",
+            "base": {
+              "present": true,
+              "value": "already-engineered"
+            },
+            "ours": {
+              "present": true,
+              "value": "already-engineered"
+            },
+            "incoming": {
+              "present": true,
+              "value": "already-engineered"
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "label",
+            "base": {
+              "present": true,
+              "value": "imp-review-base-pressure-ua"
+            },
+            "ours": {
+              "present": true,
+              "value": "imp-review-base-pressure-ua"
+            },
+            "incoming": {
+              "present": true,
+              "value": "imp-review-base-pressure-ua"
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "rawAddressText",
+            "base": {
+              "present": true,
+              "value": "Line.Pressure"
+            },
+            "ours": {
+              "present": true,
+              "value": "Line.LocalPressure"
+            },
+            "incoming": {
+              "present": true,
+              "value": "Line.IncomingPressure"
+            },
+            "conflict": true,
+            "suggested": "incoming"
+          },
+          {
+            "field": "rawRepresentation",
+            "base": {
+              "present": true,
+              "value": {
+                "mode": "typed",
+                "valueType": "Float32"
+              }
+            },
+            "ours": {
+              "present": true,
+              "value": {
+                "mode": "typed",
+                "valueType": "Float32"
+              }
+            },
+            "incoming": {
+              "present": true,
+              "value": {
+                "mode": "typed",
+                "valueType": "Float32"
+              }
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "schemaVersion",
+            "base": {
+              "present": true,
+              "value": "2.2.0"
+            },
+            "ours": {
+              "present": true,
+              "value": "2.2.0"
+            },
+            "incoming": {
+              "present": true,
+              "value": "2.2.0"
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "unit",
+            "base": {
+              "present": true,
+              "value": {
+                "status": "known",
+                "code": "kPa"
+              }
+            },
+            "ours": {
+              "present": true,
+              "value": {
+                "status": "known",
+                "code": "kPa"
+              }
+            },
+            "incoming": {
+              "present": true,
+              "value": {
+                "status": "known",
+                "code": "kPa"
+              }
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "viewOf",
+            "base": {
+              "present": true,
+              "value": null
+            },
+            "ours": {
+              "present": true,
+              "value": null
+            },
+            "incoming": {
+              "present": true,
+              "value": null
+            },
+            "conflict": false,
+            "suggested": "ours"
+          }
+        ]
+      },
+      {
+        "key": "unresolved",
+        "observationId": "row-5",
+        "recordKey": "unresolved",
+        "sourceId": "imp-review-base-unresolved",
+        "classification": "incoming-only",
+        "base": {
+          "schemaVersion": "2.2.0",
+          "connectionProfileRef": "import-3",
+          "accessProfileRef": "melsec-device-v1",
+          "rawAddressText": "D4000",
+          "addressRadix": 10,
+          "access": {
+            "kind": "device-register",
+            "deviceArea": "D",
+            "addressIndex": 4000,
+            "addressUnit": "word16",
+            "wordCount": 1,
+            "bitOffset": null
+          },
+          "rawRepresentation": {
+            "mode": "bytes",
+            "valueType": "UInt16",
+            "byteOrder": "little",
+            "wordOrder": "low-first"
+          },
+          "inputStage": "raw",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "viewOf": null,
+          "label": "imp-review-base-unresolved"
+        },
+        "ours": {
+          "schemaVersion": "2.2.0",
+          "connectionProfileRef": "import-3",
+          "accessProfileRef": "melsec-device-v1",
+          "rawAddressText": "D4000",
+          "addressRadix": 10,
+          "access": {
+            "kind": "device-register",
+            "deviceArea": "D",
+            "addressIndex": 4000,
+            "addressUnit": "word16",
+            "wordCount": 1,
+            "bitOffset": null
+          },
+          "rawRepresentation": {
+            "mode": "bytes",
+            "valueType": "UInt16",
+            "byteOrder": "little",
+            "wordOrder": "low-first"
+          },
+          "inputStage": "raw",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "viewOf": null,
+          "label": "imp-review-base-unresolved"
+        },
+        "incoming": {
+          "schemaVersion": "2.2.0",
+          "connectionProfileRef": "import-3",
+          "accessProfileRef": "melsec-device-v1",
+          "rawAddressText": "D4001",
+          "addressRadix": 10,
+          "access": {
+            "kind": "device-register",
+            "deviceArea": "D",
+            "addressIndex": 4001,
+            "addressUnit": "word16",
+            "wordCount": 1,
+            "bitOffset": null
+          },
+          "rawRepresentation": {
+            "mode": "bytes",
+            "valueType": "UInt16",
+            "byteOrder": "little",
+            "wordOrder": "low-first"
+          },
+          "inputStage": "raw",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "viewOf": null,
+          "label": "imp-review-base-unresolved"
+        },
+        "fields": [
+          {
+            "field": "access",
+            "base": {
+              "present": true,
+              "value": {
+                "kind": "device-register",
+                "deviceArea": "D",
+                "addressIndex": 4000,
+                "addressUnit": "word16",
+                "wordCount": 1,
+                "bitOffset": null
+              }
+            },
+            "ours": {
+              "present": true,
+              "value": {
+                "kind": "device-register",
+                "deviceArea": "D",
+                "addressIndex": 4000,
+                "addressUnit": "word16",
+                "wordCount": 1,
+                "bitOffset": null
+              }
+            },
+            "incoming": {
+              "present": true,
+              "value": {
+                "kind": "device-register",
+                "deviceArea": "D",
+                "addressIndex": 4001,
+                "addressUnit": "word16",
+                "wordCount": 1,
+                "bitOffset": null
+              }
+            },
+            "conflict": false,
+            "suggested": "incoming"
+          },
+          {
+            "field": "accessProfileRef",
+            "base": {
+              "present": true,
+              "value": "melsec-device-v1"
+            },
+            "ours": {
+              "present": true,
+              "value": "melsec-device-v1"
+            },
+            "incoming": {
+              "present": true,
+              "value": "melsec-device-v1"
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "addressRadix",
+            "base": {
+              "present": true,
+              "value": 10
+            },
+            "ours": {
+              "present": true,
+              "value": 10
+            },
+            "incoming": {
+              "present": true,
+              "value": 10
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "connectionProfileRef",
+            "base": {
+              "present": true,
+              "value": "import-3"
+            },
+            "ours": {
+              "present": true,
+              "value": "import-3"
+            },
+            "incoming": {
+              "present": true,
+              "value": "import-3"
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "inputStage",
+            "base": {
+              "present": true,
+              "value": "raw"
+            },
+            "ours": {
+              "present": true,
+              "value": "raw"
+            },
+            "incoming": {
+              "present": true,
+              "value": "raw"
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "label",
+            "base": {
+              "present": true,
+              "value": "imp-review-base-unresolved"
+            },
+            "ours": {
+              "present": true,
+              "value": "imp-review-base-unresolved"
+            },
+            "incoming": {
+              "present": true,
+              "value": "imp-review-base-unresolved"
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "rawAddressText",
+            "base": {
+              "present": true,
+              "value": "D4000"
+            },
+            "ours": {
+              "present": true,
+              "value": "D4000"
+            },
+            "incoming": {
+              "present": true,
+              "value": "D4001"
+            },
+            "conflict": false,
+            "suggested": "incoming"
+          },
+          {
+            "field": "rawRepresentation",
+            "base": {
+              "present": true,
+              "value": {
+                "mode": "bytes",
+                "valueType": "UInt16",
+                "byteOrder": "little",
+                "wordOrder": "low-first"
+              }
+            },
+            "ours": {
+              "present": true,
+              "value": {
+                "mode": "bytes",
+                "valueType": "UInt16",
+                "byteOrder": "little",
+                "wordOrder": "low-first"
+              }
+            },
+            "incoming": {
+              "present": true,
+              "value": {
+                "mode": "bytes",
+                "valueType": "UInt16",
+                "byteOrder": "little",
+                "wordOrder": "low-first"
+              }
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "schemaVersion",
+            "base": {
+              "present": true,
+              "value": "2.2.0"
+            },
+            "ours": {
+              "present": true,
+              "value": "2.2.0"
+            },
+            "incoming": {
+              "present": true,
+              "value": "2.2.0"
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "unit",
+            "base": {
+              "present": true,
+              "value": {
+                "status": "known",
+                "code": "kPa"
+              }
+            },
+            "ours": {
+              "present": true,
+              "value": {
+                "status": "known",
+                "code": "kPa"
+              }
+            },
+            "incoming": {
+              "present": true,
+              "value": {
+                "status": "known",
+                "code": "kPa"
+              }
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "viewOf",
+            "base": {
+              "present": true,
+              "value": null
+            },
+            "ours": {
+              "present": true,
+              "value": null
+            },
+            "incoming": {
+              "present": true,
+              "value": null
+            },
+            "conflict": false,
+            "suggested": "ours"
+          }
+        ]
+      },
+      {
+        "key": "alias",
+        "observationId": "row-6",
+        "recordKey": "alias",
+        "sourceId": "imp-review-base-alias",
+        "classification": "incoming-only",
+        "base": {
+          "schemaVersion": "2.2.0",
+          "connectionProfileRef": "import-3",
+          "accessProfileRef": "melsec-device-v1",
+          "rawAddressText": "D5002",
+          "addressRadix": 10,
+          "access": {
+            "kind": "device-register",
+            "deviceArea": "D",
+            "addressIndex": 5002,
+            "addressUnit": "word16",
+            "wordCount": 1,
+            "bitOffset": null
+          },
+          "rawRepresentation": {
+            "mode": "bytes",
+            "valueType": "UInt16",
+            "byteOrder": "little",
+            "wordOrder": "low-first"
+          },
+          "inputStage": "raw",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "viewOf": null,
+          "label": "imp-review-base-alias"
+        },
+        "ours": {
+          "schemaVersion": "2.2.0",
+          "connectionProfileRef": "import-3",
+          "accessProfileRef": "melsec-device-v1",
+          "rawAddressText": "D5002",
+          "addressRadix": 10,
+          "access": {
+            "kind": "device-register",
+            "deviceArea": "D",
+            "addressIndex": 5002,
+            "addressUnit": "word16",
+            "wordCount": 1,
+            "bitOffset": null
+          },
+          "rawRepresentation": {
+            "mode": "bytes",
+            "valueType": "UInt16",
+            "byteOrder": "little",
+            "wordOrder": "low-first"
+          },
+          "inputStage": "raw",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "viewOf": null,
+          "label": "imp-review-base-alias"
+        },
+        "incoming": {
+          "schemaVersion": "2.2.0",
+          "connectionProfileRef": "import-3",
+          "accessProfileRef": "melsec-device-v1",
+          "rawAddressText": "D5999",
+          "addressRadix": 10,
+          "access": {
+            "kind": "device-register",
+            "deviceArea": "D",
+            "addressIndex": 5999,
+            "addressUnit": "word16",
+            "wordCount": 1,
+            "bitOffset": null
+          },
+          "rawRepresentation": {
+            "mode": "bytes",
+            "valueType": "UInt16",
+            "byteOrder": "little",
+            "wordOrder": "low-first"
+          },
+          "inputStage": "raw",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "viewOf": null,
+          "label": "imp-review-base-alias"
+        },
+        "fields": [
+          {
+            "field": "access",
+            "base": {
+              "present": true,
+              "value": {
+                "kind": "device-register",
+                "deviceArea": "D",
+                "addressIndex": 5002,
+                "addressUnit": "word16",
+                "wordCount": 1,
+                "bitOffset": null
+              }
+            },
+            "ours": {
+              "present": true,
+              "value": {
+                "kind": "device-register",
+                "deviceArea": "D",
+                "addressIndex": 5002,
+                "addressUnit": "word16",
+                "wordCount": 1,
+                "bitOffset": null
+              }
+            },
+            "incoming": {
+              "present": true,
+              "value": {
+                "kind": "device-register",
+                "deviceArea": "D",
+                "addressIndex": 5999,
+                "addressUnit": "word16",
+                "wordCount": 1,
+                "bitOffset": null
+              }
+            },
+            "conflict": false,
+            "suggested": "incoming"
+          },
+          {
+            "field": "accessProfileRef",
+            "base": {
+              "present": true,
+              "value": "melsec-device-v1"
+            },
+            "ours": {
+              "present": true,
+              "value": "melsec-device-v1"
+            },
+            "incoming": {
+              "present": true,
+              "value": "melsec-device-v1"
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "addressRadix",
+            "base": {
+              "present": true,
+              "value": 10
+            },
+            "ours": {
+              "present": true,
+              "value": 10
+            },
+            "incoming": {
+              "present": true,
+              "value": 10
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "connectionProfileRef",
+            "base": {
+              "present": true,
+              "value": "import-3"
+            },
+            "ours": {
+              "present": true,
+              "value": "import-3"
+            },
+            "incoming": {
+              "present": true,
+              "value": "import-3"
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "inputStage",
+            "base": {
+              "present": true,
+              "value": "raw"
+            },
+            "ours": {
+              "present": true,
+              "value": "raw"
+            },
+            "incoming": {
+              "present": true,
+              "value": "raw"
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "label",
+            "base": {
+              "present": true,
+              "value": "imp-review-base-alias"
+            },
+            "ours": {
+              "present": true,
+              "value": "imp-review-base-alias"
+            },
+            "incoming": {
+              "present": true,
+              "value": "imp-review-base-alias"
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "rawAddressText",
+            "base": {
+              "present": true,
+              "value": "D5002"
+            },
+            "ours": {
+              "present": true,
+              "value": "D5002"
+            },
+            "incoming": {
+              "present": true,
+              "value": "D5999"
+            },
+            "conflict": false,
+            "suggested": "incoming"
+          },
+          {
+            "field": "rawRepresentation",
+            "base": {
+              "present": true,
+              "value": {
+                "mode": "bytes",
+                "valueType": "UInt16",
+                "byteOrder": "little",
+                "wordOrder": "low-first"
+              }
+            },
+            "ours": {
+              "present": true,
+              "value": {
+                "mode": "bytes",
+                "valueType": "UInt16",
+                "byteOrder": "little",
+                "wordOrder": "low-first"
+              }
+            },
+            "incoming": {
+              "present": true,
+              "value": {
+                "mode": "bytes",
+                "valueType": "UInt16",
+                "byteOrder": "little",
+                "wordOrder": "low-first"
+              }
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "schemaVersion",
+            "base": {
+              "present": true,
+              "value": "2.2.0"
+            },
+            "ours": {
+              "present": true,
+              "value": "2.2.0"
+            },
+            "incoming": {
+              "present": true,
+              "value": "2.2.0"
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "unit",
+            "base": {
+              "present": true,
+              "value": {
+                "status": "known",
+                "code": "kPa"
+              }
+            },
+            "ours": {
+              "present": true,
+              "value": {
+                "status": "known",
+                "code": "kPa"
+              }
+            },
+            "incoming": {
+              "present": true,
+              "value": {
+                "status": "known",
+                "code": "kPa"
+              }
+            },
+            "conflict": false,
+            "suggested": "ours"
+          },
+          {
+            "field": "viewOf",
+            "base": {
+              "present": true,
+              "value": null
+            },
+            "ours": {
+              "present": true,
+              "value": null
+            },
+            "incoming": {
+              "present": true,
+              "value": null
+            },
+            "conflict": false,
+            "suggested": "ours"
+          }
+        ]
+      },
+      {
+        "key": "new-signal",
+        "observationId": "row-7",
+        "recordKey": "new-signal",
+        "sourceId": "imp-review-next-new-signal",
+        "classification": "new",
+        "base": null,
+        "ours": null,
+        "incoming": {
+          "schemaVersion": "2.2.0",
+          "connectionProfileRef": "import-3",
+          "accessProfileRef": "melsec-device-v1",
+          "rawAddressText": "D7000",
+          "addressRadix": 10,
+          "access": {
+            "kind": "device-register",
+            "deviceArea": "D",
+            "addressIndex": 7000,
+            "addressUnit": "word16",
+            "wordCount": 1,
+            "bitOffset": null
+          },
+          "rawRepresentation": {
+            "mode": "bytes",
+            "valueType": "UInt16",
+            "byteOrder": "little",
+            "wordOrder": "low-first"
+          },
+          "inputStage": "raw",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "viewOf": null,
+          "label": "imp-review-next-new-signal"
+        },
+        "fields": []
+      },
+      {
+        "key": "pressure-db",
+        "observationId": null,
+        "recordKey": "pressure-db",
+        "sourceId": "imp-review-base-pressure-db",
+        "classification": "removed",
+        "base": {
+          "schemaVersion": "2.2.0",
+          "connectionProfileRef": "import-2",
+          "accessProfileRef": "s7-300-db-v1",
+          "rawAddressText": "DB10.DBB64",
+          "addressRadix": null,
+          "access": {
+            "kind": "db-offset",
+            "dbNumber": 10,
+            "byteOffset": 64,
+            "byteLength": 2,
+            "bitOffset": null
+          },
+          "rawRepresentation": {
+            "mode": "bytes",
+            "valueType": "UInt16",
+            "byteOrder": "big",
+            "wordOrder": "high-first"
+          },
+          "inputStage": "raw",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "viewOf": null,
+          "label": "imp-review-base-pressure-db"
+        },
+        "ours": {
+          "schemaVersion": "2.2.0",
+          "connectionProfileRef": "import-2",
+          "accessProfileRef": "s7-300-db-v1",
+          "rawAddressText": "DB10.DBB64",
+          "addressRadix": null,
+          "access": {
+            "kind": "db-offset",
+            "dbNumber": 10,
+            "byteOffset": 64,
+            "byteLength": 2,
+            "bitOffset": null
+          },
+          "rawRepresentation": {
+            "mode": "bytes",
+            "valueType": "UInt16",
+            "byteOrder": "big",
+            "wordOrder": "high-first"
+          },
+          "inputStage": "raw",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "viewOf": null,
+          "label": "imp-review-base-pressure-db"
+        },
+        "incoming": null,
+        "fields": []
+      }
+    ],
+    "planSha256": "79dc7fadfacfb6015260575a791a05256436cd33b46f3e48e00f2c7d70bc9f7c",
+    "choices": {
+      "pump-0": {
+        "mode": "apply",
+        "fields": {}
+      },
+      "pump-1": {
+        "mode": "apply",
+        "fields": {}
+      },
+      "pressure-mel": {
+        "mode": "apply",
+        "fields": {}
+      },
+      "speed-ab": {
+        "mode": "apply",
+        "fields": {}
+      },
+      "pressure-ua": {
+        "mode": "apply",
+        "fields": {
+          "access": "ours",
+          "rawAddressText": "ours"
+        }
+      },
+      "unresolved": {
+        "mode": "apply",
+        "fields": {}
+      },
+      "alias": {
+        "mode": "apply",
+        "fields": {}
+      },
+      "new-signal": {
+        "mode": "apply",
+        "fields": {}
+      },
+      "pressure-db": {
+        "mode": "retain",
+        "fields": {}
+      }
+    },
+    "results": {
+      "pump-0": {
+        "access": {
+          "kind": "device-register",
+          "deviceArea": "D",
+          "addressIndex": 5000,
+          "addressUnit": "word16",
+          "wordCount": 1,
+          "bitOffset": null
+        },
+        "accessProfileRef": "melsec-device-v1",
+        "addressRadix": 10,
+        "connectionProfileRef": "import-3",
+        "inputStage": "raw",
+        "label": "imp-review-base-pump-0",
+        "rawAddressText": "D5000",
+        "rawRepresentation": {
+          "mode": "bytes",
+          "valueType": "UInt16",
+          "byteOrder": "little",
+          "wordOrder": "low-first"
+        },
+        "schemaVersion": "2.2.0",
+        "unit": {
+          "status": "known",
+          "code": "kPa"
+        },
+        "viewOf": null
+      },
+      "pump-1": {
+        "access": {
+          "kind": "device-register",
+          "deviceArea": "D",
+          "addressIndex": 5999,
+          "addressUnit": "word16",
+          "wordCount": 1,
+          "bitOffset": null
+        },
+        "accessProfileRef": "melsec-device-v1",
+        "addressRadix": 10,
+        "connectionProfileRef": "import-3",
+        "inputStage": "raw",
+        "label": "imp-review-base-pump-1",
+        "rawAddressText": "D5999",
+        "rawRepresentation": {
+          "mode": "bytes",
+          "valueType": "UInt16",
+          "byteOrder": "little",
+          "wordOrder": "low-first"
+        },
+        "schemaVersion": "2.2.0",
+        "unit": {
+          "status": "known",
+          "code": "kPa"
+        },
+        "viewOf": null
+      },
+      "pressure-mel": {
+        "access": {
+          "kind": "device-register",
+          "deviceArea": "D",
+          "addressIndex": 1000,
+          "addressUnit": "word16",
+          "wordCount": 1,
+          "bitOffset": null
+        },
+        "accessProfileRef": "melsec-device-v1",
+        "addressRadix": 10,
+        "connectionProfileRef": "import-3",
+        "inputStage": "raw",
+        "label": "imp-review-base-pressure-mel",
+        "rawAddressText": "D1000",
+        "rawRepresentation": {
+          "mode": "bytes",
+          "valueType": "UInt16",
+          "byteOrder": "little",
+          "wordOrder": "low-first"
+        },
+        "schemaVersion": "2.2.0",
+        "unit": {
+          "status": "known",
+          "code": "kPa"
+        },
+        "viewOf": null
+      },
+      "speed-ab": {
+        "access": {
+          "kind": "symbol",
+          "symbolPath": "Motor.ActualSpeedV2"
+        },
+        "accessProfileRef": "ab-logix-symbol-v1",
+        "addressRadix": null,
+        "connectionProfileRef": "import-0",
+        "inputStage": "already-engineered",
+        "label": "Local speed label",
+        "rawAddressText": "Motor.ActualSpeedV2",
+        "rawRepresentation": {
+          "mode": "typed",
+          "valueType": "Float32"
+        },
+        "schemaVersion": "2.2.0",
+        "unit": {
+          "status": "known",
+          "code": "rpm"
+        },
+        "viewOf": null
+      },
+      "pressure-ua": {
+        "access": {
+          "kind": "opcua-node",
+          "namespaceUri": "urn:tyr:synthetic:line",
+          "identifierType": "string",
+          "identifier": "Line.LocalPressure"
+        },
+        "accessProfileRef": "s7-1500-opcua-v1",
+        "addressRadix": null,
+        "connectionProfileRef": "import-1",
+        "inputStage": "already-engineered",
+        "label": "imp-review-base-pressure-ua",
+        "rawAddressText": "Line.LocalPressure",
+        "rawRepresentation": {
+          "mode": "typed",
+          "valueType": "Float32"
+        },
+        "schemaVersion": "2.2.0",
+        "unit": {
+          "status": "known",
+          "code": "kPa"
+        },
+        "viewOf": null
+      },
+      "unresolved": {
+        "access": {
+          "kind": "device-register",
+          "deviceArea": "D",
+          "addressIndex": 4001,
+          "addressUnit": "word16",
+          "wordCount": 1,
+          "bitOffset": null
+        },
+        "accessProfileRef": "melsec-device-v1",
+        "addressRadix": 10,
+        "connectionProfileRef": "import-3",
+        "inputStage": "raw",
+        "label": "imp-review-base-unresolved",
+        "rawAddressText": "D4001",
+        "rawRepresentation": {
+          "mode": "bytes",
+          "valueType": "UInt16",
+          "byteOrder": "little",
+          "wordOrder": "low-first"
+        },
+        "schemaVersion": "2.2.0",
+        "unit": {
+          "status": "known",
+          "code": "kPa"
+        },
+        "viewOf": null
+      },
+      "alias": {
+        "access": {
+          "kind": "device-register",
+          "deviceArea": "D",
+          "addressIndex": 5999,
+          "addressUnit": "word16",
+          "wordCount": 1,
+          "bitOffset": null
+        },
+        "accessProfileRef": "melsec-device-v1",
+        "addressRadix": 10,
+        "connectionProfileRef": "import-3",
+        "inputStage": "raw",
+        "label": "imp-review-base-alias",
+        "rawAddressText": "D5999",
+        "rawRepresentation": {
+          "mode": "bytes",
+          "valueType": "UInt16",
+          "byteOrder": "little",
+          "wordOrder": "low-first"
+        },
+        "schemaVersion": "2.2.0",
+        "unit": {
+          "status": "known",
+          "code": "kPa"
+        },
+        "viewOf": null
+      },
+      "new-signal": {
+        "schemaVersion": "2.2.0",
+        "connectionProfileRef": "import-3",
+        "accessProfileRef": "melsec-device-v1",
+        "rawAddressText": "D7000",
+        "addressRadix": 10,
+        "access": {
+          "kind": "device-register",
+          "deviceArea": "D",
+          "addressIndex": 7000,
+          "addressUnit": "word16",
+          "wordCount": 1,
+          "bitOffset": null
+        },
+        "rawRepresentation": {
+          "mode": "bytes",
+          "valueType": "UInt16",
+          "byteOrder": "little",
+          "wordOrder": "low-first"
+        },
+        "inputStage": "raw",
+        "unit": {
+          "status": "known",
+          "code": "kPa"
+        },
+        "viewOf": null,
+        "label": "imp-review-next-new-signal"
+      },
+      "pressure-db": {
+        "schemaVersion": "2.2.0",
+        "connectionProfileRef": "import-2",
+        "accessProfileRef": "s7-300-db-v1",
+        "rawAddressText": "DB10.DBB64",
+        "addressRadix": null,
+        "access": {
+          "kind": "db-offset",
+          "dbNumber": 10,
+          "byteOffset": 64,
+          "byteLength": 2,
+          "bitOffset": null
+        },
+        "rawRepresentation": {
+          "mode": "bytes",
+          "valueType": "UInt16",
+          "byteOrder": "big",
+          "wordOrder": "high-first"
+        },
+        "inputStage": "raw",
+        "unit": {
+          "status": "known",
+          "code": "kPa"
+        },
+        "viewOf": null,
+        "label": "imp-review-base-pressure-db"
+      }
+    },
+    "reviewer": "offline-reviewer",
+    "reason": "Synthetic engineering correction; explicit D4000 from independent fixture oracle",
+    "reviewedAt": "2026-10-18T00:00:00Z"
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "kind": "semantic-definition",
+  "schemaVersion": "2.2.0",
+  "id": "a07-status-model",
+  "version": "1.0.0",
+  "members": [
+    {
+      "memberId": "word",
+      "name": "word",
+      "semanticId": "urn:tyr:concept:a07.word",
+      "description": "Synthetic status word",
+      "valueType": "Int32",
+      "unit": {
+        "status": "not-applicable"
+      },
+      "role": "status",
+      "range": null
+    },
+    {
+      "memberId": "word-alias",
+      "name": "word-alias",
+      "semanticId": "urn:tyr:concept:a07.word-alias",
+      "description": "Synthetic status word-alias",
+      "valueType": "Int32",
+      "unit": {
+        "status": "not-applicable"
+      },
+      "role": "status",
+      "range": null
+    },
+    {
+      "memberId": "running",
+      "name": "running",
+      "semanticId": "urn:tyr:concept:a07.running",
+      "description": "Synthetic status running",
+      "valueType": "Boolean",
+      "unit": {
+        "status": "not-applicable"
+      },
+      "role": "status",
+      "range": null
+    },
+    {
+      "memberId": "alarm",
+      "name": "alarm",
+      "semanticId": "urn:tyr:concept:a07.alarm",
+      "description": "Synthetic status alarm",
+      "valueType": "Boolean",
+      "unit": {
+        "status": "not-applicable"
+      },
+      "role": "status",
+      "range": null
+    },
+    {
+      "memberId": "alarm-alias",
+      "name": "alarm-alias",
+      "semanticId": "urn:tyr:concept:a07.alarm-alias",
+      "description": "Synthetic status alarm-alias",
+      "valueType": "Boolean",
+      "unit": {
+        "status": "not-applicable"
+      },
+      "role": "status",
+      "range": null
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "kind": "evidence-artifact",
+  "schemaVersion": "1.0.0",
+  "id": "manual-record-field-402cc6a5a2ad6fe30100d639",
+  "version": "1.0.0",
+  "origin": "synthetic",
+  "file": {
+    "path": "data/manual-4.txt",
+    "sha256": "efb366ca572c362c3280f0defe28d3535e9244ee0ead0873f439b41ec175ab2b",
+    "mediaType": "text/plain"
+  },
+  "capturedAt": "2026-10-18T00:00:00Z",
+  "product": null,
+  "scope": [
+    "record-line-b"
+  ]
+}

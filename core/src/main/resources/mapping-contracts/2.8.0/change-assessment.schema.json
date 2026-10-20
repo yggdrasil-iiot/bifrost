@@ -1,0 +1,168 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:tyr:contract:2.8.0:change-assessment",
+  "type": "object",
+  "properties": {
+    "kind": {
+      "const": "change-assessment"
+    },
+    "schemaVersion": {
+      "const": "2.8.0"
+    },
+    "baselineId": {
+      "type": "string"
+    },
+    "baselineSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "workspaceRevision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "workspaceSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "changes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "category": {
+            "enum": [
+              "identity",
+              "import-evidence",
+              "access",
+              "decode",
+              "transform",
+              "meaning",
+              "presentation",
+              "evidence",
+              "constraint",
+              "graph",
+              "context",
+              "reference",
+              "definition"
+            ]
+          },
+          "change": {
+            "enum": [
+              "added",
+              "removed",
+              "modified"
+            ]
+          },
+          "before": {},
+          "after": {},
+          "reviewRequired": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "key",
+          "path",
+          "category",
+          "change",
+          "before",
+          "after",
+          "reviewRequired"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "affected": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "direct": {
+            "type": "boolean"
+          },
+          "causes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "targetSha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "dependencySha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "key",
+          "direct",
+          "causes",
+          "targetSha256",
+          "dependencySha256"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "path": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "classification": {
+            "enum": [
+              "incomplete",
+              "definition-conflict",
+              "declared-view",
+              "observation"
+            ]
+          }
+        },
+        "required": [
+          "code",
+          "path",
+          "classification"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "approval": {
+      "const": "not-requested"
+    },
+    "deviceVerification": {
+      "const": "not-performed"
+    }
+  },
+  "required": [
+    "kind",
+    "schemaVersion",
+    "baselineId",
+    "baselineSha256",
+    "workspaceRevision",
+    "workspaceSha256",
+    "changes",
+    "affected",
+    "diagnostics",
+    "approval",
+    "deviceVerification"
+  ],
+  "additionalProperties": false
+}

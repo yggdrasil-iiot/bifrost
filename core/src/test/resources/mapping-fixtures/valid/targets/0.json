@@ -1,0 +1,70 @@
+{
+  "kind": "target-instance",
+  "schemaVersion": "2.0.0",
+  "id": "mixed-tank",
+  "version": "1.0.0",
+  "label": "혼합 소스 탱크",
+  "equipmentInstanceId": "mixed-line",
+  "semanticDefinitionRef": {
+    "id": "mixed-tank-model",
+    "version": "1.0.0"
+  },
+  "evidenceRefs": [
+    {
+      "artifactId": "manual-mixed-plc-pressure",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    },
+    {
+      "artifactId": "manual-mixed-baseline",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    },
+    {
+      "artifactId": "manual-mixed-tag-pressure",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    },
+    {
+      "artifactId": "manual-mixed-external-reference",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    },
+    {
+      "artifactId": "manual-mixed-line-code",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    },
+    {
+      "artifactId": "manual-mixed-enabled",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    },
+    {
+      "artifactId": "manual-mixed-tag-setpoint",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    },
+    {
+      "artifactId": "manual-mixed-plc-write",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    }
+  ]
+}
