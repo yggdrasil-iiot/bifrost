@@ -43,10 +43,16 @@ There are two planes, and this project lives almost entirely in one of them.
 - **The data plane** — PLC → OPC-UA server → edge → broker → consumers. This is the plane your MES,
   SCADA and historian already live on, and **this project adds exactly two components to it**:
   Muninn (the northbound feeder) and Heimdall (the write boundary). Both are replaceable; neither
-  is privileged by the data plane itself.
+  is privileged by the data plane itself. At a site where the existing collection tool stays as the
+  runtime, neither of the two is in the path; only the control plane is there (configuration
+  exports compared against the registry, a read-only view for operators; designed in
+  [`ENTERPRISE.md` §13](ENTERPRISE.md#13-governed-model-vs-vendor-runtime), not built).
 - **The control plane** — a git registry that owns the canonical model, its versions, its
   conformance policy, its command authorization, and the ledger of which version is active where.
   **Nothing on the data plane owns any of that today**, which is the gap the project exists for.
+  Týr, a design-time authoring tool, sits on this plane; it adds nothing to the data plane. The
+  registry owns the canonical model's definitions and versions but not the semantic dictionary the
+  definitions point to, which belongs to the enterprise catalog.
 
 So the containment question has an answer, but it is not the expected one: **the contract contains
 the products, not the other way round.** A historian, an Ignition, a ThingWorx and an MES are all
@@ -71,13 +77,15 @@ that is not automated — see [what is not built](#what-is-not-built).*
 |---|---|---|---|
 | PLC → OPC-UA server | the server polls | PLC-native (S7, EtherNet/IP, Modbus/TCP) | **vendor** — Kepware, Ignition |
 | OPC-UA server → Mímir | Mímir browses, design-time | **OPC-UA** (Eclipse Milo) | this project |
+| Týr → registry | a person carries a file (a mapping proposal with a pinned evidence bundle) | **file** — `gates mapping validate / approve / publish`, no live connection | this project |
+| vendor configuration → Mímir → Týr / registry | planned (a decision, not yet code) — Mímir interprets a vendor configuration it is handed | **file** — an interpretation snapshot published for Týr and Bifrost to consume; no interpreter exists yet | this project |
 | OPC-UA server → Muninn | Muninn reads, runtime | **OPC-UA** (Eclipse Milo) | this project |
 | Muninn → broker | Muninn publishes | **MQTT / Sparkplug B** (Eclipse Tahu + Paho) | this project |
 | broker → consumers | the consumer subscribes | **MQTT / Sparkplug B** | **the consumer** — historian, MES, SCADA, cloud |
 | consumer → Heimdall | the consumer publishes NCMD | **MQTT / Sparkplug B** | **the consumer** |
 | Heimdall → OPC-UA server | Heimdall writes | **OPC-UA** (X.509 identity, opt-in) | this project |
 | SPAN/TAP → Huginn | somebody hands over a pcap | **pcap** (Modbus/TCP, S7comm decoded) | the plant, then this project |
-| registry → vendor product | a person carries a file | **file** — no live connection exists | see the gaps below |
+| vendor product → registry | a person carries a model export file, which `model-reconcile` reads | **file** — no live connection exists | see the gaps below |
 
 **The direction of the broker connection is a security property, not an implementation detail.**
 The edge dials *out* to the broker; no consumer ever opens a connection into the OT segment. An
@@ -223,7 +231,11 @@ would be wrong.
   to a running Kepware, Ignition or ThingWorx.
 - **The projection direction does not exist at all.** Nothing generates or pushes a vendor
   configuration *from* the governed model. Verification finds divergence; it does not prevent it.
-  And a finding proves only that the two copies disagree — not which one is right.
+  And a finding proves only that the two copies disagree — not which one is right. A projection for
+  an application platform is designed only, in
+  [`ENTERPRISE.md` §13](ENTERPRISE.md#13-governed-model-vs-vendor-runtime), as a generated package
+  handed over to the platform's own process rather than a write into a running system; no generator
+  exists.
 - **The broker half is projected, not enforced.** `gates acl-project` emits the ACL a command
   policy implies (`principal → spBv1.0/<group>/NCMD/<edge>`, `PUBLISH`) as **a static artifact
   only**. No broker in this repository enforces it; the shared HiveMQ CE runs an allow-all

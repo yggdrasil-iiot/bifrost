@@ -52,6 +52,12 @@ same way.
 | 5 | Signed, then anchored | yes, reversibly | each tier survives a week |
 | 6 | Second site | yes | F1 holds on real hardware |
 
+Phases 4 and 5 assume the edge (Heimdall) is deployed. At a site where the existing collection tool
+stays as the runtime, those phases have nothing to act on; what applies there is the non-blocking
+stages 0–3 of [`ENTERPRISE.md` §13](ENTERPRISE.md#13-governed-model-vs-vendor-runtime) ("After
+adoption: changes made in the collection tool", designed, not built), which ties its stage 2 to
+this document's phase 2 to 3 ladder.
+
 ### 0 — Observe only
 
 Take captures from a SPAN or TAP port and run Huginn. Declare nothing, block nothing.
@@ -108,8 +114,11 @@ The deliverable is a `git log` of the model. It is the first time anyone can dif
 **This is where the real argument happens: who owns the model.** It should happen here, while
 nothing is enforced and the argument is cheap. Reported multi-site experience puts the hard part
 in the data model and its ownership rather than the technology, and this is the phase that tests
-whether that owner exists. **If no owner emerges, stop.** What gets built instead is a second
-spreadsheet.
+whether that owner exists. That owner is the model owner: on the producing side; owns the registry
+definitions (access, templates, their applications) and submits changes. Plant-level differences are
+configuration, not ownership. **If no owner emerges, stop.** What gets built instead is a second
+spreadsheet. The stop rule applies to the model owner. A second role, the meaning owner, appears in
+phase 2 and is defined in [`ENTERPRISE.md` §13](ENTERPRISE.md#13-governed-model-vs-vendor-runtime).
 
 ### 2 — Reconcile declaration against observation
 
@@ -158,9 +167,13 @@ not, and the command says which it is. Declare it per product when you write the
 
 **Two limits worth knowing before you rely on it.** A finding proves the two copies *disagree*, not
 which is right: a site whose vendor copy has been hand-edited for two years may well find the
-registry is the stale document, and deciding that is a human act with an owner. And the export
-carries no Bifrost identity, so **you tell it which governed definition to compare against** — it
-answers *"does this object agree"*, not *"is everything present"*. See
+registry is the stale document, and deciding that is a human act with an owner. The owner who
+decides is the meaning owner: on the consuming side, assigned per canonical domain, the contract
+counterpart; judges a change as accept (update the canonical model), request a rollback, or
+irrelevant, and approves. Acceptance by the meaning owner is this phase's finding that the model
+was wrong; acceptance without an owner is the opposite of the intent. And the export carries no
+Bifrost identity, so **you tell it which governed definition to compare against** — it answers
+*"does this object agree"*, not *"is everything present"*. See
 [`ENTERPRISE.md` §13](ENTERPRISE.md#13-governed-model-vs-vendor-runtime), now partial, and note that
 the push direction still does not exist.
 
@@ -171,6 +184,13 @@ any shared protocol between the two tools: **the surface mismatch was routed aro
 Bifrost still holds no reference to Huginn and Huginn none to the registry. What crosses is an
 artifact and one binding a human asserted.
 
+**A missing or slow meaning owner stops nothing.** The line, collection, stages 0 and 1 and the
+read-only information for operators continue. A change with no decision by the next planned stop
+stays "unreviewed"; a growing unreviewed count is the measure of a missing meaning owner.
+Unreviewed is not implicit approval. Until the meaning owner decides, the ladder does not advance
+from phase 2 to phase 3. Open, and deliberately not answered here: whether a growing unreviewed count
+should stop the ladder outright, and who arbitrates when the two owners disagree. No number is set.
+
 ### 3 — Gate the change process, not the runtime
 
 Put the activation ledger and four-eyes separation of duties on **changes to the model**, in CI —
@@ -179,7 +199,11 @@ write path.
 
 This is where the organization actually changes: a recipe change acquires an approver and a trail.
 It is also the cheapest phase to reverse, because reversing it means turning off a branch
-protection rule.
+protection rule. The maker is the model owner (submits), the checker is the meaning owner
+(approves). A role is not a headcount: one person may hold both, but the two decisions and the
+absence of either are recorded separately. These two approvals do not replace Bifrost's
+four-eyes approval by two distinct registered keys (`gates mapping approve` for mappings);
+they sit on top of it.
 
 ### 4 — Heimdall in the path
 
@@ -241,8 +265,9 @@ one. Rolling it out means minting a key per writer into the registry's `identity
 until every writer has one, turning the bar on refuses them all.
 
 **Two limits to plan around.** Reads are not covered — observation short-circuits before
-authorization. And the verified subject reaches a log line, not a ledger: the tamper-evident record
-still covers model activation and not the commands themselves.
+authorization. With `COMMAND_LEDGER_PATH` set, commands do get a chained intent/outcome record. The
+requester (principal) is named in that record only when `REQUIRE_SIGNED_COMMAND` is on. The entries
+are not signed, and the requester gets no receipt.
 
 **Make the edge the only way in.** Until the controlled nodes are writable *only* by the governed
 identity, the edge governs the clients that choose to use it and nothing else. Both halves of that
@@ -252,9 +277,11 @@ and a server told to require it refuses another client's write while still servi
 still the site's work**, and it is untested here against anything but this repository's sim; on
 Modbus/TCP nothing changed, because there is no identity to present. See
 [`ENTERPRISE.md` §12](ENTERPRISE.md#12-write-path-exclusivity), now partial, and where the
-certificate-lifecycle gap bites hardest: that identity is self-signed and cannot be rotated. An edge
-deployed without any of this is still worth having, because the plant's own tooling is the client
-that matters, but it is not a boundary and should not be described as one.
+certificate-lifecycle gap bites hardest: that identity is self-signed; renewal exists but is manual
+(`EdgeIdentity renew`, phase 5) and the successor thumbprint has to reach the server out of band;
+what is missing is a CA or GDS that would manage it, and revocation. An edge deployed without any
+of this is still worth having, because the plant's own tooling is the client that matters, but it is
+not a boundary and should not be described as one.
 
 **Derive the initial policy from what phase 2 observed — after its findings are resolved.** This is
 the reason phase 2 is not skippable: an allowlist derived straight from observation encodes whatever
@@ -406,7 +433,9 @@ enterprise PKI, on the day a fleet makes manual renewal unworkable.
 One per phase, decided before starting it.
 
 - **0** — week four still producing new conduits: fix the capture scope before going on.
-- **1** — no model owner emerges: stop. The output would be a second spreadsheet.
+- **1** — no model owner emerges: stop. The output would be a second spreadsheet. This is the
+  model owner's rule; a missing meaning owner does not abort anything, it holds the ladder at
+  phase 2 (see phase 2).
 - **2** — every discrepancy resolves to "the model was wrong": the model is not yet good enough to
   enforce, and phase 4 has not been earned.
 - **4** — Huginn coverage too low for the derived allowlist to be trusted: do not enter.
