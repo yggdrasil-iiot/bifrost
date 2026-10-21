@@ -1,0 +1,17 @@
+{
+  "kind": "evidence-artifact",
+  "schemaVersion": "1.0.0",
+  "id": "manual-mixed-tag-pressure",
+  "version": "1.0.0",
+  "origin": "synthetic",
+  "file": {
+    "path": "data/manual-2.txt",
+    "sha256": "12d8698419b1e815727870a060464f5a667de54e65fb223d63e03dc071c66ee5",
+    "mediaType": "text/plain"
+  },
+  "capturedAt": "2026-10-17T00:00:00Z",
+  "product": null,
+  "scope": [
+    "mixed-line"
+  ]
+}

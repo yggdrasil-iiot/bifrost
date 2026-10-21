@@ -3,7 +3,7 @@
 [![CI](https://github.com/yggdrasil-iiot/bifrost/actions/workflows/ci.yml/badge.svg)](https://github.com/yggdrasil-iiot/bifrost/actions/workflows/ci.yml)
 ![Java](https://img.shields.io/badge/Java-17-orange?logo=openjdk&logoColor=white)
 ![Build](https://img.shields.io/badge/build-Maven%20multi--module-blue)
-![Tests](https://img.shields.io/badge/tests-601-brightgreen)
+![Tests](https://img.shields.io/badge/tests-851-brightgreen)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache_2.0-blue.svg)](LICENSE)
 
 **The governance core of the [Yggdrasil](https://github.com/yggdrasil-iiot) IIoT spine — the "IAM" for the OT governance boundary.**
@@ -43,6 +43,7 @@ One `gates` jar, deny-by-default, exit `0` admit / `1` governance-refuse / `2` u
 
 | Subcommand | Governs |
 |---|---|
+| `mapping validate/diff/approve/publish/status` · `recover/gc/lifecycle/catalog` | Offline mapping contracts, signed four-eyes approval and immutable file release; no operational activation ([boundary](docs/MAPPING-PUBLICATION.md)) |
 | `schema` | UDT schema compatibility (FORWARD/BACKWARD/FULL, Confluent vocabulary) |
 | `spec` | `MasterSpec` conformance against the governed `ConformancePolicy` |
 | `template` · `adapt-template` | **site ⊨ enterprise** prescriptive governance; a ports-&-adapters core proven standard-agnostic (Ignition / CFIHOS / AAS adapt ≡ native) |
@@ -162,9 +163,9 @@ sim/       an embedded Eclipse Milo OPC-UA server the gates drive end-to-end.
 ## Build & test
 
 ```bash
-mvn install     # Java 17 · 601 tests (core 326 · heimdall 121 · gates 131 · sim 23)
+mvn install     # Java 17 · 851 tests (core 572 · heimdall 123 · gates 133 · sim 23)
                 # also writes target/bifrost-sbom.{json,xml} — one CycloneDX 1.6 SBOM
-                # for the whole reactor (40 components, licences resolved)
+                # for the whole reactor (45 components, licences resolved)
 ```
 
 ## Honest scope & limitations
@@ -182,6 +183,10 @@ them. The list below is the short form — the long form, with what would force 
 - **Conformance egress is structural + range**, and the activation seal binds the runtime `MasterSpec`, not the git-anchored recipe manifest (that unification is future work).
 - **Demo scale** — single broker, single edge, single instance, localhost; the sim's transfer is instant setpoint = PV (a governance loop, not process physics). **The federation gate is no exception: it stands both "sites" up on one machine.** It proves the multi-site *topology*, not multi-site operation.
 - Parts were developed with AI assistance; all designs and gate results were verified against live services by the author.
+
+## Offline mapping publication
+
+The `mapping` gate independently validates Týr mapping proposals against bundled copies of its published wire schemas (1.0.0–2.22.0); no Týr code is imported or invoked. It pins the evidence bundle, requires four-eyes approval with distinct registered Ed25519 keys, and publishes an immutable file release atomically. Runtime activation and device/SQL/write execution are excluded. 237 of the tests above cover this path (core 235 · gates CLI 2), measured 2026-10-20. [Boundary, contract versions and usage](docs/MAPPING-PUBLICATION.md).
 
 ## License
 

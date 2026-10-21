@@ -1,0 +1,17 @@
+{
+  "kind": "evidence-artifact",
+  "schemaVersion": "1.0.0",
+  "id": "manual-a07-ab-word-alias",
+  "version": "1.0.0",
+  "origin": "synthetic",
+  "file": {
+    "path": "data/manual-1.txt",
+    "sha256": "655c50f055b61188f8fe378572eee162cd57bd4c3016d4929ed86cb075be9902",
+    "mediaType": "text/plain"
+  },
+  "capturedAt": "2026-10-17T00:00:00Z",
+  "product": null,
+  "scope": [
+    "line-a-motor-ab"
+  ]
+}

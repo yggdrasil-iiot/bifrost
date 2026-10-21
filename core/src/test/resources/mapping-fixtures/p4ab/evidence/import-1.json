@@ -1,0 +1,17 @@
+{
+  "kind": "evidence-artifact",
+  "schemaVersion": "1.1.0",
+  "id": "import-review-next",
+  "version": "1.0.0",
+  "origin": "synthetic",
+  "file": {
+    "path": "data/import-1.json",
+    "sha256": "5bfd8f66ec93b969b389b43ccf8972a44f9969b648bf62c14b64421ca20978be",
+    "mediaType": "application/json"
+  },
+  "capturedAt": "2026-10-17T00:00:00Z",
+  "product": null,
+  "scope": [
+    "import-line"
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "kind": "target-instance",
+  "schemaVersion": "2.0.0",
+  "id": "structure-skid-melsec",
+  "version": "1.0.0",
+  "label": "Logical skid melsec",
+  "equipmentInstanceId": "line-a-motor-melsec",
+  "semanticDefinitionRef": {
+    "id": "logical-skid",
+    "version": "1.0.0"
+  },
+  "evidenceRefs": [
+    {
+      "artifactId": "manual-array-pressures-melsec",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    },
+    {
+      "artifactId": "manual-structure-melsec-actual",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    },
+    {
+      "artifactId": "manual-structure-melsec-target",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    },
+    {
+      "artifactId": "manual-structure-melsec-flags",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    }
+  ]
+}

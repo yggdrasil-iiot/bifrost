@@ -1,0 +1,42 @@
+{
+  "kind": "target-instance",
+  "schemaVersion": "2.0.0",
+  "id": "structure-skid-ua",
+  "version": "1.0.0",
+  "label": "Logical skid ua",
+  "equipmentInstanceId": "line-a-motor-ua",
+  "semanticDefinitionRef": {
+    "id": "logical-skid",
+    "version": "1.0.0"
+  },
+  "evidenceRefs": [
+    {
+      "artifactId": "manual-array-pressures-ua",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    },
+    {
+      "artifactId": "manual-structure-ua-actual",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    },
+    {
+      "artifactId": "manual-structure-ua-target",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    },
+    {
+      "artifactId": "manual-structure-ua-flags",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    }
+  ]
+}

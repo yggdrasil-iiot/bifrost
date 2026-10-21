@@ -1,0 +1,180 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:tyr:contract:2.7.0:write-definition",
+  "type": "object",
+  "properties": {
+    "kind": {
+      "const": "write-definition"
+    },
+    "schemaVersion": {
+      "const": "2.7.0"
+    },
+    "id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "version": {
+      "$ref": "common.schema.json#/$defs/version"
+    },
+    "equipmentInstanceId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "targetInstanceRef": {
+      "$ref": "common.schema.json#/$defs/documentRef"
+    },
+    "memberPath": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "member"
+          },
+          "memberId": {
+            "$ref": "common.schema.json#/$defs/id"
+          }
+        },
+        "required": [
+          "kind",
+          "memberId"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "destinationRef": {
+      "$ref": "common.schema.json#/$defs/documentRef"
+    },
+    "transform": {
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "op": {
+                "const": "linear"
+              },
+              "factor": {
+                "type": "string",
+                "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$"
+              },
+              "offset": {
+                "type": "string",
+                "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$"
+              }
+            },
+            "required": [
+              "op",
+              "factor",
+              "offset"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "op": {
+                "const": "cast"
+              },
+              "to": {
+                "enum": [
+                  "Int16",
+                  "UInt16",
+                  "Int32",
+                  "UInt32",
+                  "Int64",
+                  "Float32",
+                  "Float64",
+                  "Double",
+                  "Boolean",
+                  "String"
+                ]
+              },
+              "overflow": {
+                "const": "error"
+              },
+              "rounding": {
+                "enum": [
+                  "exact",
+                  "half-even"
+                ]
+              }
+            },
+            "required": [
+              "op",
+              "to",
+              "overflow",
+              "rounding"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "op": {
+                "const": "unit-convert"
+              },
+              "from": {
+                "enum": [
+                  "1/s",
+                  "mN.m",
+                  "K",
+                  "Pa",
+                  "kPa",
+                  "bar"
+                ]
+              },
+              "to": {
+                "enum": [
+                  "rpm",
+                  "N.m",
+                  "Cel",
+                  "Pa",
+                  "kPa",
+                  "bar"
+                ]
+              }
+            },
+            "required": [
+              "op",
+              "from",
+              "to"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "execution": {
+      "const": "excluded"
+    },
+    "invalidValuePolicy": {
+      "const": "reject"
+    },
+    "evidenceRefs": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 256,
+      "items": {
+        "$ref": "common.schema.json#/$defs/evidenceRef"
+      }
+    }
+  },
+  "required": [
+    "kind",
+    "schemaVersion",
+    "id",
+    "version",
+    "equipmentInstanceId",
+    "targetInstanceRef",
+    "memberPath",
+    "destinationRef",
+    "transform",
+    "execution",
+    "invalidValuePolicy",
+    "evidenceRefs"
+  ],
+  "additionalProperties": false
+}

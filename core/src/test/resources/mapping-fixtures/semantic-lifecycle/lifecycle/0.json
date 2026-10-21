@@ -1,0 +1,17 @@
+{
+  "kind": "semantic-lifecycle",
+  "schemaVersion": "2.18.0",
+  "id": "lifecycle-fixture-1",
+  "version": "1.0.0",
+  "semanticId": "urn:tyr:concept:mixed.plc-pressure",
+  "revision": 1,
+  "previousEvent": null,
+  "signatureSha256": "a6ff2c076fb79ffe2889426337e563ccb2d3abc5f6196c45a81037da874d9b63",
+  "action": "revise",
+  "replacementSemanticId": null,
+  "label": "Pressure canonical label 1",
+  "description": "Synthetic governance revision",
+  "reason": "Synthetic policy review; not field evidence",
+  "authoredBy": "fixture-author",
+  "authoredAt": "2026-10-18T00:00:01Z"
+}

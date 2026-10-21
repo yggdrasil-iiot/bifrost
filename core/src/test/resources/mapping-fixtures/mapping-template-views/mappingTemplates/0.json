@@ -1,0 +1,137 @@
+{
+  "kind": "mapping-template",
+  "schemaVersion": "2.19.0",
+  "id": "word-and-bit",
+  "version": "1.0.0",
+  "label": "워드·비트 공통 템플릿",
+  "description": "합성 alias/view 재사용",
+  "reason": "부모 근거 고정 검증",
+  "authoredBy": "fixture-author",
+  "authoredAt": "2026-10-18T04:00:00Z",
+  "previousTemplateRef": null,
+  "slots": [
+    {
+      "slotId": "input-1",
+      "label": "a07-ab-alarm-alias",
+      "sourceRef": {
+        "id": "a07-ab-alarm-alias",
+        "version": "1.0.0"
+      },
+      "signature": {
+        "rawRepresentation": {
+          "valueType": "Boolean"
+        },
+        "unit": {
+          "status": "not-applicable"
+        },
+        "inputStage": "already-engineered",
+        "fixedArray": null
+      }
+    }
+  ],
+  "model": {
+    "kind": "semantic-definition",
+    "schemaVersion": "2.2.0",
+    "id": "template-state-model",
+    "version": "1.0.0",
+    "members": [
+      {
+        "memberId": "alarm-alias",
+        "name": "alarm-alias",
+        "semanticId": "urn:tyr:concept:a07.alarm-alias",
+        "description": "Synthetic status alarm-alias",
+        "valueType": "Boolean",
+        "unit": {
+          "status": "not-applicable"
+        },
+        "role": "status",
+        "range": null
+      }
+    ]
+  },
+  "target": {
+    "kind": "target-instance",
+    "schemaVersion": "2.0.0",
+    "id": "template-state-target",
+    "version": "1.0.0",
+    "equipmentInstanceId": "line-a-motor-ab",
+    "label": "ab status",
+    "semanticDefinitionRef": {
+      "id": "template-state-model",
+      "version": "1.0.0"
+    },
+    "evidenceRefs": []
+  },
+  "graphs": [
+    {
+      "kind": "value-graph",
+      "schemaVersion": "2.2.0",
+      "id": "a07-ab-graph",
+      "version": "1.0.0",
+      "equipmentInstanceId": "line-a-motor-ab",
+      "nodes": [
+        {
+          "nodeId": "alarm",
+          "op": "identity",
+          "inputs": {
+            "value": {
+              "kind": "source",
+              "sourceRef": {
+                "id": "a07-ab-alarm-alias",
+                "version": "1.0.0"
+              }
+            }
+          },
+          "valueType": "Boolean",
+          "unit": {
+            "status": "not-applicable"
+          },
+          "evidenceRefs": []
+        }
+      ]
+    }
+  ],
+  "mapping": {
+    "kind": "mapping-set",
+    "schemaVersion": "2.2.0",
+    "id": "template-state-mapping",
+    "version": "1.0.0",
+    "equipmentInstanceId": "line-a-motor-ab",
+    "targetInstanceRef": {
+      "id": "template-state-target",
+      "version": "1.0.0"
+    },
+    "mappings": [
+      {
+        "mappingId": "template-alarm-alias",
+        "valueRef": {
+          "kind": "graph",
+          "graphRef": {
+            "id": "a07-ab-graph",
+            "version": "1.0.0"
+          },
+          "nodeId": "alarm"
+        },
+        "memberPath": [
+          {
+            "kind": "member",
+            "memberId": "alarm-alias"
+          }
+        ],
+        "transform": [
+          {
+            "op": "cast",
+            "to": "Boolean",
+            "rounding": "exact",
+            "overflow": "error"
+          }
+        ],
+        "outputUnit": {
+          "status": "not-applicable"
+        },
+        "invalidValuePolicy": "bad-quality",
+        "evidenceRefs": []
+      }
+    ]
+  }
+}

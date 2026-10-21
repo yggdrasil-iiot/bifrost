@@ -1,0 +1,17 @@
+{
+  "kind": "evidence-artifact",
+  "schemaVersion": "1.0.0",
+  "id": "manual-selector-previous",
+  "version": "1.0.0",
+  "origin": "synthetic",
+  "file": {
+    "path": "data/manual-3.txt",
+    "sha256": "54f5a72633a3af1a5403e99ce8b8100c0513bb51ca94163bde6acf8a45399241",
+    "mediaType": "text/plain"
+  },
+  "capturedAt": "2026-10-17T00:00:00Z",
+  "product": null,
+  "scope": [
+    "line-a-motor-melsec"
+  ]
+}

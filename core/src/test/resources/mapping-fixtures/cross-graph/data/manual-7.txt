@@ -1,0 +1,2 @@
+Field label: target · db
+Synthetic target; explicit logical mapping, native struct layout not claimed

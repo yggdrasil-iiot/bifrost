@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:tyr:contract:2.18.0:semantic-lifecycle",
+  "type": "object",
+  "properties": {
+    "kind": {
+      "const": "semantic-lifecycle"
+    },
+    "schemaVersion": {
+      "const": "2.18.0"
+    },
+    "id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "version": {
+      "const": "1.0.0"
+    },
+    "semanticId": {
+      "type": "string",
+      "pattern": "^[a-zA-Z][a-zA-Z0-9+.-]*:[^\\s]+$",
+      "maxLength": 1024
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 256
+    },
+    "previousEvent": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "common.schema.json#/$defs/id"
+            },
+            "version": {
+              "$ref": "common.schema.json#/$defs/version"
+            },
+            "sha256": {
+              "$ref": "common.schema.json#/$defs/sha256"
+            }
+          },
+          "required": [
+            "id",
+            "version",
+            "sha256"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "action": {
+      "enum": [
+        "revise",
+        "deprecate",
+        "retire"
+      ]
+    },
+    "signatureSha256": {
+      "$ref": "common.schema.json#/$defs/sha256"
+    },
+    "replacementSemanticId": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "pattern": "^[a-zA-Z][a-zA-Z0-9+.-]*:[^\\s]+$",
+          "maxLength": 1024
+        }
+      ]
+    },
+    "label": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "description": {
+      "type": "string",
+      "minLength": 0,
+      "maxLength": 4096
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "authoredBy": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "authoredAt": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d(?:\\.\\d{1,6})?(?:Z|[+-]\\d\\d:\\d\\d)$"
+    }
+  },
+  "required": [
+    "kind",
+    "schemaVersion",
+    "id",
+    "version",
+    "semanticId",
+    "revision",
+    "previousEvent",
+    "action",
+    "signatureSha256",
+    "replacementSemanticId",
+    "label",
+    "description",
+    "reason",
+    "authoredBy",
+    "authoredAt"
+  ],
+  "additionalProperties": false
+}

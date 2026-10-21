@@ -1,0 +1,42 @@
+{
+  "kind": "target-instance",
+  "schemaVersion": "2.0.0",
+  "id": "bounded-pressure-target",
+  "version": "1.0.0",
+  "equipmentInstanceId": "line-a-motor-melsec",
+  "label": "Filter direct",
+  "semanticDefinitionRef": {
+    "id": "bounded-pressure-model",
+    "version": "1.0.0"
+  },
+  "evidenceRefs": [
+    {
+      "artifactId": "manual-pressure-up",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    },
+    {
+      "artifactId": "manual-pressure-down",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    },
+    {
+      "artifactId": "manual-selector-index",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    },
+    {
+      "artifactId": "manual-selector-previous",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    }
+  ]
+}

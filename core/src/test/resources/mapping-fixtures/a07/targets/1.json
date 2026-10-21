@@ -1,0 +1,21 @@
+{
+  "kind": "target-instance",
+  "schemaVersion": "2.0.0",
+  "id": "a07-ua-status",
+  "version": "1.0.0",
+  "equipmentInstanceId": "line-a-motor-ua",
+  "label": "ua status",
+  "semanticDefinitionRef": {
+    "id": "a07-status-model",
+    "version": "1.0.0"
+  },
+  "evidenceRefs": [
+    {
+      "artifactId": "manual-a07-ua-word",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    }
+  ]
+}

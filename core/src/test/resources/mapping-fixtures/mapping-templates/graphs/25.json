@@ -1,0 +1,211 @@
+{
+  "kind": "value-graph",
+  "version": "1.0.0",
+  "equipmentInstanceId": "line-a-motor-melsec",
+  "id": "reuse-pump-melsec-r1-g0",
+  "schemaVersion": "2.17.0",
+  "nodes": [
+    {
+      "nodeId": "sum",
+      "op": "add",
+      "inputs": {
+        "left": {
+          "kind": "graph",
+          "graphRef": {
+            "id": "reuse-pump-melsec-r1-g2",
+            "version": "1.0.0"
+          },
+          "nodeId": "delta"
+        },
+        "right": {
+          "kind": "graph",
+          "graphRef": {
+            "id": "reuse-pump-melsec-r1-g2",
+            "version": "1.0.0"
+          },
+          "nodeId": "delta"
+        }
+      },
+      "valueType": "Decimal",
+      "unit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-structure-melsec-actual",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-arithmetic-melsec-gain",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-structure-melsec-target",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    },
+    {
+      "nodeId": "scaled",
+      "op": "multiply",
+      "inputs": {
+        "left": {
+          "kind": "graph",
+          "graphRef": {
+            "id": "reuse-pump-melsec-r1-g2",
+            "version": "1.0.0"
+          },
+          "nodeId": "delta"
+        },
+        "right": {
+          "kind": "source",
+          "sourceRef": {
+            "id": "arithmetic-melsec-gain",
+            "version": "1.0.0"
+          }
+        }
+      },
+      "valueType": "Decimal",
+      "unit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-structure-melsec-actual",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-arithmetic-melsec-gain",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-structure-melsec-target",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    },
+    {
+      "nodeId": "quotient",
+      "op": "divide",
+      "inputs": {
+        "left": {
+          "kind": "graph",
+          "graphRef": {
+            "id": "reuse-pump-melsec-r1-g2",
+            "version": "1.0.0"
+          },
+          "nodeId": "delta"
+        },
+        "right": {
+          "kind": "source",
+          "sourceRef": {
+            "id": "arithmetic-melsec-gain",
+            "version": "1.0.0"
+          }
+        }
+      },
+      "valueType": "Decimal",
+      "unit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-structure-melsec-actual",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-arithmetic-melsec-gain",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-structure-melsec-target",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ],
+      "precision": 34,
+      "rounding": "half-even"
+    },
+    {
+      "nodeId": "ratio",
+      "op": "divide",
+      "inputs": {
+        "left": {
+          "kind": "graph",
+          "graphRef": {
+            "id": "reuse-pump-melsec-r1-g2",
+            "version": "1.0.0"
+          },
+          "nodeId": "delta"
+        },
+        "right": {
+          "kind": "graph",
+          "graphRef": {
+            "id": "reuse-pump-melsec-r1-g2",
+            "version": "1.0.0"
+          },
+          "nodeId": "delta"
+        }
+      },
+      "valueType": "Decimal",
+      "unit": {
+        "status": "known",
+        "code": "1"
+      },
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-structure-melsec-actual",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-arithmetic-melsec-gain",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-structure-melsec-target",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ],
+      "precision": 34,
+      "rounding": "half-even"
+    }
+  ]
+}

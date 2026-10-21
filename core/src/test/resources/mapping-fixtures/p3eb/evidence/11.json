@@ -1,0 +1,17 @@
+{
+  "kind": "evidence-artifact",
+  "schemaVersion": "1.0.0",
+  "id": "manual-structure-db-target",
+  "version": "1.0.0",
+  "origin": "synthetic",
+  "file": {
+    "path": "data/manual-11.txt",
+    "sha256": "9529d13f49124619d4c24b9d6a40b2b870ebdaa5e9ecd43f33578f189fc68b41",
+    "mediaType": "text/plain"
+  },
+  "capturedAt": "2026-10-17T00:00:00Z",
+  "product": null,
+  "scope": [
+    "line-a-motor-db"
+  ]
+}

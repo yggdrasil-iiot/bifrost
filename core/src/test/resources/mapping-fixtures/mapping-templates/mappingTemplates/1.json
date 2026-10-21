@@ -1,0 +1,474 @@
+{
+  "kind": "mapping-template",
+  "schemaVersion": "2.19.0",
+  "id": "pressure-kit",
+  "version": "1.1.0",
+  "label": "압력 계산 표준 ab",
+  "description": "합성 메모리맵의 공통 의미·그래프·정책",
+  "reason": "압력 차 대신 합산으로 변경하는 합성 영향 검증",
+  "authoredBy": "fixture-author",
+  "authoredAt": "2026-10-18T03:00:00Z",
+  "previousTemplateRef": {
+    "id": "pressure-kit",
+    "version": "1.0.0",
+    "sha256": "0f7e9e91b250570dcc18e782f7004afc3e474222082488d67d9a98c359ab43e3"
+  },
+  "slots": [
+    {
+      "slotId": "input-1",
+      "label": "Synthetic dimensionless gain",
+      "sourceRef": {
+        "id": "arithmetic-ab-gain",
+        "version": "1.0.0"
+      },
+      "signature": {
+        "rawRepresentation": {
+          "valueType": "UInt16"
+        },
+        "unit": {
+          "status": "known",
+          "code": "1"
+        },
+        "inputStage": "raw",
+        "fixedArray": null
+      }
+    },
+    {
+      "slotId": "input-2",
+      "label": "actual · ab",
+      "sourceRef": {
+        "id": "structure-ab-actual",
+        "version": "1.0.0"
+      },
+      "signature": {
+        "rawRepresentation": {
+          "valueType": "UInt16"
+        },
+        "unit": {
+          "status": "known",
+          "code": "kPa"
+        },
+        "inputStage": "raw",
+        "fixedArray": null
+      }
+    },
+    {
+      "slotId": "input-3",
+      "label": "target · ab",
+      "sourceRef": {
+        "id": "structure-ab-target",
+        "version": "1.0.0"
+      },
+      "signature": {
+        "rawRepresentation": {
+          "valueType": "UInt16"
+        },
+        "unit": {
+          "status": "known",
+          "code": "kPa"
+        },
+        "inputStage": "raw",
+        "fixedArray": null
+      }
+    }
+  ],
+  "model": {
+    "kind": "semantic-definition",
+    "schemaVersion": "2.2.0",
+    "id": "arithmetic-model",
+    "version": "1.0.0",
+    "members": [
+      {
+        "memberId": "sum",
+        "name": "sum",
+        "semanticId": "urn:tyr:synthetic:sum",
+        "description": "Synthetic arithmetic oracle, not field engineering truth",
+        "valueType": "Double",
+        "unit": {
+          "status": "known",
+          "code": "kPa"
+        },
+        "role": "measurement",
+        "range": null
+      },
+      {
+        "memberId": "scaled",
+        "name": "scaled",
+        "semanticId": "urn:tyr:synthetic:scaled",
+        "description": "Synthetic arithmetic oracle, not field engineering truth",
+        "valueType": "Double",
+        "unit": {
+          "status": "known",
+          "code": "kPa"
+        },
+        "role": "measurement",
+        "range": null
+      },
+      {
+        "memberId": "quotient",
+        "name": "quotient",
+        "semanticId": "urn:tyr:synthetic:quotient",
+        "description": "Synthetic arithmetic oracle, not field engineering truth",
+        "valueType": "Double",
+        "unit": {
+          "status": "known",
+          "code": "kPa"
+        },
+        "role": "measurement",
+        "range": null
+      },
+      {
+        "memberId": "ratio",
+        "name": "ratio",
+        "semanticId": "urn:tyr:synthetic:ratio",
+        "description": "Synthetic arithmetic oracle, not field engineering truth",
+        "valueType": "Double",
+        "unit": {
+          "status": "known",
+          "code": "1"
+        },
+        "role": "measurement",
+        "range": null
+      }
+    ]
+  },
+  "target": {
+    "kind": "target-instance",
+    "schemaVersion": "2.0.0",
+    "id": "arithmetic-object-ab",
+    "version": "1.0.0",
+    "label": "Synthetic arithmetic object ab",
+    "equipmentInstanceId": "line-a-motor-ab",
+    "semanticDefinitionRef": {
+      "id": "arithmetic-model",
+      "version": "1.0.0"
+    },
+    "evidenceRefs": []
+  },
+  "graphs": [
+    {
+      "kind": "value-graph",
+      "version": "1.0.0",
+      "equipmentInstanceId": "line-a-motor-ab",
+      "id": "consumer-ab",
+      "schemaVersion": "2.17.0",
+      "nodes": [
+        {
+          "nodeId": "sum",
+          "op": "add",
+          "inputs": {
+            "left": {
+              "kind": "graph",
+              "graphRef": {
+                "id": "shared-ab",
+                "version": "1.0.0"
+              },
+              "nodeId": "delta"
+            },
+            "right": {
+              "kind": "graph",
+              "graphRef": {
+                "id": "shared-ab",
+                "version": "1.0.0"
+              },
+              "nodeId": "delta"
+            }
+          },
+          "valueType": "Decimal",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "evidenceRefs": []
+        },
+        {
+          "nodeId": "scaled",
+          "op": "multiply",
+          "inputs": {
+            "left": {
+              "kind": "graph",
+              "graphRef": {
+                "id": "shared-ab",
+                "version": "1.0.0"
+              },
+              "nodeId": "delta"
+            },
+            "right": {
+              "kind": "source",
+              "sourceRef": {
+                "id": "arithmetic-ab-gain",
+                "version": "1.0.0"
+              }
+            }
+          },
+          "valueType": "Decimal",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "evidenceRefs": []
+        },
+        {
+          "nodeId": "quotient",
+          "op": "divide",
+          "inputs": {
+            "left": {
+              "kind": "graph",
+              "graphRef": {
+                "id": "shared-ab",
+                "version": "1.0.0"
+              },
+              "nodeId": "delta"
+            },
+            "right": {
+              "kind": "source",
+              "sourceRef": {
+                "id": "arithmetic-ab-gain",
+                "version": "1.0.0"
+              }
+            }
+          },
+          "valueType": "Decimal",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "evidenceRefs": [],
+          "precision": 34,
+          "rounding": "half-even"
+        },
+        {
+          "nodeId": "ratio",
+          "op": "divide",
+          "inputs": {
+            "left": {
+              "kind": "graph",
+              "graphRef": {
+                "id": "shared-ab",
+                "version": "1.0.0"
+              },
+              "nodeId": "delta"
+            },
+            "right": {
+              "kind": "graph",
+              "graphRef": {
+                "id": "shared-ab",
+                "version": "1.0.0"
+              },
+              "nodeId": "delta"
+            }
+          },
+          "valueType": "Decimal",
+          "unit": {
+            "status": "known",
+            "code": "1"
+          },
+          "evidenceRefs": [],
+          "precision": 34,
+          "rounding": "half-even"
+        }
+      ]
+    },
+    {
+      "kind": "value-graph",
+      "version": "1.0.0",
+      "equipmentInstanceId": "line-a-motor-ab",
+      "id": "final-ab",
+      "schemaVersion": "2.17.0",
+      "nodes": [
+        {
+          "nodeId": "result",
+          "op": "identity",
+          "inputs": {
+            "value": {
+              "kind": "graph",
+              "graphRef": {
+                "id": "consumer-ab",
+                "version": "1.0.0"
+              },
+              "nodeId": "quotient"
+            }
+          },
+          "valueType": "Decimal",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "evidenceRefs": []
+        }
+      ]
+    },
+    {
+      "kind": "value-graph",
+      "version": "1.0.0",
+      "equipmentInstanceId": "line-a-motor-ab",
+      "id": "shared-ab",
+      "schemaVersion": "2.15.0",
+      "nodes": [
+        {
+          "nodeId": "delta",
+          "op": "add",
+          "inputs": {
+            "left": {
+              "kind": "source",
+              "sourceRef": {
+                "id": "structure-ab-actual",
+                "version": "1.0.0"
+              }
+            },
+            "right": {
+              "kind": "source",
+              "sourceRef": {
+                "id": "structure-ab-target",
+                "version": "1.0.0"
+              }
+            }
+          },
+          "valueType": "Decimal",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "evidenceRefs": []
+        }
+      ]
+    }
+  ],
+  "mapping": {
+    "kind": "mapping-set",
+    "schemaVersion": "2.2.0",
+    "id": "arithmetic-mapping-ab",
+    "version": "1.0.0",
+    "equipmentInstanceId": "line-a-motor-ab",
+    "targetInstanceRef": {
+      "id": "arithmetic-object-ab",
+      "version": "1.0.0"
+    },
+    "mappings": [
+      {
+        "mappingId": "ab-sum",
+        "memberPath": [
+          {
+            "kind": "member",
+            "memberId": "sum"
+          }
+        ],
+        "valueRef": {
+          "kind": "graph",
+          "graphRef": {
+            "id": "consumer-ab",
+            "version": "1.0.0"
+          },
+          "nodeId": "sum"
+        },
+        "transform": [
+          {
+            "op": "cast",
+            "to": "Double",
+            "overflow": "error",
+            "rounding": "half-even"
+          }
+        ],
+        "outputUnit": {
+          "status": "known",
+          "code": "kPa"
+        },
+        "invalidValuePolicy": "bad-quality",
+        "evidenceRefs": []
+      },
+      {
+        "mappingId": "ab-scaled",
+        "memberPath": [
+          {
+            "kind": "member",
+            "memberId": "scaled"
+          }
+        ],
+        "valueRef": {
+          "kind": "graph",
+          "graphRef": {
+            "id": "consumer-ab",
+            "version": "1.0.0"
+          },
+          "nodeId": "scaled"
+        },
+        "transform": [
+          {
+            "op": "cast",
+            "to": "Double",
+            "overflow": "error",
+            "rounding": "half-even"
+          }
+        ],
+        "outputUnit": {
+          "status": "known",
+          "code": "kPa"
+        },
+        "invalidValuePolicy": "bad-quality",
+        "evidenceRefs": []
+      },
+      {
+        "mappingId": "ab-quotient",
+        "memberPath": [
+          {
+            "kind": "member",
+            "memberId": "quotient"
+          }
+        ],
+        "valueRef": {
+          "kind": "graph",
+          "graphRef": {
+            "id": "final-ab",
+            "version": "1.0.0"
+          },
+          "nodeId": "result"
+        },
+        "transform": [
+          {
+            "op": "cast",
+            "to": "Double",
+            "overflow": "error",
+            "rounding": "half-even"
+          }
+        ],
+        "outputUnit": {
+          "status": "known",
+          "code": "kPa"
+        },
+        "invalidValuePolicy": "bad-quality",
+        "evidenceRefs": []
+      },
+      {
+        "mappingId": "ab-ratio",
+        "memberPath": [
+          {
+            "kind": "member",
+            "memberId": "ratio"
+          }
+        ],
+        "valueRef": {
+          "kind": "graph",
+          "graphRef": {
+            "id": "consumer-ab",
+            "version": "1.0.0"
+          },
+          "nodeId": "ratio"
+        },
+        "transform": [
+          {
+            "op": "cast",
+            "to": "Double",
+            "overflow": "error",
+            "rounding": "half-even"
+          }
+        ],
+        "outputUnit": {
+          "status": "known",
+          "code": "1"
+        },
+        "invalidValuePolicy": "bad-quality",
+        "evidenceRefs": []
+      }
+    ]
+  }
+}

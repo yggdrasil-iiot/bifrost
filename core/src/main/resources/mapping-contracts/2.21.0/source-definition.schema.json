@@ -1,0 +1,189 @@
+{
+  "type": "object",
+  "properties": {
+    "kind": {
+      "const": "source-definition"
+    },
+    "schemaVersion": {
+      "const": "2.21.0"
+    },
+    "id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "version": {
+      "$ref": "common.schema.json#/$defs/version"
+    },
+    "equipmentInstanceId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "status": {
+      "enum": [
+        "draft",
+        "ready"
+      ]
+    },
+    "rawAddressText": {
+      "type": "string",
+      "minLength": 1
+    },
+    "inputStage": {
+      "enum": [
+        "raw",
+        "already-engineered"
+      ]
+    },
+    "unit": {
+      "$ref": "common.schema.json#/$defs/unit"
+    },
+    "evidenceRefs": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/evidenceRef"
+      },
+      "minItems": 1
+    },
+    "viewOf": {
+      "type": "null"
+    },
+    "sourceKind": {
+      "const": "external-value"
+    },
+    "accessMode": {
+      "const": "read"
+    },
+    "connectionProfileRef": {
+      "type": "null"
+    },
+    "accessProfileRef": {
+      "const": "external-value-v1"
+    },
+    "addressRadix": {
+      "type": "null"
+    },
+    "rawRepresentation": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "const": "typed"
+        },
+        "valueType": {
+          "enum": [
+            "Int32",
+            "Double",
+            "Boolean",
+            "String"
+          ]
+        }
+      },
+      "required": [
+        "mode",
+        "valueType"
+      ],
+      "additionalProperties": false
+    },
+    "access": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "external-value"
+        },
+        "providerRef": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "valueKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "expressionLanguage": {
+          "const": "none"
+        },
+        "expression": {
+          "type": "null"
+        }
+      },
+      "required": [
+        "kind",
+        "providerRef",
+        "valueKey",
+        "expressionLanguage",
+        "expression"
+      ],
+      "additionalProperties": false
+    },
+    "recordField": {
+      "type": "object",
+      "properties": {
+        "recordMappingRef": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "common.schema.json#/$defs/id"
+            },
+            "version": {
+              "$ref": "common.schema.json#/$defs/version"
+            },
+            "sha256": {
+              "$ref": "common.schema.json#/$defs/sha256"
+            }
+          },
+          "required": [
+            "id",
+            "version",
+            "sha256"
+          ],
+          "additionalProperties": false
+        },
+        "fieldId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9._-]{0,63}$"
+        },
+        "nullPolicy": {
+          "enum": [
+            "reject",
+            "default"
+          ]
+        },
+        "defaultValue": {
+          "type": [
+            "string",
+            "boolean",
+            "null"
+          ],
+          "maxLength": 4096
+        }
+      },
+      "required": [
+        "recordMappingRef",
+        "fieldId",
+        "nullPolicy",
+        "defaultValue"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "kind",
+    "schemaVersion",
+    "id",
+    "version",
+    "equipmentInstanceId",
+    "status",
+    "rawAddressText",
+    "inputStage",
+    "unit",
+    "evidenceRefs",
+    "viewOf",
+    "sourceKind",
+    "accessMode",
+    "connectionProfileRef",
+    "accessProfileRef",
+    "addressRadix",
+    "rawRepresentation",
+    "access",
+    "recordField"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:tyr:contract:2.21.0:source-definition"
+}

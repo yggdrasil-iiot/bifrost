@@ -1,0 +1,40 @@
+{
+  "kind": "source-definition",
+  "schemaVersion": "2.2.0",
+  "id": "structure-db-target",
+  "version": "1.0.0",
+  "equipmentInstanceId": "line-a-motor-db",
+  "connectionProfileRef": "logical-db",
+  "accessProfileRef": "s7-300-db-v1",
+  "status": "ready",
+  "rawAddressText": "DB20.DBW2",
+  "addressRadix": null,
+  "access": {
+    "kind": "db-offset",
+    "dbNumber": 20,
+    "byteOffset": 2,
+    "byteLength": 2,
+    "bitOffset": null
+  },
+  "rawRepresentation": {
+    "mode": "bytes",
+    "valueType": "UInt16",
+    "byteOrder": "little",
+    "wordOrder": "low-first"
+  },
+  "inputStage": "raw",
+  "unit": {
+    "status": "known",
+    "code": "kPa"
+  },
+  "evidenceRefs": [
+    {
+      "artifactId": "manual-structure-db-target",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    }
+  ],
+  "viewOf": null
+}

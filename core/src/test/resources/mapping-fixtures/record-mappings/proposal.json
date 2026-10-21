@@ -1,0 +1,51 @@
+{
+  "kind": "mapping-proposal",
+  "schemaVersion": "2.20.0",
+  "id": "local-workspace",
+  "version": "2.0.0",
+  "baseRelease": null,
+  "files": [
+    {
+      "path": "records/evidence-1.json",
+      "kind": "evidence-artifact",
+      "id": "record-pressure-object-1-0-0",
+      "version": "1.0.0",
+      "sha256": "c4ef028eb26a34d5fc00080647f1e4d4af42181d437c9d4e03610983c5bdfbcd"
+    },
+    {
+      "path": "records/evidence-0.json",
+      "kind": "evidence-artifact",
+      "id": "record-pressure-records-1-0-0",
+      "version": "1.0.0",
+      "sha256": "1d3c8fe136f47d6f938d0892ab1179bb9fa085ff29c350e744b2ba8c8d0d069a"
+    },
+    {
+      "path": "mappingTemplates/0.json",
+      "kind": "mapping-template",
+      "id": "pressure-record-template",
+      "version": "1.0.0",
+      "sha256": "c963e866ffb8f7d6c233a3452cfd000d1318759c5edec1858f7440218ca54677"
+    },
+    {
+      "path": "records/1.json",
+      "kind": "record-mapping",
+      "id": "pressure-object",
+      "version": "1.0.0",
+      "sha256": "8a1bad4a24fb746fefae3c60bddecddaf03d2ba60ccb80e8661a2b69f9e26a87"
+    },
+    {
+      "path": "records/0.json",
+      "kind": "record-mapping",
+      "id": "pressure-records",
+      "version": "1.0.0",
+      "sha256": "3c0755d021d8b299041f23dd4e8f9e114b556248c812f7cb56f21362bfd34753"
+    },
+    {
+      "path": "semantics/1.json",
+      "kind": "semantic-definition",
+      "id": "records-model-1599af47e0aab12e7a7f278c",
+      "version": "1.0.0",
+      "sha256": "e92abf38655c81028ddbf3f80196083df825fec03cea0c6ede2be0db7a38e967"
+    }
+  ]
+}

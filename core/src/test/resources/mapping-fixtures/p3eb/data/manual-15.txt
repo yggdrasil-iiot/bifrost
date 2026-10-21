@@ -1,0 +1,2 @@
+Field label: flags · melsec
+Synthetic flags; explicit logical mapping, native struct layout not claimed

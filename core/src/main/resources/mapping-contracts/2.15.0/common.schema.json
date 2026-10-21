@@ -1,0 +1,1387 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:tyr:contract:2.15.0:common",
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9._/-]*$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "path": {
+      "type": "string",
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.?(?:/|$))(?!.*\\\\)(?!.*:)[a-zA-Z0-9._/-]+$"
+    },
+    "evidenceRef": {
+      "type": "object",
+      "properties": {
+        "artifactId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9._/-]*$"
+        },
+        "locator": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "const": "text-line"
+                },
+                "line": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              },
+              "required": [
+                "kind",
+                "line"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "const": "xlsx-cell"
+                },
+                "sheet": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "cell": {
+                  "type": "string",
+                  "pattern": "^[A-Z]+[1-9][0-9]*$"
+                }
+              },
+              "required": [
+                "kind",
+                "sheet",
+                "cell"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "const": "json-pointer"
+                },
+                "pointer": {
+                  "type": "string",
+                  "pattern": "^(|/.*)$"
+                }
+              },
+              "required": [
+                "kind",
+                "pointer"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "required": [
+        "artifactId",
+        "locator"
+      ],
+      "additionalProperties": false
+    },
+    "documentRef": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9._/-]*$"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+        }
+      },
+      "required": [
+        "id",
+        "version"
+      ],
+      "additionalProperties": false
+    },
+    "unit": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": "known"
+            },
+            "code": {
+              "enum": [
+                "rpm",
+                "Cel",
+                "N.m",
+                "1",
+                "1/s",
+                "mN.m",
+                "K",
+                "Pa",
+                "kPa",
+                "bar"
+              ]
+            }
+          },
+          "required": [
+            "status",
+            "code"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": "not-applicable"
+            }
+          },
+          "required": [
+            "status"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": "unknown"
+            }
+          },
+          "required": [
+            "status"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "access": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "device-register"
+            },
+            "deviceArea": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "addressIndex": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "addressUnit": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "word16"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "wordCount": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "bitOffset": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 15
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "deviceArea",
+            "addressIndex",
+            "addressUnit",
+            "wordCount",
+            "bitOffset"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "db-offset"
+            },
+            "dbNumber": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "byteOffset": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "byteLength": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "bitOffset": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 7
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "dbNumber",
+            "byteOffset",
+            "byteLength",
+            "bitOffset"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "symbol"
+            },
+            "symbolPath": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "symbolPath"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "opcua-node"
+            },
+            "namespaceUri": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uri"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "identifierType": {
+              "enum": [
+                "string",
+                "numeric",
+                "guid",
+                "opaque"
+              ]
+            },
+            "identifier": {
+              "anyOf": [
+                {
+                  "type": [
+                    "string",
+                    "integer"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "namespaceUri",
+            "identifierType",
+            "identifier"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "solution-tag"
+            },
+            "solutionInstanceRef": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9._/-]*$"
+            },
+            "tagPath": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "solutionInstanceRef",
+            "tagPath"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "device-register"
+            },
+            "deviceArea": {
+              "enum": [
+                "M",
+                "X",
+                "Y",
+                "L",
+                "S",
+                "B"
+              ]
+            },
+            "addressIndex": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "addressUnit": {
+              "const": "bit"
+            },
+            "bitOffset": {
+              "type": "null"
+            },
+            "bitCount": {
+              "const": 1
+            }
+          },
+          "required": [
+            "kind",
+            "deviceArea",
+            "addressIndex",
+            "addressUnit",
+            "bitOffset",
+            "bitCount"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "rawRepresentation": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "const": "bytes"
+            },
+            "valueType": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "Int16",
+                    "UInt16",
+                    "Int32",
+                    "UInt32",
+                    "Int64",
+                    "Float32",
+                    "Float64",
+                    "Boolean"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "byteOrder": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "little",
+                    "big"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "wordOrder": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "low-first",
+                    "high-first"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "bitCoordinate": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "const": "decoded-value"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "const": "native-byte"
+                    },
+                    "byteIndex": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 255
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "byteIndex"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            }
+          },
+          "required": [
+            "mode",
+            "valueType",
+            "byteOrder",
+            "wordOrder"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "const": "typed"
+            },
+            "valueType": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "Int16",
+                    "UInt16",
+                    "Int32",
+                    "UInt32",
+                    "Int64",
+                    "Float32",
+                    "Float64",
+                    "Boolean"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "mode",
+            "valueType"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "const": "bytes"
+            },
+            "valueType": {
+              "const": "UInt16"
+            },
+            "byteOrder": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "little",
+                    "big"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "wordOrder": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "low-first",
+                    "high-first"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "bitCoordinate": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "const": "decoded-value"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "const": "native-byte"
+                    },
+                    "byteIndex": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 255
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "byteIndex"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            },
+            "codec": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "const": "bcd16"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "mode",
+            "valueType",
+            "byteOrder",
+            "wordOrder",
+            "codec"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "const": "bytes"
+            },
+            "valueType": {
+              "const": "String"
+            },
+            "byteOrder": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "little",
+                    "big"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "wordOrder": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "low-first",
+                    "high-first"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "bitCoordinate": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "const": "decoded-value"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "const": "native-byte"
+                    },
+                    "byteIndex": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 255
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "byteIndex"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            },
+            "codec": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "const": "ascii-fixed"
+                    },
+                    "length": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 256
+                    },
+                    "termination": {
+                      "enum": [
+                        "fixed",
+                        "nul"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "length",
+                    "termination"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "const": "s7-date-time"
+                    },
+                    "timezone": {
+                      "enum": [
+                        "UTC",
+                        "Asia/Seoul",
+                        null
+                      ]
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "timezone"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            }
+          },
+          "required": [
+            "mode",
+            "valueType",
+            "byteOrder",
+            "wordOrder",
+            "codec"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "transform": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "linear"
+            },
+            "factor": {
+              "type": "string",
+              "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$"
+            },
+            "offset": {
+              "type": "string",
+              "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$"
+            }
+          },
+          "required": [
+            "op",
+            "factor",
+            "offset"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "cast"
+            },
+            "to": {
+              "enum": [
+                "Double",
+                "Int32",
+                "Boolean",
+                "String"
+              ]
+            },
+            "overflow": {
+              "const": "error"
+            },
+            "rounding": {
+              "enum": [
+                "exact",
+                "half-even"
+              ]
+            }
+          },
+          "required": [
+            "op",
+            "to",
+            "overflow",
+            "rounding"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "bit-select"
+            },
+            "index": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 63
+            }
+          },
+          "required": [
+            "op",
+            "index"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "enum-map"
+            },
+            "entries": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "raw": {
+                    "type": "string",
+                    "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$"
+                  },
+                  "value": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "raw",
+                  "value"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 1
+            },
+            "onUnknown": {
+              "const": "bad-quality"
+            }
+          },
+          "required": [
+            "op",
+            "entries",
+            "onUnknown"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "unit-convert"
+            },
+            "from": {
+              "enum": [
+                "1/s",
+                "mN.m",
+                "K",
+                "Pa",
+                "kPa",
+                "bar"
+              ]
+            },
+            "to": {
+              "enum": [
+                "rpm",
+                "N.m",
+                "Cel",
+                "Pa",
+                "kPa",
+                "bar"
+              ]
+            }
+          },
+          "required": [
+            "op",
+            "from",
+            "to"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "resultType": {
+      "enum": [
+        "Double",
+        "Int32",
+        "Boolean",
+        "String"
+      ]
+    },
+    "fileEntry": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.?(?:/|$))(?!.*\\\\)(?!.*:)[a-zA-Z0-9._/-]+$"
+        },
+        "kind": {
+          "enum": [
+            "evidence-artifact",
+            "source-observation",
+            "source-definition",
+            "semantic-definition",
+            "mapping-set",
+            "review-record"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9._/-]*$"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "path",
+        "kind",
+        "id",
+        "version",
+        "sha256"
+      ],
+      "additionalProperties": false
+    },
+    "memberPath": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "member"
+          },
+          "memberId": {
+            "$ref": "common.schema.json#/$defs/id"
+          }
+        },
+        "required": [
+          "kind",
+          "memberId"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1,
+      "maxItems": 1
+    },
+    "sourceValue": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "source"
+        },
+        "sourceRef": {
+          "$ref": "common.schema.json#/$defs/documentRef"
+        }
+      },
+      "required": [
+        "kind",
+        "sourceRef"
+      ],
+      "additionalProperties": false
+    },
+    "nodeValue": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "node"
+        },
+        "nodeId": {
+          "$ref": "common.schema.json#/$defs/id"
+        }
+      },
+      "required": [
+        "kind",
+        "nodeId"
+      ],
+      "additionalProperties": false
+    },
+    "graphValue": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "graph"
+        },
+        "graphRef": {
+          "$ref": "common.schema.json#/$defs/documentRef"
+        },
+        "nodeId": {
+          "$ref": "common.schema.json#/$defs/id"
+        }
+      },
+      "required": [
+        "kind",
+        "graphRef",
+        "nodeId"
+      ],
+      "additionalProperties": false
+    },
+    "nodeInput": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/sourceValue"
+        },
+        {
+          "$ref": "common.schema.json#/$defs/nodeValue"
+        }
+      ]
+    },
+    "bindingValue": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/sourceValue"
+        },
+        {
+          "$ref": "common.schema.json#/$defs/graphValue"
+        }
+      ]
+    },
+    "graphType": {
+      "enum": [
+        "Int16",
+        "UInt16",
+        "Int32",
+        "UInt32",
+        "Int64",
+        "Float32",
+        "Float64",
+        "Boolean",
+        "String",
+        "Double",
+        "Decimal",
+        "FixedArray"
+      ]
+    },
+    "virtualTimestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?(Z|[+-][0-9]{2}:[0-9]{2})$"
+    },
+    "temporalPolicy": {
+      "type": "object",
+      "properties": {
+        "timestampBasis": {
+          "enum": [
+            "source",
+            "server"
+          ]
+        },
+        "maxAgeMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 86400000
+        },
+        "maxSkewMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 86400000
+        },
+        "uncertainInput": {
+          "enum": [
+            "propagate",
+            "reject"
+          ]
+        },
+        "missingInput": {
+          "const": "reject"
+        },
+        "badInput": {
+          "const": "propagate"
+        },
+        "assembly": {
+          "enum": [
+            "latest",
+            "trigger-sequence"
+          ]
+        }
+      },
+      "required": [
+        "timestampBasis",
+        "maxAgeMs",
+        "maxSkewMs",
+        "uncertainInput",
+        "missingInput",
+        "badInput",
+        "assembly"
+      ],
+      "additionalProperties": false
+    },
+    "evaluationContext": {
+      "type": "object",
+      "properties": {
+        "at": {
+          "$ref": "#/$defs/virtualTimestamp"
+        },
+        "triggerSequence": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "at",
+        "triggerSequence"
+      ],
+      "additionalProperties": false
+    },
+    "virtualDataValue": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "bytesHex": {
+                  "type": "string",
+                  "maxLength": 12288
+                }
+              },
+              "required": [
+                "bytesHex"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "typedValue": {
+                  "type": [
+                    "string",
+                    "number",
+                    "boolean"
+                  ]
+                }
+              },
+              "required": [
+                "typedValue"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "typedValues": {
+                  "type": "array",
+                  "items": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "maxItems": 4096
+                }
+              },
+              "required": [
+                "typedValues"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "quality": {
+          "enum": [
+            "good",
+            "uncertain",
+            "bad"
+          ]
+        },
+        "sourceTimestamp": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/virtualTimestamp"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "serverTimestamp": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/virtualTimestamp"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sequence": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "value",
+        "quality",
+        "sourceTimestamp",
+        "serverTimestamp",
+        "sequence"
+      ],
+      "additionalProperties": false
+    },
+    "virtualSamples": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/id"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/virtualDataValue"
+      },
+      "maxProperties": 256
+    },
+    "fixedArray": {
+      "type": "object",
+      "properties": {
+        "shape": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 256
+          },
+          "minItems": 1,
+          "maxItems": 3
+        },
+        "lowerBounds": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": -2147483648,
+            "maximum": 2147483647
+          },
+          "minItems": 1,
+          "maxItems": 3
+        },
+        "strides": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "minItems": 1,
+          "maxItems": 3
+        },
+        "strideUnit": {
+          "enum": [
+            "byte",
+            "word16",
+            "element"
+          ]
+        },
+        "range": {
+          "type": "object",
+          "properties": {
+            "start": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            },
+            "endExclusive": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2147483648
+            }
+          },
+          "required": [
+            "start",
+            "endExclusive"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "shape",
+        "lowerBounds",
+        "strides",
+        "strideUnit",
+        "range"
+      ],
+      "additionalProperties": false
+    },
+    "arrayIndices": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": -2147483648,
+        "maximum": 2147483647
+      },
+      "minItems": 1,
+      "maxItems": 3
+    }
+  }
+}

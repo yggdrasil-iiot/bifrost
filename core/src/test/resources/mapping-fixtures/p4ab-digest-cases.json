@@ -1,0 +1,43 @@
+[
+  {
+    "value": {
+      "한글": 1.0,
+      "😀": [
+        true,
+        null,
+        -0.0
+      ]
+    },
+    "sha256": "acb8926322c9354e9258c0e6ae6c2c20ae90fa1821fdd2eb247a21bd7c8c919a"
+  },
+  {
+    "value": {
+      "z": 1e+20,
+      "a": 1e-07
+    },
+    "sha256": "321f0cd223442538e8ece65a1917d9f8a8241e0c37f0c974229967b5be3c7127"
+  },
+  {
+    "value": [
+      {},
+      [],
+      false,
+      "1",
+      1
+    ],
+    "sha256": "22d0d5ca7e39688aeb0fdae99d78ea003fbc63d06e9f708afea1192f9b73a851"
+  },
+  {
+    "value": {
+      "nested": {
+        "b": 2,
+        "a": "한글"
+      }
+    },
+    "sha256": "c25607c95395e6203922d842cd5c07a0d96a9d8b6ed9b57691c6525cdbbcc3f2"
+  },
+  {
+    "value": null,
+    "sha256": "53b41ab0dae62befcb8708620b6d14794a24fedad6c24c03dd01e51fa698ff0b"
+  }
+]

@@ -1,0 +1,58 @@
+{
+  "kind": "mapping-submission",
+  "schemaVersion": "2.9.0",
+  "id": "template-fixture",
+  "streamId": "template-fixture",
+  "version": "1.0.0",
+  "workspaceSha256": "690fae38169104ff36a232063f85d91aa7043923c5cb7b79122331912f2a71f7",
+  "proposalSha256": "33e40cd70d2ba9a8b385a6f449c4eb7e3236ec5c8116466e1d621d0d3d60e3b6",
+  "baseRelease": null,
+  "proposedBy": "fixture-author",
+  "execution": "excluded",
+  "context": {
+    "equipment": [
+      {
+        "id": "line-a-motor-ab",
+        "label": "조립 이송 모터 · AB"
+      },
+      {
+        "id": "line-a-motor-ua",
+        "label": "검사 이송 모터 · S7-1500"
+      },
+      {
+        "id": "line-a-motor-db",
+        "label": "포장 이송 모터 · S7-300"
+      },
+      {
+        "id": "line-a-motor-melsec",
+        "label": "배출 이송 모터 · MELSEC"
+      }
+    ],
+    "connections": [
+      {
+        "id": "logical-ab",
+        "label": "가상 AB",
+        "equipmentInstanceId": "line-a-motor-ab",
+        "accessProfileRef": "ab-logix-symbol-v1"
+      },
+      {
+        "id": "logical-ua",
+        "label": "가상 UA",
+        "equipmentInstanceId": "line-a-motor-ua",
+        "accessProfileRef": "s7-1500-opcua-v1"
+      },
+      {
+        "id": "logical-db",
+        "label": "가상 DB",
+        "equipmentInstanceId": "line-a-motor-db",
+        "accessProfileRef": "s7-300-db-v1"
+      },
+      {
+        "id": "logical-melsec",
+        "label": "가상 MELSEC",
+        "equipmentInstanceId": "line-a-motor-melsec",
+        "accessProfileRef": "melsec-device-v1"
+      }
+    ]
+  }
+}

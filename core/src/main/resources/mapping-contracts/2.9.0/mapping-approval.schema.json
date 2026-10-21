@@ -1,0 +1,175 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:tyr:contract:2.9.0:mapping-approval",
+  "type": "object",
+  "properties": {
+    "kind": {
+      "const": "mapping-approval"
+    },
+    "schemaVersion": {
+      "const": "2.9.0"
+    },
+    "payload": {
+      "type": "object",
+      "properties": {
+        "approvalId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9._-]{0,127}$"
+        },
+        "submissionId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9._-]{0,127}$"
+        },
+        "proposalId": {
+          "type": "string"
+        },
+        "proposalSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "bundleSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "baseRelease": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9._-]{0,127}$"
+            },
+            "version": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          "required": [
+            "id",
+            "version",
+            "sha256"
+          ],
+          "additionalProperties": false
+        },
+        "proposedBy": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9._-]{0,127}$"
+        },
+        "approvedBy": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9._-]{0,127}$"
+        },
+        "at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "capability": {
+          "const": "bifrost-mapping-v1"
+        },
+        "execution": {
+          "const": "excluded"
+        },
+        "streamId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9._-]{0,127}$"
+        },
+        "changeSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "approvalId",
+        "submissionId",
+        "proposalId",
+        "proposalSha256",
+        "bundleSha256",
+        "baseRelease",
+        "proposedBy",
+        "approvedBy",
+        "at",
+        "capability",
+        "execution",
+        "streamId",
+        "changeSha256"
+      ]
+    },
+    "payloadSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "proposerSignature": {
+      "type": "string",
+      "minLength": 1
+    },
+    "approverSignature": {
+      "type": "string",
+      "minLength": 1
+    },
+    "changeAssessment": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "mapping-receiver-diff"
+        },
+        "changes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "target": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              },
+              "category": {
+                "type": "string"
+              },
+              "before": {},
+              "after": {}
+            },
+            "required": [
+              "target",
+              "path",
+              "category",
+              "before",
+              "after"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "reviewRequired": {
+          "type": "boolean"
+        },
+        "execution": {
+          "const": "excluded"
+        }
+      },
+      "required": [
+        "kind",
+        "changes",
+        "reviewRequired",
+        "execution"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "kind",
+    "schemaVersion",
+    "payload",
+    "payloadSha256",
+    "proposerSignature",
+    "approverSignature",
+    "changeAssessment"
+  ]
+}

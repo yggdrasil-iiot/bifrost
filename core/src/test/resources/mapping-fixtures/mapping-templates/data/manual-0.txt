@@ -1,0 +1,2 @@
+Field label: actual · ab
+Synthetic actual; explicit logical mapping, native struct layout not claimed

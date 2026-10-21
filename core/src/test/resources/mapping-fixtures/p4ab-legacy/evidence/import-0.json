@@ -1,0 +1,17 @@
+{
+  "kind": "evidence-artifact",
+  "schemaVersion": "1.1.0",
+  "id": "import-legacy-clean",
+  "version": "1.0.0",
+  "origin": "synthetic",
+  "file": {
+    "path": "data/import-0.json",
+    "sha256": "755fb7f065128e0171f7b64e451d1a4ca9774dd88dc1c44b75a7da6c2804667c",
+    "mediaType": "application/json"
+  },
+  "capturedAt": "2026-10-17T00:00:00Z",
+  "product": null,
+  "scope": [
+    "import-line"
+  ]
+}

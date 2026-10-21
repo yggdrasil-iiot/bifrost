@@ -1,0 +1,96 @@
+{
+  "kind": "source-observation",
+  "schemaVersion": "1.1.0",
+  "id": "import-review-base-row-0",
+  "version": "1.0.0",
+  "evidenceRefs": [
+    {
+      "artifactId": "import-review-base",
+      "locator": {
+        "kind": "json-pointer",
+        "pointer": "/records/0"
+      }
+    }
+  ],
+  "extractor": {
+    "name": "tyr-bounded-files",
+    "version": "1.0.0"
+  },
+  "claims": [
+    {
+      "field": "raw",
+      "value": {
+        "id": "speed-ab",
+        "profile": "ab-logix-symbol-v1",
+        "address": "Motor.ActualSpeed",
+        "type": "Float32",
+        "unit": "rpm",
+        "stage": "already-engineered"
+      },
+      "certainty": "explicit"
+    },
+    {
+      "field": "derivation",
+      "value": {
+        "id": "row-0",
+        "raw": {
+          "id": "speed-ab",
+          "profile": "ab-logix-symbol-v1",
+          "address": "Motor.ActualSpeed",
+          "type": "Float32",
+          "unit": "rpm",
+          "stage": "already-engineered"
+        },
+        "locator": {
+          "kind": "json-pointer",
+          "pointer": "/records/0"
+        },
+        "derivation": [
+          {
+            "kind": "json-pointer",
+            "pointer": "/records/0"
+          }
+        ],
+        "issues": [],
+        "assumptions": [],
+        "draft": {
+          "kind": "source-definition",
+          "schemaVersion": "2.2.0",
+          "id": "imp-review-base-speed-ab",
+          "version": "1.0.0",
+          "equipmentInstanceId": "import-line",
+          "connectionProfileRef": "import-0",
+          "accessProfileRef": "ab-logix-symbol-v1",
+          "status": "draft",
+          "rawAddressText": "Motor.ActualSpeed",
+          "addressRadix": null,
+          "access": {
+            "kind": "symbol",
+            "symbolPath": "Motor.ActualSpeed"
+          },
+          "rawRepresentation": {
+            "mode": "typed",
+            "valueType": "Float32"
+          },
+          "inputStage": "already-engineered",
+          "unit": {
+            "status": "known",
+            "code": "rpm"
+          },
+          "evidenceRefs": [
+            {
+              "artifactId": "import-review-base",
+              "locator": {
+                "kind": "json-pointer",
+                "pointer": "/records/0"
+              }
+            }
+          ],
+          "viewOf": null
+        }
+      },
+      "certainty": "inferred"
+    }
+  ],
+  "status": "partial"
+}

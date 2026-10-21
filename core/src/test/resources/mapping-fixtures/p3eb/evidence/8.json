@@ -1,0 +1,17 @@
+{
+  "kind": "evidence-artifact",
+  "schemaVersion": "1.0.0",
+  "id": "manual-structure-ua-target",
+  "version": "1.0.0",
+  "origin": "synthetic",
+  "file": {
+    "path": "data/manual-8.txt",
+    "sha256": "6084e66ad816bc5ff3ee5c4c4fff9b7cd9a0d7c65c1a52f429dd4de70614bc96",
+    "mediaType": "text/plain"
+  },
+  "capturedAt": "2026-10-17T00:00:00Z",
+  "product": null,
+  "scope": [
+    "line-a-motor-ua"
+  ]
+}

@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:tyr:contract:2.22.0:broadcast-scenario",
+  "type": "object",
+  "properties": {
+    "kind": {
+      "const": "broadcast-scenario"
+    },
+    "schemaVersion": {
+      "const": "2.22.0"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "scenarioRevision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "workspaceRevision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "workspaceSha256": {
+      "$ref": "common.schema.json#/$defs/sha256"
+    },
+    "mappingRef": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "version": {
+          "$ref": "common.schema.json#/$defs/version"
+        },
+        "sha256": {
+          "$ref": "common.schema.json#/$defs/sha256"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "sha256"
+      ],
+      "additionalProperties": false
+    },
+    "snapshot": {
+      "$ref": "../2.20.0/virtual-result-set.schema.json"
+    },
+    "commonSamples": {
+      "type": "object",
+      "maxProperties": 32,
+      "additionalProperties": {
+        "type": "object"
+      }
+    },
+    "evaluatedAt": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "kind",
+    "schemaVersion",
+    "id",
+    "scenarioRevision",
+    "workspaceRevision",
+    "workspaceSha256",
+    "mappingRef",
+    "snapshot",
+    "commonSamples",
+    "evaluatedAt"
+  ],
+  "additionalProperties": false
+}

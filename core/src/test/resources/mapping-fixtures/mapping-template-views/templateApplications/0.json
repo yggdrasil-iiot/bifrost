@@ -1,0 +1,339 @@
+{
+  "kind": "template-application",
+  "schemaVersion": "2.19.0",
+  "id": "application-view-melsec-r1",
+  "version": "1.0.0",
+  "applicationId": "view-melsec",
+  "revision": 1,
+  "previousApplicationRef": null,
+  "templateRef": {
+    "id": "word-and-bit",
+    "version": "1.0.0",
+    "sha256": "8d48bf178fe56321d51647293ec9ffdf814e743f01b56861c19d376d77699dfe"
+  },
+  "equipmentInstanceId": "line-a-motor-melsec",
+  "targetLabel": "재사용 워드·비트",
+  "bindings": [
+    {
+      "slotId": "input-1",
+      "sourceRef": {
+        "id": "a07-melsec-alarm-alias",
+        "version": "1.0.0"
+      }
+    }
+  ],
+  "sourceSnapshots": [
+    {
+      "kind": "source-definition",
+      "schemaVersion": "2.10.0",
+      "id": "a07-melsec-alarm",
+      "version": "1.0.0",
+      "equipmentInstanceId": "line-a-motor-melsec",
+      "connectionProfileRef": "logical-melsec",
+      "accessProfileRef": "melsec-device-v1",
+      "status": "ready",
+      "rawAddressText": "D3000",
+      "addressRadix": 10,
+      "access": {
+        "kind": "device-register",
+        "deviceArea": "D",
+        "addressIndex": 3000,
+        "addressUnit": "word16",
+        "wordCount": 1,
+        "bitOffset": null
+      },
+      "rawRepresentation": {
+        "mode": "bytes",
+        "valueType": "UInt16",
+        "byteOrder": "little",
+        "wordOrder": "low-first"
+      },
+      "inputStage": "already-engineered",
+      "unit": {
+        "status": "not-applicable"
+      },
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-a07-melsec-alarm",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ],
+      "viewOf": {
+        "id": "a07-melsec-word",
+        "version": "1.0.0"
+      },
+      "sourceKind": "plc",
+      "accessMode": "read",
+      "view": {
+        "kind": "bit",
+        "bitIndex": 15
+      }
+    },
+    {
+      "kind": "source-definition",
+      "schemaVersion": "2.10.0",
+      "id": "a07-melsec-alarm-alias",
+      "version": "1.0.0",
+      "equipmentInstanceId": "line-a-motor-melsec",
+      "connectionProfileRef": "logical-melsec",
+      "accessProfileRef": "melsec-device-v1",
+      "status": "ready",
+      "rawAddressText": "D3000",
+      "addressRadix": 10,
+      "access": {
+        "kind": "device-register",
+        "deviceArea": "D",
+        "addressIndex": 3000,
+        "addressUnit": "word16",
+        "wordCount": 1,
+        "bitOffset": null
+      },
+      "rawRepresentation": {
+        "mode": "bytes",
+        "valueType": "UInt16",
+        "byteOrder": "little",
+        "wordOrder": "low-first"
+      },
+      "inputStage": "already-engineered",
+      "unit": {
+        "status": "not-applicable"
+      },
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-a07-melsec-alarm-alias",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ],
+      "viewOf": {
+        "id": "a07-melsec-alarm",
+        "version": "1.0.0"
+      },
+      "sourceKind": "plc",
+      "accessMode": "read",
+      "view": {
+        "kind": "alias"
+      }
+    },
+    {
+      "kind": "source-definition",
+      "schemaVersion": "2.7.0",
+      "id": "a07-melsec-word",
+      "version": "1.0.0",
+      "equipmentInstanceId": "line-a-motor-melsec",
+      "connectionProfileRef": "logical-melsec",
+      "accessProfileRef": "melsec-device-v1",
+      "status": "ready",
+      "rawAddressText": "D3000",
+      "addressRadix": 10,
+      "access": {
+        "kind": "device-register",
+        "deviceArea": "D",
+        "addressIndex": 3000,
+        "addressUnit": "word16",
+        "wordCount": 1,
+        "bitOffset": null
+      },
+      "rawRepresentation": {
+        "mode": "bytes",
+        "valueType": "UInt16",
+        "byteOrder": "little",
+        "wordOrder": "low-first"
+      },
+      "inputStage": "already-engineered",
+      "unit": {
+        "status": "not-applicable"
+      },
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-a07-melsec-word",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ],
+      "viewOf": null,
+      "sourceKind": "plc",
+      "accessMode": "read"
+    }
+  ],
+  "generated": [
+    {
+      "kind": "semantic-definition",
+      "schemaVersion": "2.2.0",
+      "id": "reuse-view-melsec-r1-model",
+      "version": "1.0.0",
+      "members": [
+        {
+          "memberId": "alarm-alias",
+          "name": "alarm-alias",
+          "semanticId": "urn:tyr:concept:a07.alarm-alias",
+          "description": "Synthetic status alarm-alias",
+          "valueType": "Boolean",
+          "unit": {
+            "status": "not-applicable"
+          },
+          "role": "status",
+          "range": null
+        }
+      ]
+    },
+    {
+      "kind": "target-instance",
+      "schemaVersion": "2.0.0",
+      "id": "reuse-view-melsec-target",
+      "version": "1.0.0",
+      "equipmentInstanceId": "line-a-motor-melsec",
+      "label": "재사용 워드·비트",
+      "semanticDefinitionRef": {
+        "id": "reuse-view-melsec-r1-model",
+        "version": "1.0.0"
+      },
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-a07-melsec-alarm-alias",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-a07-melsec-word",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-a07-melsec-alarm",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    },
+    {
+      "kind": "value-graph",
+      "schemaVersion": "2.2.0",
+      "id": "reuse-view-melsec-r1-g0",
+      "version": "1.0.0",
+      "equipmentInstanceId": "line-a-motor-melsec",
+      "nodes": [
+        {
+          "nodeId": "alarm",
+          "op": "identity",
+          "inputs": {
+            "value": {
+              "kind": "source",
+              "sourceRef": {
+                "id": "a07-melsec-alarm-alias",
+                "version": "1.0.0"
+              }
+            }
+          },
+          "valueType": "Boolean",
+          "unit": {
+            "status": "not-applicable"
+          },
+          "evidenceRefs": [
+            {
+              "artifactId": "manual-a07-melsec-alarm-alias",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            },
+            {
+              "artifactId": "manual-a07-melsec-word",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            },
+            {
+              "artifactId": "manual-a07-melsec-alarm",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "mapping-set",
+      "schemaVersion": "2.2.0",
+      "id": "reuse-view-melsec-mapping",
+      "version": "1.0.0",
+      "equipmentInstanceId": "line-a-motor-melsec",
+      "targetInstanceRef": {
+        "id": "reuse-view-melsec-target",
+        "version": "1.0.0"
+      },
+      "mappings": [
+        {
+          "mappingId": "reuse-view-melsec-b319fe81e0faa",
+          "valueRef": {
+            "kind": "graph",
+            "graphRef": {
+              "id": "reuse-view-melsec-r1-g0",
+              "version": "1.0.0"
+            },
+            "nodeId": "alarm"
+          },
+          "memberPath": [
+            {
+              "kind": "member",
+              "memberId": "alarm-alias"
+            }
+          ],
+          "transform": [
+            {
+              "op": "cast",
+              "to": "Boolean",
+              "rounding": "exact",
+              "overflow": "error"
+            }
+          ],
+          "outputUnit": {
+            "status": "not-applicable"
+          },
+          "invalidValuePolicy": "bad-quality",
+          "evidenceRefs": [
+            {
+              "artifactId": "manual-a07-melsec-alarm-alias",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            },
+            {
+              "artifactId": "manual-a07-melsec-word",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            },
+            {
+              "artifactId": "manual-a07-melsec-alarm",
+              "locator": {
+                "kind": "text-line",
+                "line": 1
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "authoredBy": "fixture-author",
+  "authoredAt": "2026-10-18T04:00:00Z"
+}

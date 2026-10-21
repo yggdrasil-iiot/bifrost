@@ -1,0 +1,72 @@
+{
+  "kind": "source-observation",
+  "schemaVersion": "1.1.0",
+  "id": "import-review-base-row-4",
+  "version": "1.0.0",
+  "evidenceRefs": [
+    {
+      "artifactId": "import-review-base",
+      "locator": {
+        "kind": "json-pointer",
+        "pointer": "/records/4"
+      }
+    }
+  ],
+  "extractor": {
+    "name": "tyr-bounded-files",
+    "version": "1.0.0"
+  },
+  "claims": [
+    {
+      "field": "raw",
+      "value": {
+        "id": "unresolved",
+        "kind": "source",
+        "profile": "melsec-device-v1",
+        "address": "D{POINTER}",
+        "type": "UInt16",
+        "unit": "kPa",
+        "stage": "raw",
+        "byteOrder": "little",
+        "wordOrder": "low-first",
+        "width": 1
+      },
+      "certainty": "explicit"
+    },
+    {
+      "field": "derivation",
+      "value": {
+        "id": "row-4",
+        "raw": {
+          "id": "unresolved",
+          "kind": "source",
+          "profile": "melsec-device-v1",
+          "address": "D{POINTER}",
+          "type": "UInt16",
+          "unit": "kPa",
+          "stage": "raw",
+          "byteOrder": "little",
+          "wordOrder": "low-first",
+          "width": 1
+        },
+        "locator": {
+          "kind": "json-pointer",
+          "pointer": "/records/4"
+        },
+        "derivation": [
+          {
+            "kind": "json-pointer",
+            "pointer": "/records/4"
+          }
+        ],
+        "issues": [
+          "address.register"
+        ],
+        "assumptions": [],
+        "draft": null
+      },
+      "certainty": "inferred"
+    }
+  ],
+  "status": "unsupported"
+}

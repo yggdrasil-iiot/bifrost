@@ -1,0 +1,518 @@
+{
+  "kind": "mapping-set",
+  "schemaVersion": "2.12.0",
+  "id": "structure-ab-mapping",
+  "version": "1.0.0",
+  "equipmentInstanceId": "line-a-motor-ab",
+  "targetInstanceRef": {
+    "id": "structure-skid-ab",
+    "version": "1.0.0"
+  },
+  "mappings": [
+    {
+      "mappingId": "structure-ab-leaf-1",
+      "memberPath": [
+        {
+          "kind": "member",
+          "memberId": "process"
+        },
+        {
+          "kind": "member",
+          "memberId": "pressure"
+        },
+        {
+          "kind": "member",
+          "memberId": "actual"
+        }
+      ],
+      "valueRef": {
+        "kind": "source",
+        "sourceRef": {
+          "id": "structure-ab-actual",
+          "version": "1.0.0"
+        }
+      },
+      "transform": [
+        {
+          "op": "cast",
+          "to": "Double",
+          "overflow": "error",
+          "rounding": "exact"
+        }
+      ],
+      "outputUnit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "invalidValuePolicy": "bad-quality",
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-structure-ab-actual",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    },
+    {
+      "mappingId": "structure-ab-leaf-2",
+      "memberPath": [
+        {
+          "kind": "member",
+          "memberId": "process"
+        },
+        {
+          "kind": "member",
+          "memberId": "pressure"
+        },
+        {
+          "kind": "member",
+          "memberId": "target"
+        }
+      ],
+      "valueRef": {
+        "kind": "source",
+        "sourceRef": {
+          "id": "structure-ab-target",
+          "version": "1.0.0"
+        }
+      },
+      "transform": [
+        {
+          "op": "cast",
+          "to": "Double",
+          "overflow": "error",
+          "rounding": "exact"
+        }
+      ],
+      "outputUnit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "invalidValuePolicy": "bad-quality",
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-structure-ab-target",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    },
+    {
+      "mappingId": "structure-ab-leaf-3",
+      "memberPath": [
+        {
+          "kind": "member",
+          "memberId": "process"
+        },
+        {
+          "kind": "member",
+          "memberId": "pressure"
+        },
+        {
+          "kind": "member",
+          "memberId": "deviation"
+        }
+      ],
+      "valueRef": {
+        "kind": "graph",
+        "graphRef": {
+          "id": "structure-ab-graph",
+          "version": "1.0.0"
+        },
+        "nodeId": "deviation"
+      },
+      "transform": [
+        {
+          "op": "cast",
+          "to": "Double",
+          "overflow": "error",
+          "rounding": "exact"
+        }
+      ],
+      "outputUnit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "invalidValuePolicy": "bad-quality",
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-structure-ab-actual",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-structure-ab-target",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    },
+    {
+      "mappingId": "structure-ab-leaf-4",
+      "memberPath": [
+        {
+          "kind": "member",
+          "memberId": "process"
+        },
+        {
+          "kind": "member",
+          "memberId": "running"
+        }
+      ],
+      "valueRef": {
+        "kind": "source",
+        "sourceRef": {
+          "id": "structure-ab-flags",
+          "version": "1.0.0"
+        }
+      },
+      "transform": [
+        {
+          "op": "bit-select",
+          "index": 2
+        },
+        {
+          "op": "cast",
+          "to": "Boolean",
+          "overflow": "error",
+          "rounding": "exact"
+        }
+      ],
+      "outputUnit": {
+        "status": "not-applicable"
+      },
+      "invalidValuePolicy": "bad-quality",
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-structure-ab-flags",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    },
+    {
+      "mappingId": "structure-ab-leaf-5",
+      "memberPath": [
+        {
+          "kind": "member",
+          "memberId": "modules"
+        },
+        {
+          "kind": "index",
+          "indices": [
+            1
+          ]
+        },
+        {
+          "kind": "member",
+          "memberId": "pressure"
+        },
+        {
+          "kind": "member",
+          "memberId": "actual"
+        }
+      ],
+      "valueRef": {
+        "kind": "graph",
+        "graphRef": {
+          "id": "structure-ab-graph",
+          "version": "1.0.0"
+        },
+        "nodeId": "first"
+      },
+      "transform": [
+        {
+          "op": "cast",
+          "to": "Double",
+          "overflow": "error",
+          "rounding": "exact"
+        }
+      ],
+      "outputUnit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "invalidValuePolicy": "bad-quality",
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-array-pressures-ab",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    },
+    {
+      "mappingId": "structure-ab-leaf-6",
+      "memberPath": [
+        {
+          "kind": "member",
+          "memberId": "modules"
+        },
+        {
+          "kind": "index",
+          "indices": [
+            1
+          ]
+        },
+        {
+          "kind": "member",
+          "memberId": "pressure"
+        },
+        {
+          "kind": "member",
+          "memberId": "target"
+        }
+      ],
+      "valueRef": {
+        "kind": "graph",
+        "graphRef": {
+          "id": "structure-ab-graph",
+          "version": "1.0.0"
+        },
+        "nodeId": "first-target"
+      },
+      "transform": [
+        {
+          "op": "cast",
+          "to": "Double",
+          "overflow": "error",
+          "rounding": "exact"
+        }
+      ],
+      "outputUnit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "invalidValuePolicy": "bad-quality",
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-array-pressures-ab",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    },
+    {
+      "mappingId": "structure-ab-leaf-7",
+      "memberPath": [
+        {
+          "kind": "member",
+          "memberId": "modules"
+        },
+        {
+          "kind": "index",
+          "indices": [
+            1
+          ]
+        },
+        {
+          "kind": "member",
+          "memberId": "running"
+        }
+      ],
+      "valueRef": {
+        "kind": "source",
+        "sourceRef": {
+          "id": "structure-ab-flags",
+          "version": "1.0.0"
+        }
+      },
+      "transform": [
+        {
+          "op": "bit-select",
+          "index": 0
+        },
+        {
+          "op": "cast",
+          "to": "Boolean",
+          "overflow": "error",
+          "rounding": "exact"
+        }
+      ],
+      "outputUnit": {
+        "status": "not-applicable"
+      },
+      "invalidValuePolicy": "bad-quality",
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-structure-ab-flags",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    },
+    {
+      "mappingId": "structure-ab-leaf-8",
+      "memberPath": [
+        {
+          "kind": "member",
+          "memberId": "modules"
+        },
+        {
+          "kind": "index",
+          "indices": [
+            2
+          ]
+        },
+        {
+          "kind": "member",
+          "memberId": "pressure"
+        },
+        {
+          "kind": "member",
+          "memberId": "actual"
+        }
+      ],
+      "valueRef": {
+        "kind": "graph",
+        "graphRef": {
+          "id": "structure-ab-graph",
+          "version": "1.0.0"
+        },
+        "nodeId": "last"
+      },
+      "transform": [
+        {
+          "op": "cast",
+          "to": "Double",
+          "overflow": "error",
+          "rounding": "exact"
+        }
+      ],
+      "outputUnit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "invalidValuePolicy": "bad-quality",
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-array-pressures-ab",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    },
+    {
+      "mappingId": "structure-ab-leaf-9",
+      "memberPath": [
+        {
+          "kind": "member",
+          "memberId": "modules"
+        },
+        {
+          "kind": "index",
+          "indices": [
+            2
+          ]
+        },
+        {
+          "kind": "member",
+          "memberId": "pressure"
+        },
+        {
+          "kind": "member",
+          "memberId": "target"
+        }
+      ],
+      "valueRef": {
+        "kind": "graph",
+        "graphRef": {
+          "id": "structure-ab-graph",
+          "version": "1.0.0"
+        },
+        "nodeId": "last-target"
+      },
+      "transform": [
+        {
+          "op": "cast",
+          "to": "Double",
+          "overflow": "error",
+          "rounding": "exact"
+        }
+      ],
+      "outputUnit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "invalidValuePolicy": "bad-quality",
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-array-pressures-ab",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    },
+    {
+      "mappingId": "structure-ab-leaf-10",
+      "memberPath": [
+        {
+          "kind": "member",
+          "memberId": "modules"
+        },
+        {
+          "kind": "index",
+          "indices": [
+            2
+          ]
+        },
+        {
+          "kind": "member",
+          "memberId": "running"
+        }
+      ],
+      "valueRef": {
+        "kind": "source",
+        "sourceRef": {
+          "id": "structure-ab-flags",
+          "version": "1.0.0"
+        }
+      },
+      "transform": [
+        {
+          "op": "bit-select",
+          "index": 1
+        },
+        {
+          "op": "cast",
+          "to": "Boolean",
+          "overflow": "error",
+          "rounding": "exact"
+        }
+      ],
+      "outputUnit": {
+        "status": "not-applicable"
+      },
+      "invalidValuePolicy": "bad-quality",
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-structure-ab-flags",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    }
+  ]
+}

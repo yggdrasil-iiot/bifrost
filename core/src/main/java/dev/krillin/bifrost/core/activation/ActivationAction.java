@@ -12,7 +12,7 @@ import com.fasterxml.jackson.annotation.JsonValue;
  * authorize one. A request flag could have been omitted; a missing grant cannot.
  */
 public enum ActivationAction {
-    ACTIVATE, APPROVE, BREAK_GLASS_APPROVE;
+    ACTIVATE, APPROVE, BREAK_GLASS_APPROVE, PUBLISH;
 
     @JsonValue public String json() { return name().toLowerCase(); }
 

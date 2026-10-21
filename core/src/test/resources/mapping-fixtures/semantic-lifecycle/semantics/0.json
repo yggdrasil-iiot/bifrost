@@ -1,0 +1,123 @@
+{
+  "kind": "semantic-definition",
+  "schemaVersion": "2.2.0",
+  "id": "mixed-tank-model",
+  "version": "1.0.0",
+  "members": [
+    {
+      "memberId": "plc-pressure",
+      "name": "plc-pressure",
+      "semanticId": "urn:tyr:concept:mixed.plc-pressure",
+      "description": "Synthetic plc-pressure",
+      "valueType": "Double",
+      "unit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "role": "measurement",
+      "range": null
+    },
+    {
+      "memberId": "solution-pressure",
+      "name": "solution-pressure",
+      "semanticId": "urn:tyr:concept:mixed.solution-pressure",
+      "description": "Synthetic solution-pressure",
+      "valueType": "Double",
+      "unit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "role": "measurement",
+      "range": null
+    },
+    {
+      "memberId": "external-reference",
+      "name": "external-reference",
+      "semanticId": "urn:tyr:concept:mixed.external-reference",
+      "description": "Synthetic external-reference",
+      "valueType": "Double",
+      "unit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "role": "measurement",
+      "range": null
+    },
+    {
+      "memberId": "baseline",
+      "name": "baseline",
+      "semanticId": "urn:tyr:concept:mixed.baseline",
+      "description": "Synthetic baseline",
+      "valueType": "Double",
+      "unit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "role": "measurement",
+      "range": null
+    },
+    {
+      "memberId": "difference",
+      "name": "difference",
+      "semanticId": "urn:tyr:concept:mixed.difference",
+      "description": "Synthetic difference",
+      "valueType": "Double",
+      "unit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "role": "measurement",
+      "range": null
+    },
+    {
+      "memberId": "line-code",
+      "name": "line-code",
+      "semanticId": "urn:tyr:concept:mixed.line-code",
+      "description": "Synthetic line-code",
+      "valueType": "String",
+      "unit": {
+        "status": "not-applicable"
+      },
+      "role": "status",
+      "range": null
+    },
+    {
+      "memberId": "enabled",
+      "name": "enabled",
+      "semanticId": "urn:tyr:concept:mixed.enabled",
+      "description": "Synthetic enabled",
+      "valueType": "Boolean",
+      "unit": {
+        "status": "not-applicable"
+      },
+      "role": "status",
+      "range": null
+    },
+    {
+      "memberId": "setpoint",
+      "name": "setpoint",
+      "semanticId": "urn:tyr:concept:mixed.setpoint",
+      "description": "Synthetic setpoint",
+      "valueType": "Double",
+      "unit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "role": "setpoint",
+      "range": null
+    },
+    {
+      "memberId": "hmi-setpoint",
+      "name": "hmi-setpoint",
+      "semanticId": "urn:tyr:concept:mixed.hmi-setpoint",
+      "description": "Synthetic hmi-setpoint",
+      "valueType": "Double",
+      "unit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "role": "setpoint",
+      "range": null
+    }
+  ]
+}

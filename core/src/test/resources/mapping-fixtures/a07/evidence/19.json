@@ -1,0 +1,17 @@
+{
+  "kind": "evidence-artifact",
+  "schemaVersion": "1.0.0",
+  "id": "manual-a07-melsec-alarm-alias",
+  "version": "1.0.0",
+  "origin": "synthetic",
+  "file": {
+    "path": "data/manual-19.txt",
+    "sha256": "d5298be67010a703bc7b531d3cee029b17295d9b1b5bfbfa8bd1d88972d20406",
+    "mediaType": "text/plain"
+  },
+  "capturedAt": "2026-10-17T00:00:00Z",
+  "product": null,
+  "scope": [
+    "line-a-motor-melsec"
+  ]
+}

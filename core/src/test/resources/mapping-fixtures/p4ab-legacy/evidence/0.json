@@ -1,0 +1,17 @@
+{
+  "kind": "evidence-artifact",
+  "schemaVersion": "1.0.0",
+  "id": "manual-imp-legacy-clean-speed-ab",
+  "version": "1.0.0",
+  "origin": "synthetic",
+  "file": {
+    "path": "data/manual-0.txt",
+    "sha256": "f1794bc9241f8aab2fc29d282c47f10ac99ca5fe9c214e44961f87bb4509cf6c",
+    "mediaType": "text/plain"
+  },
+  "capturedAt": "2026-10-17T00:00:00Z",
+  "product": null,
+  "scope": [
+    "import-line"
+  ]
+}

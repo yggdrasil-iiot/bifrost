@@ -1,0 +1,163 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "kind": {
+      "const": "semantic-catalog"
+    },
+    "schemaVersion": {
+      "const": "2.16.0"
+    },
+    "compatible": {
+      "type": "boolean"
+    },
+    "scope": {
+      "const": "registry-history"
+    },
+    "activation": {
+      "const": "not-performed"
+    },
+    "execution": {
+      "const": "excluded"
+    },
+    "releases": {
+      "type": "array",
+      "maxItems": 256,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "streamId": {
+            "type": "string"
+          },
+          "releaseId": {
+            "type": "string"
+          },
+          "releaseVersion": {
+            "type": "string"
+          },
+          "releaseSha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "streamId",
+          "releaseId",
+          "releaseVersion",
+          "releaseSha256"
+        ]
+      }
+    },
+    "entries": {
+      "type": "array",
+      "maxItems": 4096,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "semanticId": {
+            "type": "string",
+            "format": "uri"
+          },
+          "compatible": {
+            "type": "boolean"
+          },
+          "variants": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "signature": {
+                  "type": "object"
+                },
+                "occurrences": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "streamId": {
+                        "type": "string"
+                      },
+                      "releaseId": {
+                        "type": "string"
+                      },
+                      "releaseVersion": {
+                        "type": "string"
+                      },
+                      "releaseSha256": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      },
+                      "definitionId": {
+                        "type": "string"
+                      },
+                      "definitionVersion": {
+                        "type": "string"
+                      },
+                      "memberId": {
+                        "type": "string"
+                      },
+                      "label": {
+                        "type": "string"
+                      },
+                      "definitionPath": {
+                        "type": "array",
+                        "minItems": 1,
+                        "maxItems": 8,
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "required": [
+                      "streamId",
+                      "releaseId",
+                      "releaseVersion",
+                      "releaseSha256",
+                      "definitionId",
+                      "definitionVersion",
+                      "memberId",
+                      "label",
+                      "definitionPath"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "signature",
+                "occurrences"
+              ]
+            }
+          }
+        },
+        "required": [
+          "semanticId",
+          "compatible",
+          "variants"
+        ]
+      }
+    },
+    "catalogSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  },
+  "required": [
+    "kind",
+    "schemaVersion",
+    "compatible",
+    "scope",
+    "activation",
+    "execution",
+    "releases",
+    "entries",
+    "catalogSha256"
+  ],
+  "$id": "https://yggdrasil.local/tyr/contracts/2.16.0/semantic-catalog.schema.json"
+}

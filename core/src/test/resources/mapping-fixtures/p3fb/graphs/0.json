@@ -1,0 +1,226 @@
+{
+  "kind": "value-graph",
+  "schemaVersion": "2.13.0",
+  "id": "bounded-pressure",
+  "version": "1.0.0",
+  "equipmentInstanceId": "line-a-motor-melsec",
+  "nodes": [
+    {
+      "nodeId": "scaled-up",
+      "op": "linear",
+      "inputs": {
+        "value": {
+          "kind": "source",
+          "sourceRef": {
+            "id": "pressure-up",
+            "version": "1.0.0"
+          }
+        }
+      },
+      "valueType": "Decimal",
+      "unit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-pressure-up",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-pressure-down",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-selector-index",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-selector-previous",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ],
+      "factor": "0.1",
+      "offset": "0"
+    },
+    {
+      "nodeId": "converted-down",
+      "op": "unit-convert",
+      "inputs": {
+        "value": {
+          "kind": "source",
+          "sourceRef": {
+            "id": "pressure-down",
+            "version": "1.0.0"
+          }
+        }
+      },
+      "valueType": "Decimal",
+      "unit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-pressure-up",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-pressure-down",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-selector-index",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-selector-previous",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ],
+      "from": "bar",
+      "to": "kPa"
+    },
+    {
+      "nodeId": "difference",
+      "op": "subtract",
+      "inputs": {
+        "left": {
+          "kind": "node",
+          "nodeId": "scaled-up"
+        },
+        "right": {
+          "kind": "node",
+          "nodeId": "converted-down"
+        }
+      },
+      "valueType": "Decimal",
+      "unit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-pressure-up",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-pressure-down",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-selector-index",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-selector-previous",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    },
+    {
+      "nodeId": "selected",
+      "op": "bounded-selector",
+      "inputs": {
+        "index": {
+          "kind": "source",
+          "sourceRef": {
+            "id": "selector-index",
+            "version": "1.0.0"
+          }
+        },
+        "previousIndex": {
+          "kind": "source",
+          "sourceRef": {
+            "id": "selector-previous",
+            "version": "1.0.0"
+          }
+        },
+        "candidate0": {
+          "kind": "node",
+          "nodeId": "scaled-up"
+        },
+        "candidate1": {
+          "kind": "node",
+          "nodeId": "converted-down"
+        },
+        "candidate2": {
+          "kind": "node",
+          "nodeId": "difference"
+        }
+      },
+      "outOfRange": "reject",
+      "valueType": "Decimal",
+      "unit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-pressure-up",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-pressure-down",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-selector-index",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-selector-previous",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    }
+  ]
+}

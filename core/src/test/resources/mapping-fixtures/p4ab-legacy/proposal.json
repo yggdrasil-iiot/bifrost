@@ -1,0 +1,86 @@
+{
+  "kind": "mapping-proposal",
+  "schemaVersion": "2.6.0",
+  "id": "local-workspace",
+  "version": "2.0.0",
+  "baseRelease": null,
+  "files": [
+    {
+      "path": "evidence/import-0.json",
+      "kind": "evidence-artifact",
+      "id": "import-legacy-clean",
+      "version": "1.0.0",
+      "sha256": "935774ea648f4152129146fcf5414b68076b7c86f3b179e22fd9a30e61a6ed16"
+    },
+    {
+      "path": "evidence/0.json",
+      "kind": "evidence-artifact",
+      "id": "manual-imp-legacy-clean-speed-ab",
+      "version": "1.0.0",
+      "sha256": "c83555bf5357d0ebc740d165ea33c2cee3d1616063c757c6ed74436291073552"
+    },
+    {
+      "path": "evidence/import-batch-0.json",
+      "kind": "import-batch",
+      "id": "legacy-clean",
+      "version": "1.0.0",
+      "sha256": "b5e4101b723966aa17ff3c40045876f3fe735be7a294e3cb82e8d51fd36e685f"
+    },
+    {
+      "path": "mappings/0.json",
+      "kind": "mapping-set",
+      "id": "import-speed-mapping",
+      "version": "1.0.0",
+      "sha256": "caaf48a5a8dd2174fd8f06f7c72ba30d20a71da55ca6622f2b936548fa029f57"
+    },
+    {
+      "path": "semantics/0.json",
+      "kind": "semantic-definition",
+      "id": "import-speed-model",
+      "version": "1.0.0",
+      "sha256": "f86701f4dfe356f6f9d181b3ea12b81ef2f11b7f8003c5c2fefe3c6a54209e33"
+    },
+    {
+      "path": "sources/0.json",
+      "kind": "source-definition",
+      "id": "imp-legacy-clean-speed-ab",
+      "version": "1.0.0",
+      "sha256": "827f0f2a27e55c2a80980fbf66f79ffb8ddbb7154a0fb0fad1b38bf3e7672937"
+    },
+    {
+      "path": "evidence/observation-0-0.json",
+      "kind": "source-observation",
+      "id": "import-legacy-clean-row-0",
+      "version": "1.0.0",
+      "sha256": "160c7882c1e3aaf9489098a5a00384743da7cec3434dec48b98bb0dcbda86a53"
+    },
+    {
+      "path": "evidence/observation-0-1.json",
+      "kind": "source-observation",
+      "id": "import-legacy-clean-row-1",
+      "version": "1.0.0",
+      "sha256": "cab23649cdbcebac8497d699e66496864249491e8b019e68e7b83e3dec0b3aef"
+    },
+    {
+      "path": "evidence/observation-0-2.json",
+      "kind": "source-observation",
+      "id": "import-legacy-clean-row-2",
+      "version": "1.0.0",
+      "sha256": "70383682b01ae2da63febdc1f5a195f304f0879a8b9e386b7884253328d899c5"
+    },
+    {
+      "path": "evidence/observation-0-3.json",
+      "kind": "source-observation",
+      "id": "import-legacy-clean-row-3",
+      "version": "1.0.0",
+      "sha256": "a442964dac9d0777535b686f0678f884530a517ea869ffc200e556a128931cbd"
+    },
+    {
+      "path": "targets/0.json",
+      "kind": "target-instance",
+      "id": "import-motor",
+      "version": "1.0.0",
+      "sha256": "1a4eadadd62fdbb4b799e87a629206624e35b44fd0cd5c034bb9b8333e89703f"
+    }
+  ]
+}

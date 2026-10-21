@@ -18,6 +18,8 @@ public final class GatesCli {
         String sub = args[0];
         String[] rest = Arrays.copyOfRange(args, 1, args.length);
         switch (sub) {
+            case "mapping":
+                return MappingGate.run(rest);
             case "schema":
                 return SchemaGate.run(rest);
             case "spec":

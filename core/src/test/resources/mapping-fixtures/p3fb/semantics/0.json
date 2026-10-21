@@ -1,0 +1,21 @@
+{
+  "kind": "semantic-definition",
+  "schemaVersion": "2.2.0",
+  "id": "bounded-pressure-model",
+  "version": "1.0.0",
+  "members": [
+    {
+      "memberId": "selected-pressure",
+      "name": "선택 압력",
+      "semanticId": "urn:tyr:concept:pressure.selected",
+      "description": "명시한 후보 중 선택된 압력",
+      "valueType": "Double",
+      "unit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "role": "measurement",
+      "range": null
+    }
+  ]
+}

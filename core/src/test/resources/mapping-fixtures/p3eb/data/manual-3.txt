@@ -1,0 +1,2 @@
+Field label: 압력 채널 배열 · melsec
+Synthetic fixed scalar array with explicit gaps; no device connection

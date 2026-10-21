@@ -1,0 +1,42 @@
+{
+  "kind": "source-definition",
+  "id": "imp-review-base-speed-ab",
+  "version": "1.0.0",
+  "equipmentInstanceId": "import-line",
+  "status": "ready",
+  "evidenceRefs": [
+    {
+      "artifactId": "manual-imp-review-base-speed-ab",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    },
+    {
+      "artifactId": "import-review-next",
+      "locator": {
+        "kind": "json-pointer",
+        "pointer": "/records/2"
+      }
+    }
+  ],
+  "access": {
+    "kind": "symbol",
+    "symbolPath": "Motor.ActualSpeedV2"
+  },
+  "accessProfileRef": "ab-logix-symbol-v1",
+  "addressRadix": null,
+  "connectionProfileRef": "import-0",
+  "inputStage": "already-engineered",
+  "rawAddressText": "Motor.ActualSpeedV2",
+  "rawRepresentation": {
+    "mode": "typed",
+    "valueType": "Float32"
+  },
+  "schemaVersion": "2.2.0",
+  "unit": {
+    "status": "known",
+    "code": "rpm"
+  },
+  "viewOf": null
+}

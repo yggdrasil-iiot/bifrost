@@ -1,0 +1,88 @@
+{
+  "type": "object",
+  "properties": {
+    "kind": {
+      "const": "source-observation"
+    },
+    "schemaVersion": {
+      "const": "1.1.0"
+    },
+    "id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "version": {
+      "$ref": "common.schema.json#/$defs/version"
+    },
+    "evidenceRefs": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/evidenceRef"
+      },
+      "minItems": 1
+    },
+    "extractor": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "$ref": "common.schema.json#/$defs/version"
+        }
+      },
+      "required": [
+        "name",
+        "version"
+      ],
+      "additionalProperties": false
+    },
+    "claims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string",
+            "minLength": 1
+          },
+          "value": {},
+          "certainty": {
+            "enum": [
+              "explicit",
+              "inferred",
+              "unknown"
+            ]
+          }
+        },
+        "required": [
+          "field",
+          "value",
+          "certainty"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "status": {
+      "enum": [
+        "extracted",
+        "partial",
+        "unsupported"
+      ]
+    }
+  },
+  "required": [
+    "kind",
+    "schemaVersion",
+    "id",
+    "version",
+    "evidenceRefs",
+    "extractor",
+    "claims",
+    "status"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:tyr:contract:1.1.0:source-observation"
+}

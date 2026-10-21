@@ -1,0 +1,301 @@
+{
+  "kind": "mapping-template",
+  "schemaVersion": "2.19.0",
+  "id": "pressure-record-template",
+  "version": "1.0.0",
+  "label": "설비별 압력 결과 집합 · 레코드 템플릿",
+  "description": "합성 선언. 실제 DB/schema 정답 아님.",
+  "reason": "가상 결과 집합 수용 검증",
+  "authoredBy": "fixture-author",
+  "authoredAt": "2026-10-18T00:00:00Z",
+  "previousTemplateRef": null,
+  "slots": [
+    {
+      "slotId": "input-1",
+      "label": "asset",
+      "sourceRef": {
+        "id": "record-field-asset",
+        "version": "1.0.0"
+      },
+      "signature": {
+        "rawRepresentation": {
+          "valueType": "String"
+        },
+        "unit": {
+          "status": "not-applicable"
+        },
+        "inputStage": "already-engineered",
+        "fixedArray": null
+      }
+    },
+    {
+      "slotId": "input-2",
+      "label": "pressure",
+      "sourceRef": {
+        "id": "record-field-pressure",
+        "version": "1.0.0"
+      },
+      "signature": {
+        "rawRepresentation": {
+          "valueType": "Double"
+        },
+        "unit": {
+          "status": "known",
+          "code": "Pa"
+        },
+        "inputStage": "raw",
+        "fixedArray": null
+      }
+    },
+    {
+      "slotId": "input-3",
+      "label": "running",
+      "sourceRef": {
+        "id": "record-field-running",
+        "version": "1.0.0"
+      },
+      "signature": {
+        "rawRepresentation": {
+          "valueType": "Boolean"
+        },
+        "unit": {
+          "status": "not-applicable"
+        },
+        "inputStage": "already-engineered",
+        "fixedArray": null
+      }
+    },
+    {
+      "slotId": "input-4",
+      "label": "target",
+      "sourceRef": {
+        "id": "record-field-target",
+        "version": "1.0.0"
+      },
+      "signature": {
+        "rawRepresentation": {
+          "valueType": "Int32"
+        },
+        "unit": {
+          "status": "known",
+          "code": "kPa"
+        },
+        "inputStage": "raw",
+        "fixedArray": null
+      }
+    }
+  ],
+  "model": {
+    "kind": "semantic-definition",
+    "schemaVersion": "2.2.0",
+    "id": "records-model-1599af47e0aab12e7a7f278c",
+    "version": "1.0.0",
+    "members": [
+      {
+        "memberId": "asset",
+        "name": "asset",
+        "semanticId": "urn:tyr:concept:record.asset",
+        "description": "Synthetic record asset",
+        "valueType": "String",
+        "unit": {
+          "status": "not-applicable"
+        },
+        "role": "status",
+        "range": null
+      },
+      {
+        "memberId": "pressure",
+        "name": "pressure",
+        "semanticId": "urn:tyr:concept:record.pressure",
+        "description": "Synthetic record pressure",
+        "valueType": "Double",
+        "unit": {
+          "status": "known",
+          "code": "kPa"
+        },
+        "role": "measurement",
+        "range": null
+      },
+      {
+        "memberId": "target",
+        "name": "target",
+        "semanticId": "urn:tyr:concept:record.target",
+        "description": "Synthetic record target",
+        "valueType": "Double",
+        "unit": {
+          "status": "known",
+          "code": "kPa"
+        },
+        "role": "setpoint",
+        "range": null
+      },
+      {
+        "memberId": "running",
+        "name": "running",
+        "semanticId": "urn:tyr:concept:record.running",
+        "description": "Synthetic record running",
+        "valueType": "Boolean",
+        "unit": {
+          "status": "not-applicable"
+        },
+        "role": "status",
+        "range": null
+      }
+    ]
+  },
+  "target": {
+    "kind": "target-instance",
+    "schemaVersion": "2.0.0",
+    "id": "record-target-prototype",
+    "version": "1.0.0",
+    "equipmentInstanceId": "record-line-a",
+    "label": "설비별 압력 결과 집합",
+    "semanticDefinitionRef": {
+      "id": "records-model-1599af47e0aab12e7a7f278c",
+      "version": "1.0.0"
+    },
+    "evidenceRefs": []
+  },
+  "graphs": [],
+  "mapping": {
+    "kind": "mapping-set",
+    "schemaVersion": "2.2.0",
+    "id": "record-mapping-prototype",
+    "version": "1.0.0",
+    "equipmentInstanceId": "record-line-a",
+    "targetInstanceRef": {
+      "id": "record-target-prototype",
+      "version": "1.0.0"
+    },
+    "mappings": [
+      {
+        "mappingId": "field-c1684f8ac497",
+        "memberPath": [
+          {
+            "kind": "member",
+            "memberId": "asset"
+          }
+        ],
+        "valueRef": {
+          "kind": "source",
+          "sourceRef": {
+            "id": "record-field-asset",
+            "version": "1.0.0"
+          }
+        },
+        "transform": [
+          {
+            "op": "cast",
+            "to": "String",
+            "overflow": "error",
+            "rounding": "half-even"
+          }
+        ],
+        "outputUnit": {
+          "status": "not-applicable"
+        },
+        "invalidValuePolicy": "bad-quality",
+        "evidenceRefs": []
+      },
+      {
+        "mappingId": "field-9a1b3dfaff4b",
+        "memberPath": [
+          {
+            "kind": "member",
+            "memberId": "pressure"
+          }
+        ],
+        "valueRef": {
+          "kind": "source",
+          "sourceRef": {
+            "id": "record-field-pressure",
+            "version": "1.0.0"
+          }
+        },
+        "transform": [
+          {
+            "op": "unit-convert",
+            "from": "Pa",
+            "to": "kPa"
+          },
+          {
+            "op": "cast",
+            "to": "Double",
+            "overflow": "error",
+            "rounding": "half-even"
+          }
+        ],
+        "outputUnit": {
+          "status": "known",
+          "code": "kPa"
+        },
+        "invalidValuePolicy": "bad-quality",
+        "evidenceRefs": []
+      },
+      {
+        "mappingId": "field-ac2da24f7c00",
+        "memberPath": [
+          {
+            "kind": "member",
+            "memberId": "target"
+          }
+        ],
+        "valueRef": {
+          "kind": "source",
+          "sourceRef": {
+            "id": "record-field-target",
+            "version": "1.0.0"
+          }
+        },
+        "transform": [
+          {
+            "op": "linear",
+            "factor": "0.1",
+            "offset": "0"
+          },
+          {
+            "op": "cast",
+            "to": "Double",
+            "overflow": "error",
+            "rounding": "half-even"
+          }
+        ],
+        "outputUnit": {
+          "status": "known",
+          "code": "kPa"
+        },
+        "invalidValuePolicy": "bad-quality",
+        "evidenceRefs": []
+      },
+      {
+        "mappingId": "field-577541d66ab3",
+        "memberPath": [
+          {
+            "kind": "member",
+            "memberId": "running"
+          }
+        ],
+        "valueRef": {
+          "kind": "source",
+          "sourceRef": {
+            "id": "record-field-running",
+            "version": "1.0.0"
+          }
+        },
+        "transform": [
+          {
+            "op": "cast",
+            "to": "Boolean",
+            "overflow": "error",
+            "rounding": "half-even"
+          }
+        ],
+        "outputUnit": {
+          "status": "not-applicable"
+        },
+        "invalidValuePolicy": "bad-quality",
+        "evidenceRefs": []
+      }
+    ]
+  }
+}

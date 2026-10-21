@@ -1,0 +1,48 @@
+{
+  "kind": "source-definition",
+  "schemaVersion": "2.10.0",
+  "id": "a07-melsec-alarm-alias",
+  "version": "1.0.0",
+  "equipmentInstanceId": "line-a-motor-melsec",
+  "connectionProfileRef": "logical-melsec",
+  "accessProfileRef": "melsec-device-v1",
+  "status": "ready",
+  "rawAddressText": "D3000",
+  "addressRadix": 10,
+  "access": {
+    "kind": "device-register",
+    "deviceArea": "D",
+    "addressIndex": 3000,
+    "addressUnit": "word16",
+    "wordCount": 1,
+    "bitOffset": null
+  },
+  "rawRepresentation": {
+    "mode": "bytes",
+    "valueType": "UInt16",
+    "byteOrder": "little",
+    "wordOrder": "low-first"
+  },
+  "inputStage": "already-engineered",
+  "unit": {
+    "status": "not-applicable"
+  },
+  "evidenceRefs": [
+    {
+      "artifactId": "manual-a07-melsec-alarm-alias",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    }
+  ],
+  "viewOf": {
+    "id": "a07-melsec-alarm",
+    "version": "1.0.0"
+  },
+  "sourceKind": "plc",
+  "accessMode": "read",
+  "view": {
+    "kind": "alias"
+  }
+}

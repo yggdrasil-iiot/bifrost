@@ -1,0 +1,71 @@
+{
+  "type": "object",
+  "properties": {
+    "kind": {
+      "const": "mapping-release"
+    },
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "version": {
+      "$ref": "common.schema.json#/$defs/version"
+    },
+    "proposalSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/fileEntry"
+      },
+      "minItems": 1
+    },
+    "publishedBy": {
+      "const": "bifrost"
+    },
+    "approval": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "const": "local-record"
+        },
+        "proposedBy": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9._/-]*$"
+        },
+        "approvedBy": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9._/-]*$"
+        },
+        "at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "mode",
+        "proposedBy",
+        "approvedBy",
+        "at"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "kind",
+    "schemaVersion",
+    "id",
+    "version",
+    "proposalSha256",
+    "files",
+    "publishedBy",
+    "approval"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:tyr:contract:1.0.0:mapping-release"
+}

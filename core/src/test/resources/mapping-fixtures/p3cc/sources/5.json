@@ -1,0 +1,37 @@
+{
+  "kind": "source-definition",
+  "schemaVersion": "2.2.0",
+  "id": "arithmetic-ua-gain",
+  "version": "1.0.0",
+  "equipmentInstanceId": "line-a-motor-ua",
+  "connectionProfileRef": "logical-ua",
+  "accessProfileRef": "s7-1500-opcua-v1",
+  "status": "ready",
+  "rawAddressText": "nsu=urn:tyr:fixture:skid;s=Skid.flags",
+  "addressRadix": null,
+  "access": {
+    "kind": "opcua-node",
+    "namespaceUri": "urn:tyr:fixture:skid",
+    "identifierType": "string",
+    "identifier": "Skid.flags"
+  },
+  "rawRepresentation": {
+    "mode": "typed",
+    "valueType": "UInt16"
+  },
+  "inputStage": "raw",
+  "unit": {
+    "status": "known",
+    "code": "1"
+  },
+  "evidenceRefs": [
+    {
+      "artifactId": "manual-arithmetic-ua-gain",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    }
+  ],
+  "viewOf": null
+}

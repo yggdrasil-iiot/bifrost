@@ -1,0 +1,125 @@
+{
+  "kind": "source-observation",
+  "schemaVersion": "1.1.0",
+  "id": "import-review-base-row-6",
+  "version": "1.0.0",
+  "evidenceRefs": [
+    {
+      "artifactId": "import-review-base",
+      "locator": {
+        "kind": "json-pointer",
+        "pointer": "/records/5"
+      }
+    }
+  ],
+  "extractor": {
+    "name": "tyr-bounded-files",
+    "version": "1.0.0"
+  },
+  "claims": [
+    {
+      "field": "raw",
+      "value": {
+        "id": "pump-1",
+        "kind": "source",
+        "profile": "melsec-device-v1",
+        "address": "D5002",
+        "type": "UInt16",
+        "unit": "kPa",
+        "stage": "raw",
+        "byteOrder": "little",
+        "wordOrder": "low-first",
+        "width": 1
+      },
+      "certainty": "explicit"
+    },
+    {
+      "field": "derivation",
+      "value": {
+        "id": "row-6",
+        "raw": {
+          "id": "pump-1",
+          "kind": "source",
+          "profile": "melsec-device-v1",
+          "address": "D5002",
+          "type": "UInt16",
+          "unit": "kPa",
+          "stage": "raw",
+          "byteOrder": "little",
+          "wordOrder": "low-first",
+          "width": 1
+        },
+        "locator": {
+          "kind": "json-pointer",
+          "pointer": "/records/5"
+        },
+        "derivation": [
+          {
+            "kind": "json-pointer",
+            "pointer": "/records/5"
+          }
+        ],
+        "issues": [],
+        "assumptions": [],
+        "draft": {
+          "kind": "source-definition",
+          "schemaVersion": "2.2.0",
+          "id": "imp-review-base-pump-1",
+          "version": "1.0.0",
+          "equipmentInstanceId": "import-line",
+          "connectionProfileRef": "import-3",
+          "accessProfileRef": "melsec-device-v1",
+          "status": "draft",
+          "rawAddressText": "D5002",
+          "addressRadix": 10,
+          "access": {
+            "kind": "device-register",
+            "deviceArea": "D",
+            "addressIndex": 5002,
+            "addressUnit": "word16",
+            "wordCount": 1,
+            "bitOffset": null
+          },
+          "rawRepresentation": {
+            "mode": "bytes",
+            "valueType": "UInt16",
+            "byteOrder": "little",
+            "wordOrder": "low-first"
+          },
+          "inputStage": "raw",
+          "unit": {
+            "status": "known",
+            "code": "kPa"
+          },
+          "evidenceRefs": [
+            {
+              "artifactId": "import-review-base",
+              "locator": {
+                "kind": "json-pointer",
+                "pointer": "/records/5"
+              }
+            }
+          ],
+          "viewOf": null
+        },
+        "template": {
+          "id": "pump",
+          "kind": "template",
+          "profile": "melsec-device-v1",
+          "address": "D{offset}",
+          "base": 5000,
+          "stride": 2,
+          "count": 2,
+          "type": "UInt16",
+          "unit": "kPa",
+          "stage": "raw",
+          "byteOrder": "little",
+          "wordOrder": "low-first",
+          "width": 1
+        }
+      },
+      "certainty": "inferred"
+    }
+  ],
+  "status": "partial"
+}

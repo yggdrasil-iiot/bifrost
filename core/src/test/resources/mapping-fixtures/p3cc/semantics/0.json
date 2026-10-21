@@ -1,0 +1,60 @@
+{
+  "kind": "semantic-definition",
+  "schemaVersion": "2.2.0",
+  "id": "arithmetic-model",
+  "version": "1.0.0",
+  "members": [
+    {
+      "memberId": "sum",
+      "name": "sum",
+      "semanticId": "urn:tyr:synthetic:sum",
+      "description": "Synthetic arithmetic oracle, not field engineering truth",
+      "valueType": "Double",
+      "unit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "role": "measurement",
+      "range": null
+    },
+    {
+      "memberId": "scaled",
+      "name": "scaled",
+      "semanticId": "urn:tyr:synthetic:scaled",
+      "description": "Synthetic arithmetic oracle, not field engineering truth",
+      "valueType": "Double",
+      "unit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "role": "measurement",
+      "range": null
+    },
+    {
+      "memberId": "quotient",
+      "name": "quotient",
+      "semanticId": "urn:tyr:synthetic:quotient",
+      "description": "Synthetic arithmetic oracle, not field engineering truth",
+      "valueType": "Double",
+      "unit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "role": "measurement",
+      "range": null
+    },
+    {
+      "memberId": "ratio",
+      "name": "ratio",
+      "semanticId": "urn:tyr:synthetic:ratio",
+      "description": "Synthetic arithmetic oracle, not field engineering truth",
+      "valueType": "Double",
+      "unit": {
+        "status": "known",
+        "code": "1"
+      },
+      "role": "measurement",
+      "range": null
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "kind": "value-graph",
+  "version": "1.0.0",
+  "equipmentInstanceId": "line-a-motor-ua",
+  "id": "shared-ua",
+  "schemaVersion": "2.15.0",
+  "nodes": [
+    {
+      "nodeId": "delta",
+      "op": "subtract",
+      "inputs": {
+        "left": {
+          "kind": "source",
+          "sourceRef": {
+            "id": "structure-ua-actual",
+            "version": "1.0.0"
+          }
+        },
+        "right": {
+          "kind": "source",
+          "sourceRef": {
+            "id": "structure-ua-target",
+            "version": "1.0.0"
+          }
+        }
+      },
+      "valueType": "Decimal",
+      "unit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-structure-ua-actual",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-structure-ua-target",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    }
+  ]
+}

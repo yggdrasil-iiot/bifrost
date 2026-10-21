@@ -1,0 +1,59 @@
+{
+  "kind": "source-definition",
+  "schemaVersion": "2.4.0",
+  "id": "array-pressures-db",
+  "version": "1.0.0",
+  "equipmentInstanceId": "line-a-motor-db",
+  "connectionProfileRef": "logical-db",
+  "accessProfileRef": "s7-300-db-v1",
+  "status": "ready",
+  "rawAddressText": "DB10 @ byte64",
+  "addressRadix": null,
+  "access": {
+    "kind": "db-offset",
+    "dbNumber": 10,
+    "byteOffset": 64,
+    "byteLength": 4,
+    "bitOffset": null
+  },
+  "rawRepresentation": {
+    "mode": "bytes",
+    "valueType": "Float32",
+    "byteOrder": "big",
+    "wordOrder": "high-first"
+  },
+  "inputStage": "raw",
+  "unit": {
+    "status": "known",
+    "code": "kPa"
+  },
+  "evidenceRefs": [
+    {
+      "artifactId": "manual-array-pressures-db",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    }
+  ],
+  "viewOf": null,
+  "fixedArray": {
+    "shape": [
+      2,
+      3
+    ],
+    "lowerBounds": [
+      1,
+      10
+    ],
+    "strides": [
+      16,
+      4
+    ],
+    "strideUnit": "byte",
+    "range": {
+      "start": 64,
+      "endExclusive": 92
+    }
+  }
+}

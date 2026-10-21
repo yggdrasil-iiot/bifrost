@@ -1,0 +1,225 @@
+{
+  "kind": "mapping-set",
+  "schemaVersion": "2.2.0",
+  "id": "arithmetic-mapping-melsec",
+  "version": "1.0.0",
+  "equipmentInstanceId": "line-a-motor-melsec",
+  "targetInstanceRef": {
+    "id": "arithmetic-object-melsec",
+    "version": "1.0.0"
+  },
+  "mappings": [
+    {
+      "mappingId": "melsec-sum",
+      "memberPath": [
+        {
+          "kind": "member",
+          "memberId": "sum"
+        }
+      ],
+      "valueRef": {
+        "kind": "graph",
+        "graphRef": {
+          "id": "arithmetic-melsec",
+          "version": "1.0.0"
+        },
+        "nodeId": "sum"
+      },
+      "transform": [
+        {
+          "op": "cast",
+          "to": "Double",
+          "overflow": "error",
+          "rounding": "half-even"
+        }
+      ],
+      "outputUnit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "invalidValuePolicy": "bad-quality",
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-structure-melsec-actual",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-structure-melsec-target",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-arithmetic-melsec-gain",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    },
+    {
+      "mappingId": "melsec-scaled",
+      "memberPath": [
+        {
+          "kind": "member",
+          "memberId": "scaled"
+        }
+      ],
+      "valueRef": {
+        "kind": "graph",
+        "graphRef": {
+          "id": "arithmetic-melsec",
+          "version": "1.0.0"
+        },
+        "nodeId": "scaled"
+      },
+      "transform": [
+        {
+          "op": "cast",
+          "to": "Double",
+          "overflow": "error",
+          "rounding": "half-even"
+        }
+      ],
+      "outputUnit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "invalidValuePolicy": "bad-quality",
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-structure-melsec-actual",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-structure-melsec-target",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-arithmetic-melsec-gain",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    },
+    {
+      "mappingId": "melsec-quotient",
+      "memberPath": [
+        {
+          "kind": "member",
+          "memberId": "quotient"
+        }
+      ],
+      "valueRef": {
+        "kind": "graph",
+        "graphRef": {
+          "id": "arithmetic-melsec",
+          "version": "1.0.0"
+        },
+        "nodeId": "quotient"
+      },
+      "transform": [
+        {
+          "op": "cast",
+          "to": "Double",
+          "overflow": "error",
+          "rounding": "half-even"
+        }
+      ],
+      "outputUnit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "invalidValuePolicy": "bad-quality",
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-structure-melsec-actual",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-structure-melsec-target",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-arithmetic-melsec-gain",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    },
+    {
+      "mappingId": "melsec-ratio",
+      "memberPath": [
+        {
+          "kind": "member",
+          "memberId": "ratio"
+        }
+      ],
+      "valueRef": {
+        "kind": "graph",
+        "graphRef": {
+          "id": "arithmetic-melsec",
+          "version": "1.0.0"
+        },
+        "nodeId": "ratio"
+      },
+      "transform": [
+        {
+          "op": "cast",
+          "to": "Double",
+          "overflow": "error",
+          "rounding": "half-even"
+        }
+      ],
+      "outputUnit": {
+        "status": "known",
+        "code": "1"
+      },
+      "invalidValuePolicy": "bad-quality",
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-structure-melsec-actual",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-structure-melsec-target",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-arithmetic-melsec-gain",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "kind": "source-definition",
+  "schemaVersion": "2.2.0",
+  "id": "imp-legacy-clean-speed-ab",
+  "version": "1.0.0",
+  "equipmentInstanceId": "import-line",
+  "connectionProfileRef": "import-0",
+  "accessProfileRef": "ab-logix-symbol-v1",
+  "status": "ready",
+  "rawAddressText": "Motor.ActualSpeed",
+  "addressRadix": null,
+  "access": {
+    "kind": "symbol",
+    "symbolPath": "Motor.ActualSpeed"
+  },
+  "rawRepresentation": {
+    "mode": "typed",
+    "valueType": "Float32"
+  },
+  "inputStage": "already-engineered",
+  "unit": {
+    "status": "known",
+    "code": "rpm"
+  },
+  "evidenceRefs": [
+    {
+      "artifactId": "manual-imp-legacy-clean-speed-ab",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    },
+    {
+      "artifactId": "import-legacy-clean",
+      "locator": {
+        "kind": "json-pointer",
+        "pointer": "/records/0"
+      }
+    }
+  ],
+  "viewOf": null
+}

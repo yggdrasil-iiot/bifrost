@@ -1,0 +1,28 @@
+{
+  "kind": "target-instance",
+  "schemaVersion": "2.0.0",
+  "id": "filter-direct",
+  "version": "1.0.0",
+  "equipmentInstanceId": "line-a-motor-melsec",
+  "label": "가상 무차원 파생값",
+  "semanticDefinitionRef": {
+    "id": "filter-pressure-model",
+    "version": "1.0.0"
+  },
+  "evidenceRefs": [
+    {
+      "artifactId": "manual-pressure-up",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    },
+    {
+      "artifactId": "manual-pressure-down",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    }
+  ]
+}

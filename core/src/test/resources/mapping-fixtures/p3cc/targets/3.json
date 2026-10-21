@@ -1,0 +1,35 @@
+{
+  "kind": "target-instance",
+  "schemaVersion": "2.0.0",
+  "id": "arithmetic-object-melsec",
+  "version": "1.0.0",
+  "label": "Synthetic arithmetic object melsec",
+  "equipmentInstanceId": "line-a-motor-melsec",
+  "semanticDefinitionRef": {
+    "id": "arithmetic-model",
+    "version": "1.0.0"
+  },
+  "evidenceRefs": [
+    {
+      "artifactId": "manual-structure-melsec-actual",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    },
+    {
+      "artifactId": "manual-structure-melsec-target",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    },
+    {
+      "artifactId": "manual-arithmetic-melsec-gain",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    }
+  ]
+}

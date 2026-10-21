@@ -1,0 +1,97 @@
+{
+  "cases": [
+    {
+      "id": "missing-parent",
+      "sourceId": "a07-melsec-alarm",
+      "pointer": "/viewOf/id",
+      "value": "absent",
+      "expectedRule": "view.reference-missing"
+    },
+    {
+      "id": "stale-parent",
+      "sourceId": "a07-melsec-alarm",
+      "pointer": "/viewOf/version",
+      "value": "9.0.0",
+      "expectedRule": "view.reference-missing"
+    },
+    {
+      "id": "cycle",
+      "sourceId": "a07-melsec-alarm",
+      "pointer": "/viewOf/id",
+      "value": "a07-melsec-alarm",
+      "expectedRule": "view.cycle"
+    },
+    {
+      "id": "bit-range",
+      "sourceId": "a07-melsec-alarm",
+      "pointer": "/view/bitIndex",
+      "value": 16,
+      "expectedRule": "view.bit-range"
+    },
+    {
+      "id": "bit-unit",
+      "sourceId": "a07-melsec-alarm",
+      "pointer": "/unit",
+      "value": {
+        "status": "known",
+        "code": "1"
+      },
+      "expectedRule": "view.unit"
+    },
+    {
+      "id": "alias-unit",
+      "sourceId": "a07-melsec-word-alias",
+      "pointer": "/unit",
+      "value": {
+        "status": "known",
+        "code": "1"
+      },
+      "expectedRule": "view.unit"
+    },
+    {
+      "id": "different-address",
+      "sourceId": "a07-melsec-alarm",
+      "pointer": "/access/addressIndex",
+      "value": 4000,
+      "expectedRule": "view.snapshot-mismatch"
+    },
+    {
+      "id": "different-order",
+      "sourceId": "a07-melsec-alarm",
+      "pointer": "/rawRepresentation/byteOrder",
+      "value": "big",
+      "expectedRule": "view.snapshot-mismatch"
+    },
+    {
+      "id": "parent-draft",
+      "sourceId": "a07-melsec-word",
+      "pointer": "/status",
+      "value": "draft",
+      "expectedRule": "view.parent-not-ready"
+    },
+    {
+      "id": "parent-write",
+      "sourceId": "a07-melsec-word",
+      "pointer": "/accessMode",
+      "value": "write",
+      "expectedRule": "view.readonly"
+    },
+    {
+      "id": "different-stage",
+      "sourceId": "a07-melsec-alarm",
+      "pointer": "/inputStage",
+      "value": "raw",
+      "expectedRule": "view.snapshot-mismatch"
+    },
+    {
+      "id": "bit-of-bit",
+      "sourceId": "a07-melsec-alarm-alias",
+      "pointer": "/view",
+      "value": {
+        "kind": "bit",
+        "bitIndex": 0
+      },
+      "expectedRule": "view.integer-required"
+    }
+  ]
+}

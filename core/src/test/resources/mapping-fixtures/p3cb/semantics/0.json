@@ -1,0 +1,21 @@
+{
+  "kind": "semantic-definition",
+  "schemaVersion": "2.2.0",
+  "id": "filter-pressure-model",
+  "version": "1.0.0",
+  "members": [
+    {
+      "memberId": "pressure-difference",
+      "name": "무차원 파생값",
+      "semanticId": "urn:tyr:concept:fixture.dimensionless-derived",
+      "description": "Offline bounded math fixture; not a pressure or vendor engineering rule.",
+      "valueType": "Double",
+      "unit": {
+        "status": "known",
+        "code": "1"
+      },
+      "role": "measurement",
+      "range": null
+    }
+  ]
+}

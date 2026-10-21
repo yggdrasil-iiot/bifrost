@@ -1,0 +1,70 @@
+{
+  "type": "object",
+  "properties": {
+    "kind": {
+      "const": "virtual-result-set"
+    },
+    "schemaVersion": {
+      "const": "2.20.0"
+    },
+    "resultSetRef": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "version": {
+          "$ref": "common.schema.json#/$defs/version"
+        },
+        "sha256": {
+          "$ref": "common.schema.json#/$defs/sha256"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "sha256"
+      ],
+      "additionalProperties": false
+    },
+    "capturedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "quality": {
+      "enum": [
+        "good",
+        "uncertain",
+        "bad"
+      ]
+    },
+    "rows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "maxProperties": 64,
+        "additionalProperties": {
+          "type": [
+            "string",
+            "boolean",
+            "null"
+          ],
+          "maxLength": 4096
+        }
+      },
+      "minItems": 0,
+      "maxItems": 64
+    }
+  },
+  "required": [
+    "kind",
+    "schemaVersion",
+    "resultSetRef",
+    "capturedAt",
+    "quality",
+    "rows"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:tyr:contract:2.20.0:virtual-result-set"
+}

@@ -1,0 +1,2 @@
+Field label: selector-previous
+Synthetic pressure definition; engineering scale declared in graph

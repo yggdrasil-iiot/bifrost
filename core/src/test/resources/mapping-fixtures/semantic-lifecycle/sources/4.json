@@ -1,0 +1,36 @@
+{
+  "kind": "source-definition",
+  "schemaVersion": "2.7.0",
+  "id": "mixed-line-code",
+  "version": "1.0.0",
+  "sourceKind": "constant",
+  "accessMode": "read",
+  "equipmentInstanceId": "mixed-line",
+  "connectionProfileRef": null,
+  "accessProfileRef": "constant-v1",
+  "status": "ready",
+  "rawAddressText": "constant:mixed-line-code",
+  "addressRadix": null,
+  "access": {
+    "kind": "constant",
+    "value": "LINE-A"
+  },
+  "rawRepresentation": {
+    "mode": "typed",
+    "valueType": "String"
+  },
+  "inputStage": "already-engineered",
+  "unit": {
+    "status": "not-applicable"
+  },
+  "evidenceRefs": [
+    {
+      "artifactId": "manual-mixed-line-code",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    }
+  ],
+  "viewOf": null
+}

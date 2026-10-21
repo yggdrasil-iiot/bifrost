@@ -1,0 +1,50 @@
+{
+  "kind": "source-definition",
+  "schemaVersion": "2.21.0",
+  "id": "record-field-402cc6a5a2ad6fe30100d639",
+  "version": "1.0.0",
+  "equipmentInstanceId": "record-line-b",
+  "sourceKind": "external-value",
+  "accessMode": "read",
+  "status": "ready",
+  "connectionProfileRef": null,
+  "accessProfileRef": "external-value-v1",
+  "rawAddressText": "record:pressure-object@1.0.0/target",
+  "addressRadix": null,
+  "access": {
+    "kind": "external-value",
+    "providerRef": "virtual-db",
+    "valueKey": "asset-pressure.target",
+    "expressionLanguage": "none",
+    "expression": null
+  },
+  "rawRepresentation": {
+    "mode": "typed",
+    "valueType": "Int32"
+  },
+  "inputStage": "raw",
+  "unit": {
+    "status": "known",
+    "code": "kPa"
+  },
+  "evidenceRefs": [
+    {
+      "artifactId": "manual-record-field-402cc6a5a2ad6fe30100d639",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    }
+  ],
+  "viewOf": null,
+  "recordField": {
+    "recordMappingRef": {
+      "id": "pressure-object",
+      "version": "1.0.0",
+      "sha256": "6dad6129f700162ac46851558642ba43f78bed217a79822dbce9046a72203acc"
+    },
+    "fieldId": "target",
+    "nullPolicy": "reject",
+    "defaultValue": null
+  }
+}

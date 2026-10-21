@@ -1,0 +1,28 @@
+{
+  "kind": "mapping-submission",
+  "schemaVersion": "2.9.0",
+  "id": "bounded-math",
+  "streamId": "mixed-line",
+  "version": "1.0.0",
+  "workspaceSha256": "417146f6d7164dbeacb5945cd539a25ee10881197f1ab4c370f09dc24aa8e28c",
+  "proposalSha256": "0a9262139caaaca9a115ad98b7437cc09c78e679468f94dac07935eae6c7eee4",
+  "baseRelease": null,
+  "proposedBy": "proposer",
+  "execution": "excluded",
+  "context": {
+    "equipment": [
+      {
+        "id": "line-a-motor-melsec",
+        "label": "Line A"
+      }
+    ],
+    "connections": [
+      {
+        "id": "logical-melsec",
+        "label": "MELSEC",
+        "equipmentInstanceId": "line-a-motor-melsec",
+        "accessProfileRef": "melsec-device-v1"
+      }
+    ]
+  }
+}

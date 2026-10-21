@@ -1,0 +1,52 @@
+{
+  "type": "object",
+  "properties": {
+    "kind": {
+      "const": "preview-scenario"
+    },
+    "schemaVersion": {
+      "const": "2.21.0"
+    },
+    "id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "version": {
+      "$ref": "common.schema.json#/$defs/version"
+    },
+    "label": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "mappingSetRef": {
+      "$ref": "common.schema.json#/$defs/documentRef"
+    },
+    "mappingId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "workspaceSha256": {
+      "$ref": "common.schema.json#/$defs/sha256"
+    },
+    "evaluationContext": {
+      "$ref": "common.schema.json#/$defs/evaluationContext"
+    },
+    "samples": {
+      "$ref": "common.schema.json#/$defs/virtualSamples"
+    }
+  },
+  "required": [
+    "kind",
+    "schemaVersion",
+    "id",
+    "version",
+    "label",
+    "mappingSetRef",
+    "mappingId",
+    "workspaceSha256",
+    "evaluationContext",
+    "samples"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:tyr:contract:2.21.0:preview-scenario"
+}

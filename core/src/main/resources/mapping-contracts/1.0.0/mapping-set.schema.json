@@ -1,0 +1,86 @@
+{
+  "type": "object",
+  "properties": {
+    "kind": {
+      "const": "mapping-set"
+    },
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "version": {
+      "$ref": "common.schema.json#/$defs/version"
+    },
+    "equipmentInstanceId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9._/-]*$"
+    },
+    "semanticDefinitionRef": {
+      "$ref": "common.schema.json#/$defs/documentRef"
+    },
+    "mappings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "mappingId": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9._/-]*$"
+          },
+          "sourceRef": {
+            "$ref": "common.schema.json#/$defs/documentRef"
+          },
+          "targetMemberId": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9._/-]*$"
+          },
+          "transform": {
+            "type": "array",
+            "items": {
+              "$ref": "common.schema.json#/$defs/transform"
+            },
+            "minItems": 0
+          },
+          "outputUnit": {
+            "$ref": "common.schema.json#/$defs/unit"
+          },
+          "invalidValuePolicy": {
+            "const": "bad-quality"
+          },
+          "evidenceRefs": {
+            "type": "array",
+            "items": {
+              "$ref": "common.schema.json#/$defs/evidenceRef"
+            },
+            "minItems": 1
+          }
+        },
+        "required": [
+          "mappingId",
+          "sourceRef",
+          "targetMemberId",
+          "transform",
+          "outputUnit",
+          "invalidValuePolicy",
+          "evidenceRefs"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    }
+  },
+  "required": [
+    "kind",
+    "schemaVersion",
+    "id",
+    "version",
+    "equipmentInstanceId",
+    "semanticDefinitionRef",
+    "mappings"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:tyr:contract:1.0.0:mapping-set"
+}

@@ -1,0 +1,32 @@
+{
+  "kind": "mapping-submission",
+  "schemaVersion": "2.9.0",
+  "id": "broadcast-fixture",
+  "streamId": "broadcast-line",
+  "version": "1.0.0",
+  "workspaceSha256": "ed8b14c570fb5437562e80935e813c1d0e964beb92b2d01a65a9bff76e96d900",
+  "proposalSha256": "c07e5a10056365a2770245878d53927d6b8ed941cb8d288e9e56cf9b38692cf9",
+  "baseRelease": null,
+  "proposedBy": "proposer",
+  "execution": "excluded",
+  "context": {
+    "equipment": [
+      {
+        "id": "record-line-a",
+        "label": "합성 설비 A"
+      },
+      {
+        "id": "record-line-b",
+        "label": "합성 설비 B"
+      }
+    ],
+    "connections": [
+      {
+        "id": "mixed-melsec",
+        "label": "MELSEC metadata only",
+        "equipmentInstanceId": "record-line-b",
+        "accessProfileRef": "melsec-device-v1"
+      }
+    ]
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "kind": "source-definition",
+  "schemaVersion": "2.4.0",
+  "id": "array-pressures-ab",
+  "version": "1.0.0",
+  "equipmentInstanceId": "line-a-motor-ab",
+  "connectionProfileRef": "logical-ab",
+  "accessProfileRef": "ab-logix-symbol-v1",
+  "status": "ready",
+  "rawAddressText": "Filter.Pressures",
+  "addressRadix": null,
+  "access": {
+    "kind": "symbol",
+    "symbolPath": "Filter.Pressures"
+  },
+  "rawRepresentation": {
+    "mode": "typed",
+    "valueType": "Float32"
+  },
+  "inputStage": "raw",
+  "unit": {
+    "status": "known",
+    "code": "kPa"
+  },
+  "evidenceRefs": [
+    {
+      "artifactId": "manual-array-pressures-ab",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    }
+  ],
+  "viewOf": null,
+  "fixedArray": {
+    "shape": [
+      2,
+      3
+    ],
+    "lowerBounds": [
+      0,
+      0
+    ],
+    "strides": [
+      4,
+      1
+    ],
+    "strideUnit": "element",
+    "range": {
+      "start": 0,
+      "endExclusive": 7
+    }
+  }
+}

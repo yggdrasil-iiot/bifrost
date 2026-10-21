@@ -1,0 +1,17 @@
+{
+  "kind": "evidence-artifact",
+  "schemaVersion": "1.0.0",
+  "id": "manual-a07-db-alarm-alias",
+  "version": "1.0.0",
+  "origin": "synthetic",
+  "file": {
+    "path": "data/manual-14.txt",
+    "sha256": "23720c685fba88056141faf15054c6c3a7318cf6bc5d1bc7aadb8c8e2ef67651",
+    "mediaType": "text/plain"
+  },
+  "capturedAt": "2026-10-17T00:00:00Z",
+  "product": null,
+  "scope": [
+    "line-a-motor-db"
+  ]
+}

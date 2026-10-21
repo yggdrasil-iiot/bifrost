@@ -1,0 +1,17 @@
+{
+  "kind": "evidence-artifact",
+  "schemaVersion": "1.0.0",
+  "id": "record-pressure-object-1-0-0",
+  "version": "1.0.0",
+  "origin": "synthetic",
+  "file": {
+    "path": "record-evidence/pressure-object-1.0.0.txt",
+    "sha256": "1e03e4ecee42bc21582736e867727d7617796eb3e8f62c923802e3c08d95b7c9",
+    "mediaType": "text/plain"
+  },
+  "capturedAt": "2026-10-18T00:00:00Z",
+  "product": null,
+  "scope": [
+    "record-line-b"
+  ]
+}

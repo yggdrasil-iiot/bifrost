@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:tyr:contract:2.9.0:mapping-validation",
+  "type": "object",
+  "properties": {
+    "kind": {
+      "const": "mapping-validation"
+    },
+    "schemaVersion": {
+      "const": "2.9.0"
+    },
+    "proposalSha256": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "bundleSha256": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "accepted": {
+      "type": "boolean"
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "ruleCode": {
+            "type": "string"
+          },
+          "path": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "detail": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ruleCode",
+          "path",
+          "detail"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "capability": {
+      "const": "bifrost-mapping-v1"
+    },
+    "execution": {
+      "const": "excluded"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "kind",
+    "schemaVersion",
+    "proposalSha256",
+    "bundleSha256",
+    "accepted",
+    "findings",
+    "capability",
+    "execution"
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "kind": "source-definition",
+  "schemaVersion": "2.2.0",
+  "id": "arithmetic-ab-gain",
+  "version": "1.0.0",
+  "equipmentInstanceId": "line-a-motor-ab",
+  "connectionProfileRef": "logical-ab",
+  "accessProfileRef": "ab-logix-symbol-v1",
+  "status": "ready",
+  "rawAddressText": "Skid.flags",
+  "addressRadix": null,
+  "access": {
+    "kind": "symbol",
+    "symbolPath": "Skid.flags"
+  },
+  "rawRepresentation": {
+    "mode": "typed",
+    "valueType": "UInt16"
+  },
+  "inputStage": "raw",
+  "unit": {
+    "status": "known",
+    "code": "1"
+  },
+  "evidenceRefs": [
+    {
+      "artifactId": "manual-arithmetic-ab-gain",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    }
+  ],
+  "viewOf": null
+}

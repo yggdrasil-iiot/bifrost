@@ -1,0 +1,177 @@
+{
+  "kind": "mapping-proposal",
+  "schemaVersion": "2.18.0",
+  "id": "local-workspace",
+  "version": "2.0.0",
+  "baseRelease": null,
+  "files": [
+    {
+      "path": "evidence/1.json",
+      "kind": "evidence-artifact",
+      "id": "manual-mixed-baseline",
+      "version": "1.0.0",
+      "sha256": "6147ea2220e474a4e8f89b671d50b60f337cdace5cad2b53975d7d8003220876"
+    },
+    {
+      "path": "evidence/5.json",
+      "kind": "evidence-artifact",
+      "id": "manual-mixed-enabled",
+      "version": "1.0.0",
+      "sha256": "1c47a3050ea2d849c0498b85b81445a758692ee26d846cfd89903185bb0e63ce"
+    },
+    {
+      "path": "evidence/3.json",
+      "kind": "evidence-artifact",
+      "id": "manual-mixed-external-reference",
+      "version": "1.0.0",
+      "sha256": "29a58083dc0de7a18669281415d5e4ee734a8fe5b5f0441a91dd01212bb638a7"
+    },
+    {
+      "path": "evidence/4.json",
+      "kind": "evidence-artifact",
+      "id": "manual-mixed-line-code",
+      "version": "1.0.0",
+      "sha256": "32d2308a791ae863c2379634436d0e9797bc4f7559d5449542be4c75b6d647ed"
+    },
+    {
+      "path": "evidence/0.json",
+      "kind": "evidence-artifact",
+      "id": "manual-mixed-plc-pressure",
+      "version": "1.0.0",
+      "sha256": "23741646980704e4d04fdd6a6d238bca4dc14fc49e090afee22525e771a2e706"
+    },
+    {
+      "path": "evidence/7.json",
+      "kind": "evidence-artifact",
+      "id": "manual-mixed-plc-write",
+      "version": "1.0.0",
+      "sha256": "3db2ca6e76beedaf6606d4724f48f3a6608df2dccb399f8498a8cbf4bce5ed30"
+    },
+    {
+      "path": "evidence/2.json",
+      "kind": "evidence-artifact",
+      "id": "manual-mixed-tag-pressure",
+      "version": "1.0.0",
+      "sha256": "28212fc42ebc745f054b9d2047d2d5d2f24a2455421b781ea85718af0781b0b9"
+    },
+    {
+      "path": "evidence/6.json",
+      "kind": "evidence-artifact",
+      "id": "manual-mixed-tag-setpoint",
+      "version": "1.0.0",
+      "sha256": "dc9003fbfe8dc4f54dbf7ae1444b7098d45a59a7a139fbf9a61c3893cdbc5b35"
+    },
+    {
+      "path": "mappings/0.json",
+      "kind": "mapping-set",
+      "id": "mixed-tank-mapping",
+      "version": "1.0.0",
+      "sha256": "e8e66ecc1ad06be6a15aa797424899d80a1fc43fe6b1d6ba1c553022d18cce73"
+    },
+    {
+      "path": "semantics/0.json",
+      "kind": "semantic-definition",
+      "id": "mixed-tank-model",
+      "version": "1.0.0",
+      "sha256": "e0b436ddd287c2de8157aad6991ec467f467d6caf5f7f0aa55e688c7a0cd02ea"
+    },
+    {
+      "path": "lifecycle/0.json",
+      "kind": "semantic-lifecycle",
+      "id": "lifecycle-fixture-1",
+      "version": "1.0.0",
+      "sha256": "7796cf313b392c3653ea4338f73a1182b16cdfb2a6f23af93011a057cf24aed1"
+    },
+    {
+      "path": "lifecycle/1.json",
+      "kind": "semantic-lifecycle",
+      "id": "lifecycle-fixture-2",
+      "version": "1.0.0",
+      "sha256": "0138b6d5c53210157e6bb5629885085c53a010ecf79bf051fc957c0fc4243aaa"
+    },
+    {
+      "path": "sources/1.json",
+      "kind": "source-definition",
+      "id": "mixed-baseline",
+      "version": "1.0.0",
+      "sha256": "34ec5f2659f362aec01f3858ea9beaa2f382ed8e15a28801cf7fe7f2dd1ee7db"
+    },
+    {
+      "path": "sources/5.json",
+      "kind": "source-definition",
+      "id": "mixed-enabled",
+      "version": "1.0.0",
+      "sha256": "d9c2474b10a0c44db3a3ef41189b45888386ac85554b57c7fd39fc603d577619"
+    },
+    {
+      "path": "sources/3.json",
+      "kind": "source-definition",
+      "id": "mixed-external-reference",
+      "version": "1.0.0",
+      "sha256": "16db28218a830a843b6cc8b9ea308053e591c99f5e19ec9b550fe62fc9cce43e"
+    },
+    {
+      "path": "sources/4.json",
+      "kind": "source-definition",
+      "id": "mixed-line-code",
+      "version": "1.0.0",
+      "sha256": "f3870f932a3d625f17e25b8d9856ecd64a5958ef87a031f2a685ff67696bd16c"
+    },
+    {
+      "path": "sources/0.json",
+      "kind": "source-definition",
+      "id": "mixed-plc-pressure",
+      "version": "1.0.0",
+      "sha256": "2b42080389cc3b4528a124704bf01e51aea4ba1447fef4e1f1136c4d710ea725"
+    },
+    {
+      "path": "sources/7.json",
+      "kind": "source-definition",
+      "id": "mixed-plc-write",
+      "version": "1.0.0",
+      "sha256": "a5bc2461932145b0d5926f4c571945f61fb7e703d4be6bfeefefaaba9633d70e"
+    },
+    {
+      "path": "sources/2.json",
+      "kind": "source-definition",
+      "id": "mixed-tag-pressure",
+      "version": "1.0.0",
+      "sha256": "322f40558ef7f880e4b7a652674affd52a80033521bcac46d5ae08eca9988b00"
+    },
+    {
+      "path": "sources/6.json",
+      "kind": "source-definition",
+      "id": "mixed-tag-setpoint",
+      "version": "1.0.0",
+      "sha256": "7c8e83025a38ce376be1c5bb4248bd3a3599bbd803295d62a85bbe444381a2eb"
+    },
+    {
+      "path": "targets/0.json",
+      "kind": "target-instance",
+      "id": "mixed-tank",
+      "version": "1.0.0",
+      "sha256": "6fc994d9741484fdf1fba781d1869aff3048d80fa58a671d8773f3dd6952147a"
+    },
+    {
+      "path": "graphs/0.json",
+      "kind": "value-graph",
+      "id": "mixed-pressure-difference",
+      "version": "1.0.0",
+      "sha256": "7df2a70bd25f17208b1ed746b251585d76fe474aa8578e6807dec8c1508d82f1"
+    },
+    {
+      "path": "writes/1.json",
+      "kind": "write-definition",
+      "id": "mixed-write-hmi",
+      "version": "1.0.0",
+      "sha256": "09d33be66cbed32787b3811936614f305d57c9ffd6d29105ae7f81954b2fc44b"
+    },
+    {
+      "path": "writes/0.json",
+      "kind": "write-definition",
+      "id": "mixed-write-plc",
+      "version": "1.0.0",
+      "sha256": "f73c0db5a06c4cf079560b03db142f7c9e5647de067f3c066c6c03c69ce958a3"
+    }
+  ]
+}

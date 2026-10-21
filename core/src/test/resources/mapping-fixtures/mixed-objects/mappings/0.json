@@ -1,0 +1,352 @@
+{
+  "kind": "mapping-set",
+  "schemaVersion": "2.2.0",
+  "id": "reuse-combined-pump-mapping",
+  "version": "1.0.0",
+  "equipmentInstanceId": "record-line-b",
+  "targetInstanceRef": {
+    "id": "reuse-combined-pump-target",
+    "version": "1.0.0"
+  },
+  "mappings": [
+    {
+      "mappingId": "reuse-combined-pump-bd01443efc4c6",
+      "memberPath": [
+        {
+          "kind": "member",
+          "memberId": "actual"
+        }
+      ],
+      "valueRef": {
+        "kind": "source",
+        "sourceRef": {
+          "id": "mixed-plc-pressure",
+          "version": "1.0.0"
+        }
+      },
+      "transform": [
+        {
+          "op": "linear",
+          "factor": "0.1",
+          "offset": "0"
+        },
+        {
+          "op": "cast",
+          "to": "Double",
+          "overflow": "error",
+          "rounding": "half-even"
+        }
+      ],
+      "outputUnit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "invalidValuePolicy": "bad-quality",
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-mixed-baseline",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-record-field-402cc6a5a2ad6fe30100d639",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-mixed-line-code",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-mixed-plc-pressure",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-mixed-external-reference",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    },
+    {
+      "mappingId": "reuse-combined-pump-bac2da24f7c00",
+      "memberPath": [
+        {
+          "kind": "member",
+          "memberId": "target"
+        }
+      ],
+      "valueRef": {
+        "kind": "source",
+        "sourceRef": {
+          "id": "record-field-402cc6a5a2ad6fe30100d639",
+          "version": "1.0.0"
+        }
+      },
+      "transform": [
+        {
+          "op": "linear",
+          "factor": "0.1",
+          "offset": "0"
+        },
+        {
+          "op": "cast",
+          "to": "Double",
+          "overflow": "error",
+          "rounding": "half-even"
+        }
+      ],
+      "outputUnit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "invalidValuePolicy": "bad-quality",
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-mixed-baseline",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-record-field-402cc6a5a2ad6fe30100d639",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-mixed-line-code",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-mixed-plc-pressure",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-mixed-external-reference",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    },
+    {
+      "mappingId": "reuse-combined-pump-bf93caca65abc",
+      "memberPath": [
+        {
+          "kind": "member",
+          "memberId": "baseline"
+        }
+      ],
+      "valueRef": {
+        "kind": "source",
+        "sourceRef": {
+          "id": "mixed-baseline",
+          "version": "1.0.0"
+        }
+      },
+      "transform": [
+        {
+          "op": "cast",
+          "to": "Double",
+          "overflow": "error",
+          "rounding": "half-even"
+        }
+      ],
+      "outputUnit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "invalidValuePolicy": "bad-quality",
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-mixed-baseline",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-record-field-402cc6a5a2ad6fe30100d639",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-mixed-line-code",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-mixed-plc-pressure",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-mixed-external-reference",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    },
+    {
+      "mappingId": "reuse-combined-pump-b08a4da8dfca3",
+      "memberPath": [
+        {
+          "kind": "member",
+          "memberId": "external"
+        }
+      ],
+      "valueRef": {
+        "kind": "source",
+        "sourceRef": {
+          "id": "mixed-external-reference",
+          "version": "1.0.0"
+        }
+      },
+      "transform": [
+        {
+          "op": "cast",
+          "to": "Double",
+          "overflow": "error",
+          "rounding": "half-even"
+        }
+      ],
+      "outputUnit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "invalidValuePolicy": "bad-quality",
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-mixed-baseline",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-record-field-402cc6a5a2ad6fe30100d639",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-mixed-line-code",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-mixed-plc-pressure",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-mixed-external-reference",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    },
+    {
+      "mappingId": "reuse-combined-pump-bea1cf591034f",
+      "memberPath": [
+        {
+          "kind": "member",
+          "memberId": "line_code"
+        }
+      ],
+      "valueRef": {
+        "kind": "source",
+        "sourceRef": {
+          "id": "mixed-line-code",
+          "version": "1.0.0"
+        }
+      },
+      "transform": [
+        {
+          "op": "cast",
+          "to": "String",
+          "overflow": "error",
+          "rounding": "half-even"
+        }
+      ],
+      "outputUnit": {
+        "status": "not-applicable"
+      },
+      "invalidValuePolicy": "bad-quality",
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-mixed-baseline",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-record-field-402cc6a5a2ad6fe30100d639",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-mixed-line-code",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-mixed-plc-pressure",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        },
+        {
+          "artifactId": "manual-mixed-external-reference",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    }
+  ]
+}

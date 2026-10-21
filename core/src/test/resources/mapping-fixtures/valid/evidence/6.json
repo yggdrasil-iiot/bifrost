@@ -1,0 +1,17 @@
+{
+  "kind": "evidence-artifact",
+  "schemaVersion": "1.0.0",
+  "id": "manual-mixed-tag-setpoint",
+  "version": "1.0.0",
+  "origin": "synthetic",
+  "file": {
+    "path": "data/manual-6.txt",
+    "sha256": "756dacceb0d63f79a7827dcb28991f4955390688045f9914f4f7de6077e150c4",
+    "mediaType": "text/plain"
+  },
+  "capturedAt": "2026-10-17T00:00:00Z",
+  "product": null,
+  "scope": [
+    "mixed-line"
+  ]
+}

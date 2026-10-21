@@ -1,0 +1,95 @@
+{
+  "type": "object",
+  "properties": {
+    "kind": {
+      "const": "evidence-artifact"
+    },
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "version": {
+      "$ref": "common.schema.json#/$defs/version"
+    },
+    "origin": {
+      "enum": [
+        "synthetic",
+        "field"
+      ]
+    },
+    "file": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "$ref": "common.schema.json#/$defs/path"
+        },
+        "sha256": {
+          "$ref": "common.schema.json#/$defs/sha256"
+        },
+        "mediaType": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "path",
+        "sha256",
+        "mediaType"
+      ],
+      "additionalProperties": false
+    },
+    "capturedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "product": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "version": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "name",
+            "version"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "scope": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1
+    }
+  },
+  "required": [
+    "kind",
+    "schemaVersion",
+    "id",
+    "version",
+    "origin",
+    "file",
+    "capturedAt",
+    "product",
+    "scope"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:tyr:contract:1.0.0:evidence-artifact"
+}

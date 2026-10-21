@@ -3,14 +3,15 @@
 Bifrost is a reference implementation that runs on one machine. This document is about the
 distance between that and a real deployment: **which scale problems are already answered, which
 are deliberately deferred, and which are open** — for the Yggdrasil spine as a whole
-(Bifrost, Heimdall, Mímir, Muninn, Huginn).
+(Bifrost, Heimdall, Mímir, Muninn, Huginn, Týr).
 
 **The rule this document follows.** A row marked *built* must point at a gate or a test that
 proves it. A row marked *deferred* must name the concrete trigger that would force the work.
 A row with neither is a wish, and wishes do not belong here.
 
 Evidence dates from **2026-09-10**, when all 23 gates were last run green (Docker 26.1.4) and
-the suites measured 601 tests in Bifrost and 242 in Huginn.
+the Huginn suite measured 242 tests. The Bifrost suite was re-measured on **2026-10-20**: 851
+tests, 237 of them for offline mapping publication; the gates were not re-run then.
 
 ---
 
@@ -51,7 +52,7 @@ what is and is not answered; read the rows for why.
 | 10 | **Certificate expiry, key rotation** | **partial** | `run-key-rotation-gate.sh` K1-K10 — a signing key rotates offline without breaking history, and an expiring certificate is announced rather than discovered. **No CA, no enrolment, and rotation is not revocation** ([detail](#10-certificate-expiry-and-key-rotation)) |
 | 11 | Audit query at scale | **measured** | `scripts/bench-ledger.sh` — growth is exactly 434 B/entry (645 signed); signature verification costs ~8× the chain walk, and anchoring is free on top of it ([detail](#11-audit-query-at-scale)). **Those numbers are for the activation ledger at roughly ten events a day. The command ledger is a different volume class — two entries per applied command — and is unmeasured** |
 | 12 | **Write-path exclusivity** | **partial** | `run-write-exclusivity-gate.sh` X1–X6 — the edge presents an X.509 identity and a server told to require it refuses a second client's write with `Bad_UserAccessDenied` while still serving its reads. A bypass **over another protocol** is now visible rather than merely acknowledged: `run-huginn-seam-gate.sh` H1–H8 reports a write to governed equipment from anything that is not the edge. **Visibility is not enforcement**, Modbus is still unenforced, and a plant's own server has to be configured — as does its network: a bypass over a protocol nobody decodes is the conduit rule's to stop, not a decoder's ([detail](#12-write-path-exclusivity), [layers](#5-conduit-inventory)) |
-| 13 | **Governed model vs vendor runtime** | **partial** | `run-model-reconciliation-gate.sh` V1-V9 — a vendor export is compared against the governed definition and divergence is reported per member, with the port carrying **granularity** so a blob product is recorded as weaker. **The comparison is built; the FETCH is not** — the export arrives as a file, nothing connects to a running product, and the projection direction does not exist ([detail](#13-governed-model-vs-vendor-runtime)) |
+| 13 | **Governed model vs vendor runtime** | **partial** | `run-model-reconciliation-gate.sh` V1-V9 — a vendor export is compared against the governed definition and divergence is reported per member, with the port carrying **granularity** so a blob product is recorded as weaker. **The comparison is built; the FETCH is not** — the export arrives as a file, nothing connects to a running product, and the projection direction does not exist. **Kepware is not adapted yet** (V8 refuses `--adapter kepware`); when it is, it arrives through Mímir's interpretation snapshot rather than a parser here ([detail](#13-governed-model-vs-vendor-runtime)) |
 
 Rows 5, 6 and 7 carry the engineering. **Rows 12 and 13 bound everything else on the board**, and
 both are now partial rather than one of them open. Row 12 is whether anything *has* to pass through
@@ -287,7 +288,7 @@ SBOM, which is described as becoming a standard artefact in 2026.
   That is a non-repudiable lifecycle record, which is the shape the CRA asks for.
 
 - **An SBOM is generated.** `mvn package` emits `target/bifrost-sbom.{json,xml}` — one
-  CycloneDX 1.6 document for the whole reactor, 40 components with licences resolved. It is a
+  CycloneDX 1.6 document for the whole reactor, 45 components with licences resolved. It is a
   build artefact, so it is not committed; it belongs attached to a release.
 
 **What is missing, plainly:**
@@ -598,6 +599,18 @@ reuse: the vendor export is normalized through the **existing** `TemplateAdapter
 compares two canonical definitions and `core` gains no new vendor knowledge. `gates
 model-reconcile` is the command; V1-V9 is the evidence.
 
+**One reader per vendor format, and it is not Bifrost.** This is a decision, not yet code: no
+vendor-configuration interpreter exists anywhere in the spine. When Kepware or another vendor
+format is added, it is interpreted once, by Mímir — the component that reads what already runs in
+the plant — and published as an interpretation snapshot that Týr and Bifrost both consume. Bifrost
+will bundle a copy of that schema and verify the snapshot's pins and closure — that it refers to
+exact bytes under a declared interpreter profile — but not that the interpretation is right. For
+this row the cost is smaller than it looks: if the governed definition was itself adopted from an
+earlier snapshot by the same interpreter, a misreading is present on both sides and cancels in the
+question *did it change*. This is a tendency, not a guarantee — a misreading that hides the change
+itself is not caught. It does not cancel in *is the governed definition what the plant means*, and
+that question was never this row's.
+
 **Three limits, all of them structural rather than temporary.**
 
 **The fetch is not built.** Nothing here connects to a running Kepware, Ignition or ThingWorx —
@@ -606,7 +619,8 @@ licensing the sentence "it reconciles against the vendor", which would be false.
 arrives as a **file**, which is what a Composer export, an Ignition `tags/export` and a Kepware
 `GET` all produce, and what [`ADOPTION.md`](ADOPTION.md) phase 2 already asks for: read the copy
 back, read-only, the same way the traffic side is handled. It is structurally what Huginn does with
-a pcap — the artifact is handed over and the tool is offline.
+a pcap — the artifact is handed over and the tool is offline. If the fetch is built, it belongs to
+Mímir for the same reason the parse does: it is the read side of the plant.
 
 **There is no identity check, and there cannot be one.** `TemplateAdapter.adapt(external, ref,
 version)` takes the identity as parameters because the external document does not carry Bifrost's.
@@ -632,6 +646,97 @@ next to the conduit list, not in a design assumption.
 Row 8 is the neighbouring concern and a different one: it is about *ingesting* heterogeneous
 vendors at all. This row is about keeping the governed model and the vendor's copy in agreement
 once both exist.
+
+### After adoption: changes made in the collection tool
+
+*Status: designed, not built. Trigger: the first set of real collection-tool configuration exports.*
+
+**Design assumptions.** Collection configuration keeps being edited in the collection tool, and
+the design assumes those edits happen in planned stops, because a line stop is the outcome to avoid.
+The design asks nothing new of people on the floor — no new tool to learn, nothing to configure —
+but until a resident collector exists, stage 0 relies on exports someone hands over, so it has a
+person in it. Read-only information is the only thing added for them.
+
+**Non-blocking staged workflow.** The design is post-hoc and non-blocking, structured in stages
+that are each useful on their own:
+- **Stage 0 (keep):** Immutable copies of configuration snapshots with hashes, captured raw before
+  any interpretation. Nothing visible changes for operators.
+- **Stage 1 (give back first):** The diff between snapshots becomes an automatic change history
+  recording when and what changed (who changed it is often unknown), rollback candidates grouped by
+  planned stop, value lineage, and differences between instances derived from the same template. Any
+  value-history feature the collection tool already provides stays; this capability sits next to it.
+- **Stage 2 (compare after the fact):** Each change is classified as outside the canonical scope
+  (retained for history only), a change of canonical meaning (sent to the meaning owner), or a new
+  write-back (recorded as a declared write path; nothing in Bifrost can receive it yet (see §5), so it
+  is visible, not enforced). A configuration change and a runtime outage (such as missing values or a
+  stopped collector) are different events and are shown differently.
+- **Stage 3 (impact preview):** Impact previews are shown only when they can be produced without
+  asking operators to do anything.
+
+**Semantic ownership.** There are two owner roles. They are separate decision rights, and one
+person may hold both, but their decisions and their absence are recorded separately. The model
+owner is on the producing side: owns the registry definitions (access, templates, their
+applications) and submits changes; this is ADOPTION's model owner. The meaning owner is on the
+consuming side, assigned per canonical domain: the contract counterpart, who judges a change as
+accept (update the canonical model), request a rollback, or irrelevant, and approves. Plant-level
+differences are configuration, not ownership. ADOPTION's "no model owner emerges: stop" applies to
+the model owner and stops phase 1. A missing or slow meaning owner does not stop the plant: a change with
+no decision by the next planned stop stays "unreviewed" (a growing unreviewed count is the measure
+of a missing meaning owner), stages 0 and 1 continue, and the adoption ladder (phase 2 to 3) does
+not advance.
+Where no projection path exists, authority stands on judgment, not on the direction of flow:
+acceptance without an owner is the "opposite of the intent" named above; acceptance by an owner is
+ADOPTION phase 2's finding that the model was wrong. Still open: whether a growing unreviewed count
+should stop the ladder outright, and who arbitrates when the two owners disagree.
+
+**Operator view.** The operator view is strictly read-only inside the OT network: a list of cards
+per planned stop, one search box for lineage, a runtime status band, a one-line notification with a
+link on an existing channel, and no buttons. Rollback stays what operators already do: re-importing
+a saved export into the collection tool. This side never writes to the collection tool.
+
+**Documented limits.** Reading only does not by itself prove the collector is unaffected. A
+provided export is not proof that it is the running configuration. The snapshot before the change
+is a rollback candidate, not proof of a good state. None of this is built.
+
+### Where an application platform sits
+
+*Status: designed, not built. Trigger: a platform CI pipeline to attach to, and one contract shape agreed with its owners.*
+
+**Structural alignment.** An application platform such as ThingWorx models assets as Thing Shapes
+(properties, services, events), Thing Templates (which group shapes), and Things. Its shapes and
+templates overlap the canonical model; its services are application logic.
+
+**Placement chosen.** Meaning (identity, units, what a value means, quality) stays in the canonical
+model; the application model (services, screens, objects served to MES) stays in the platform. The
+platform's developers keep working in the platform.
+
+**Shape projection.** To avoid asking developers to annotate every property, the canonical model is
+projected as generated Thing Shapes. Model Tags in ThingWorx attach to entities such as shapes and
+templates, not to individual properties, so the canonical identifier rides on the shape's model tag
+and the property meanings come with the generated shape
+([Model Tags](https://support.ptc.com/help/thingworx/platform/r9.6/en/ThingWorx/Help/Composer/Tags/Tags.html),
+checked 2026-10-21). Developers implement the shape on their templates, which is the platform
+vendor's own recommended practice
+([Shapes/Templates practice](https://support.ptc.com/help/thingworx/platform/r9.6/en/ThingWorx/Help/Best_Practices_for_Developing_Applications/ThingsThingTemplatesThingShapes.html),
+checked 2026-10-21).
+
+**Scope boundaries.** Only shapes that cross an organisational boundary (for example objects served
+to MES or compared across plants) are in scope. Internal and presentation properties are free.
+
+**Pipeline integration and verification.** The check runs as one quality gate in the platform's
+existing CI/CD pipeline, reading its packages or source-control exports. It starts in report-only
+mode; blocking applies later and only to contract shapes agreed with the platform owners. Canonical
+changes ship as a new semantically versioned shape package through the platform's normal upgrade
+path. Direct edits in production are caught by comparing read-only exports, using the same verify
+direction this section already describes, at whole-entity granularity with per-member findings.
+
+**Model preservation.** A benefit is that meaning survives a change of platform or
+vendor.
+
+**Documented limits.** The projection that generates shapes, and an adapter that reads the
+platform's exports, do not exist yet; this repository's adapters today are Ignition, CFIHOS and AAS.
+The generated output is a package handed over to the platform's own process, not a write into a
+running system.
 
 ---
 

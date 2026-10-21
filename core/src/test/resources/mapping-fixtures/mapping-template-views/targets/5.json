@@ -1,0 +1,35 @@
+{
+  "kind": "target-instance",
+  "schemaVersion": "2.0.0",
+  "id": "reuse-view-melsec-target",
+  "version": "1.0.0",
+  "equipmentInstanceId": "line-a-motor-melsec",
+  "label": "재사용 워드·비트",
+  "semanticDefinitionRef": {
+    "id": "reuse-view-melsec-r1-model",
+    "version": "1.0.0"
+  },
+  "evidenceRefs": [
+    {
+      "artifactId": "manual-a07-melsec-alarm-alias",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    },
+    {
+      "artifactId": "manual-a07-melsec-word",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    },
+    {
+      "artifactId": "manual-a07-melsec-alarm",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    }
+  ]
+}

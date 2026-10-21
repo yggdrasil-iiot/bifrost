@@ -1,0 +1,160 @@
+{
+  "type": "object",
+  "properties": {
+    "kind": {
+      "const": "template-application"
+    },
+    "schemaVersion": {
+      "const": "2.19.0"
+    },
+    "id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "version": {
+      "$ref": "common.schema.json#/$defs/version"
+    },
+    "applicationId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,39}$"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 256
+    },
+    "previousApplicationRef": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "common.schema.json#/$defs/id"
+            },
+            "version": {
+              "$ref": "common.schema.json#/$defs/version"
+            },
+            "sha256": {
+              "$ref": "common.schema.json#/$defs/sha256"
+            }
+          },
+          "required": [
+            "id",
+            "version",
+            "sha256"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "templateRef": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "version": {
+          "$ref": "common.schema.json#/$defs/version"
+        },
+        "sha256": {
+          "$ref": "common.schema.json#/$defs/sha256"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "sha256"
+      ],
+      "additionalProperties": false
+    },
+    "equipmentInstanceId": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "targetLabel": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "bindings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "slotId": {
+            "type": "string"
+          },
+          "sourceRef": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "common.schema.json#/$defs/id"
+              },
+              "version": {
+                "$ref": "common.schema.json#/$defs/version"
+              }
+            },
+            "required": [
+              "id",
+              "version"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "slotId",
+          "sourceRef"
+        ],
+        "additionalProperties": false
+      },
+      "maxItems": 32,
+      "minItems": 1
+    },
+    "sourceSnapshots": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "maxItems": 128,
+      "minItems": 1
+    },
+    "generated": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "maxItems": 67,
+      "minItems": 3
+    },
+    "authoredBy": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "authoredAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "kind",
+    "schemaVersion",
+    "id",
+    "version",
+    "applicationId",
+    "revision",
+    "previousApplicationRef",
+    "templateRef",
+    "equipmentInstanceId",
+    "targetLabel",
+    "bindings",
+    "sourceSnapshots",
+    "generated",
+    "authoredBy",
+    "authoredAt"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:tyr:contract:2.19.0:template-application"
+}

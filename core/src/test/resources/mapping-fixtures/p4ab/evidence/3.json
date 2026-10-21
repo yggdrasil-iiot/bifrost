@@ -1,0 +1,17 @@
+{
+  "kind": "evidence-artifact",
+  "schemaVersion": "1.0.0",
+  "id": "manual-imp-review-base-pressure-mel",
+  "version": "1.0.0",
+  "origin": "synthetic",
+  "file": {
+    "path": "data/manual-3.txt",
+    "sha256": "e89dd5a6086f08910e3774c3062044cd052140a3fff81951cb361411e5561e9d",
+    "mediaType": "text/plain"
+  },
+  "capturedAt": "2026-10-17T00:00:00Z",
+  "product": null,
+  "scope": [
+    "import-line"
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "kind": "source-definition",
+  "schemaVersion": "2.10.0",
+  "id": "a07-ua-alarm",
+  "version": "1.0.0",
+  "equipmentInstanceId": "line-a-motor-ua",
+  "connectionProfileRef": "logical-ua",
+  "accessProfileRef": "s7-1500-opcua-v1",
+  "status": "ready",
+  "rawAddressText": "nsu=urn:tyr:sample:s7-1500;s=Motor.Mode",
+  "addressRadix": null,
+  "access": {
+    "kind": "opcua-node",
+    "namespaceUri": "urn:tyr:sample:s7-1500",
+    "identifierType": "string",
+    "identifier": "Motor.Mode"
+  },
+  "rawRepresentation": {
+    "mode": "typed",
+    "valueType": "UInt16"
+  },
+  "inputStage": "already-engineered",
+  "unit": {
+    "status": "not-applicable"
+  },
+  "evidenceRefs": [
+    {
+      "artifactId": "manual-a07-ua-alarm",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    }
+  ],
+  "viewOf": {
+    "id": "a07-ua-word",
+    "version": "1.0.0"
+  },
+  "sourceKind": "plc",
+  "accessMode": "read",
+  "view": {
+    "kind": "bit",
+    "bitIndex": 15
+  }
+}

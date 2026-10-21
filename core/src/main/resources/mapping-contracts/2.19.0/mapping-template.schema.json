@@ -1,0 +1,202 @@
+{
+  "type": "object",
+  "properties": {
+    "kind": {
+      "const": "mapping-template"
+    },
+    "schemaVersion": {
+      "const": "2.19.0"
+    },
+    "id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "version": {
+      "$ref": "common.schema.json#/$defs/version"
+    },
+    "label": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 4096
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "authoredBy": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "authoredAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "previousTemplateRef": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "common.schema.json#/$defs/id"
+            },
+            "version": {
+              "$ref": "common.schema.json#/$defs/version"
+            },
+            "sha256": {
+              "$ref": "common.schema.json#/$defs/sha256"
+            }
+          },
+          "required": [
+            "id",
+            "version",
+            "sha256"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "slots": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "slotId": {
+            "type": "string",
+            "pattern": "^input-[1-9][0-9]*$"
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "sourceRef": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "common.schema.json#/$defs/id"
+              },
+              "version": {
+                "$ref": "common.schema.json#/$defs/version"
+              }
+            },
+            "required": [
+              "id",
+              "version"
+            ],
+            "additionalProperties": false
+          },
+          "signature": {
+            "type": "object",
+            "properties": {
+              "rawRepresentation": {
+                "type": "object",
+                "properties": {
+                  "valueType": {
+                    "enum": [
+                      "Boolean",
+                      "String",
+                      "Int16",
+                      "UInt16",
+                      "Int32",
+                      "UInt32",
+                      "Int64",
+                      "Float32",
+                      "Float64",
+                      "Double",
+                      "Decimal",
+                      "FixedArray"
+                    ]
+                  }
+                },
+                "required": [
+                  "valueType"
+                ],
+                "additionalProperties": false
+              },
+              "unit": {
+                "$ref": "common.schema.json#/$defs/unit"
+              },
+              "inputStage": {
+                "enum": [
+                  "raw",
+                  "already-engineered"
+                ]
+              },
+              "fixedArray": {
+                "anyOf": [
+                  {
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "rawRepresentation",
+              "unit",
+              "inputStage",
+              "fixedArray"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "slotId",
+          "label",
+          "sourceRef",
+          "signature"
+        ],
+        "additionalProperties": false
+      },
+      "maxItems": 32,
+      "minItems": 1
+    },
+    "model": {
+      "type": "object"
+    },
+    "target": {
+      "type": "object"
+    },
+    "graphs": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "maxItems": 64,
+      "minItems": 0
+    },
+    "mapping": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "kind",
+    "schemaVersion",
+    "id",
+    "version",
+    "label",
+    "description",
+    "reason",
+    "authoredBy",
+    "authoredAt",
+    "previousTemplateRef",
+    "slots",
+    "model",
+    "target",
+    "graphs",
+    "mapping"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:tyr:contract:2.19.0:mapping-template"
+}

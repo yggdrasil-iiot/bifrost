@@ -1,0 +1,94 @@
+{
+  "kind": "write-definition",
+  "schemaVersion": "2.7.0",
+  "id": "mixed-write-plc",
+  "version": "1.0.0",
+  "equipmentInstanceId": "mixed-line",
+  "targetInstanceRef": {
+    "id": "mixed-tank",
+    "version": "1.0.0"
+  },
+  "memberPath": [
+    {
+      "kind": "member",
+      "memberId": "setpoint"
+    }
+  ],
+  "destinationRef": {
+    "id": "mixed-plc-write",
+    "version": "1.0.0"
+  },
+  "transform": [
+    {
+      "op": "linear",
+      "factor": "10",
+      "offset": "0"
+    },
+    {
+      "op": "cast",
+      "to": "UInt16",
+      "rounding": "exact",
+      "overflow": "error"
+    }
+  ],
+  "execution": "excluded",
+  "invalidValuePolicy": "reject",
+  "evidenceRefs": [
+    {
+      "artifactId": "manual-mixed-plc-pressure",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    },
+    {
+      "artifactId": "manual-mixed-baseline",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    },
+    {
+      "artifactId": "manual-mixed-tag-pressure",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    },
+    {
+      "artifactId": "manual-mixed-external-reference",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    },
+    {
+      "artifactId": "manual-mixed-line-code",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    },
+    {
+      "artifactId": "manual-mixed-enabled",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    },
+    {
+      "artifactId": "manual-mixed-tag-setpoint",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    },
+    {
+      "artifactId": "manual-mixed-plc-write",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    }
+  ]
+}

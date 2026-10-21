@@ -1,0 +1,17 @@
+{
+  "kind": "evidence-artifact",
+  "schemaVersion": "1.0.0",
+  "id": "manual-mixed-plc-pressure",
+  "version": "1.0.0",
+  "origin": "synthetic",
+  "file": {
+    "path": "data/manual-0.txt",
+    "sha256": "c3e7281bb14fba66ef12912c8e075f08ce9dd35fc60ccd85d4f91143f7cd14dd",
+    "mediaType": "text/plain"
+  },
+  "capturedAt": "2026-10-17T00:00:00Z",
+  "product": null,
+  "scope": [
+    "record-line-b"
+  ]
+}
