@@ -508,11 +508,15 @@ to do it. The second is Modbus/TCP, where there is no identity to present and ex
 network position.
 
 **And row 10 now bites rather than blocks.** The certificate exists, so the objection is no longer
-"there is nothing to require"; it is that this certificate is self-signed, permanent, and trusted by
-a fixed thumbprint, with no rotation, no revocation and no GDS ([§6](#6-identity-lifecycle)). The
-sim accepts any *application* certificate and lets the thumbprint predicate decide, which is the
-same missing PKI seen from the other side. That is the concrete reason row 10's trigger fires
-*inside* a rollout rather than after it (see [`ADOPTION.md`](ADOPTION.md)).
+"there is nothing to require"; it is that this certificate is self-signed and trusted by a fixed
+thumbprint, with no revocation, no CA, no GDS, and no enrolment ([§6](#6-identity-lifecycle)).
+§10 of the same document records that `EdgeIdentity renew` is an operator command. Renewal is
+manual: it keeps the predecessor, prints both thumbprints, the successor thumbprint changes and
+must reach the server out of band, added to the server's trust list before the edge restarts
+([§10](#10-certificate-expiry-and-key-rotation)). The sim accepts any *application* certificate
+and lets the thumbprint predicate decide, which is the same missing PKI seen from the other side.
+That is the concrete reason row 10's trigger fires *inside* a rollout rather than after it (see
+[`ADOPTION.md`](ADOPTION.md)).
 
 The honest consequence still bounds every claim above it: **an edge in the path without an exclusive
 write credential governs the cooperating clients and nothing else** — and that remains the default,
@@ -708,7 +712,10 @@ templates overlap the canonical model; its services are application logic.
 
 **Placement chosen.** Meaning (identity, units, what a value means, quality) stays in the canonical
 model; the application model (services, screens, objects served to MES) stays in the platform. The
-platform's developers keep working in the platform.
+canonical model carries semantic IDs and references to them; the dictionary that defines what those
+IDs mean belongs to the enterprise catalog; Bifrost admits, versions and records the definitions
+that refer to it. No field in a definition points to a catalog entry yet. The platform's developers
+keep working in the platform.
 
 **Shape projection.** To avoid asking developers to annotate every property, the canonical model is
 projected as generated Thing Shapes. Model Tags in ThingWorx attach to entities such as shapes and
