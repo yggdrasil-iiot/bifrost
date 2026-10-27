@@ -36,7 +36,7 @@
     </dependency>
 
     <!-- Browse/read client used only by the TDD test that verifies MixerType's server-side
-         wiring (members + EURange) from the outside, mirroring how a future Mímir client would. -->
+         wiring (members + EURange) from the outside, mirroring how a future Mimir client would. -->
     <dependency>
       <groupId>org.eclipse.milo</groupId>
       <artifactId>milo-sdk-client</artifactId>

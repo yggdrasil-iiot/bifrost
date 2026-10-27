@@ -5,7 +5,7 @@ import java.nio.file.*;
 import com.fasterxml.jackson.databind.JsonNode;
 import static dev.krillin.bifrost.core.mapping.MappingJson.*;
 
-/** File/JSON only mapping contract gate. Approval keys are operator CLI inputs, never a Týr API field. */
+/** File/JSON only mapping contract gate. Approval keys are operator CLI inputs, never a Tyr API field. */
 public final class MappingGate {
     private MappingGate(){}
     public static int run(String[] a){
