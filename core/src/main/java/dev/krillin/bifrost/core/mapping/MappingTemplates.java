@@ -5,7 +5,7 @@ import java.util.*;
 import java.time.OffsetDateTime;
 import static dev.krillin.bifrost.core.mapping.MappingJson.*;
 
-/** Independent recipe compiler/receiver. Consumes wire records only; never invokes Týr. */
+/** Independent recipe compiler/receiver. Consumes wire records only; never invokes Tyr. */
 final class MappingTemplates {
  static final Set<String> KINDS=Set.of("mapping-template","template-application");
  static String key(JsonNode d){return text(d,"kind")+":"+text(d,"id")+"@"+text(d,"version");}

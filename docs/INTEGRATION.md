@@ -50,7 +50,7 @@ There are two planes, and this project lives almost entirely in one of them.
 - **The control plane** — a git registry that owns the canonical model, its versions, its
   conformance policy, its command authorization, and the ledger of which version is active where.
   **Nothing on the data plane owns any of that today**, which is the gap the project exists for.
-  Týr, a design-time authoring tool, sits on this plane; it adds nothing to the data plane. The
+  Tyr (Týr), a design-time authoring tool, sits on this plane; it adds nothing to the data plane. The
   registry owns the canonical model's definitions and versions but not the semantic dictionary the
   definitions point to, which belongs to the enterprise catalog.
 
@@ -76,9 +76,9 @@ that is not automated — see [what is not built](#what-is-not-built).*
 | Boundary | Initiator | Protocol | Owned by |
 |---|---|---|---|
 | PLC → OPC-UA server | the server polls | PLC-native (S7, EtherNet/IP, Modbus/TCP) | **vendor** — Kepware, Ignition |
-| OPC-UA server → Mímir | Mímir browses, design-time | **OPC-UA** (Eclipse Milo) | this project |
-| Týr → registry | a person carries a file (a mapping proposal with a pinned evidence bundle) | **file** — `gates mapping validate / approve / publish`, no live connection | this project |
-| vendor configuration → Mímir → Týr / registry | planned (a decision, not yet code) — Mímir interprets a vendor configuration it is handed | **file** — an interpretation snapshot published for Týr and Bifrost to consume; no interpreter exists yet | this project |
+| OPC-UA server → Mimir (Mímir) | Mimir browses, design-time | **OPC-UA** (Eclipse Milo) | this project |
+| Tyr → registry | a person carries a file (a mapping proposal with a pinned evidence bundle) | **file** — `gates mapping validate / approve / publish`, no live connection | this project |
+| vendor configuration → Mimir → Tyr / registry | planned (a decision, not yet code) — Mimir interprets a vendor configuration it is handed | **file** — an interpretation snapshot published for Tyr and Bifrost to consume; no interpreter exists yet | this project |
 | OPC-UA server → Muninn | Muninn reads, runtime | **OPC-UA** (Eclipse Milo) | this project |
 | Muninn → broker | Muninn publishes | **MQTT / Sparkplug B** (Eclipse Tahu + Paho) | this project |
 | broker → consumers | the consumer subscribes | **MQTT / Sparkplug B** | **the consumer** — historian, MES, SCADA, cloud |

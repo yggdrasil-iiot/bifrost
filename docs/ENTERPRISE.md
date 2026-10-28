@@ -3,7 +3,7 @@
 Bifrost is a reference implementation that runs on one machine. This document is about the
 distance between that and a real deployment: **which scale problems are already answered, which
 are deliberately deferred, and which are open** — for the Yggdrasil spine as a whole
-(Bifrost, Heimdall, Mímir, Muninn, Huginn, Týr).
+(Bifrost, Heimdall, Mimir (Mímir), Muninn, Huginn, Tyr (Týr)).
 
 **The rule this document follows.** A row marked *built* must point at a gate or a test that
 proves it. A row marked *deferred* must name the concrete trigger that would force the work.
@@ -52,7 +52,7 @@ what is and is not answered; read the rows for why.
 | 10 | **Certificate expiry, key rotation** | **partial** | `run-key-rotation-gate.sh` K1-K10 — a signing key rotates offline without breaking history, and an expiring certificate is announced rather than discovered. **No CA, no enrolment, and rotation is not revocation** ([detail](#10-certificate-expiry-and-key-rotation)) |
 | 11 | Audit query at scale | **measured** | `scripts/bench-ledger.sh` — growth is exactly 434 B/entry (645 signed); signature verification costs ~8× the chain walk, and anchoring is free on top of it ([detail](#11-audit-query-at-scale)). **Those numbers are for the activation ledger at roughly ten events a day. The command ledger is a different volume class — two entries per applied command — and is unmeasured** |
 | 12 | **Write-path exclusivity** | **partial** | `run-write-exclusivity-gate.sh` X1–X6 — the edge presents an X.509 identity and a server told to require it refuses a second client's write with `Bad_UserAccessDenied` while still serving its reads. A bypass **over another protocol** is now visible rather than merely acknowledged: `run-huginn-seam-gate.sh` H1–H8 reports a write to governed equipment from anything that is not the edge. **Visibility is not enforcement**, Modbus is still unenforced, and a plant's own server has to be configured — as does its network: a bypass over a protocol nobody decodes is the conduit rule's to stop, not a decoder's ([detail](#12-write-path-exclusivity), [layers](#5-conduit-inventory)) |
-| 13 | **Governed model vs vendor runtime** | **partial** | `run-model-reconciliation-gate.sh` V1-V9 — a vendor export is compared against the governed definition and divergence is reported per member, with the port carrying **granularity** so a blob product is recorded as weaker. **The comparison is built; the FETCH is not** — the export arrives as a file, nothing connects to a running product, and the projection direction does not exist. **Kepware is not adapted yet** (V8 refuses `--adapter kepware`); when it is, it arrives through Mímir's interpretation snapshot rather than a parser here ([detail](#13-governed-model-vs-vendor-runtime)) |
+| 13 | **Governed model vs vendor runtime** | **partial** | `run-model-reconciliation-gate.sh` V1-V9 — a vendor export is compared against the governed definition and divergence is reported per member, with the port carrying **granularity** so a blob product is recorded as weaker. **The comparison is built; the FETCH is not** — the export arrives as a file, nothing connects to a running product, and the projection direction does not exist. **Kepware is not adapted yet** (V8 refuses `--adapter kepware`); when it is, it arrives through Mimir's interpretation snapshot rather than a parser here ([detail](#13-governed-model-vs-vendor-runtime)) |
 
 Rows 5, 6 and 7 carry the engineering. **Rows 12 and 13 bound everything else on the board**, and
 both are now partial rather than one of them open. Row 12 is whether anything *has* to pass through
@@ -605,8 +605,8 @@ model-reconcile` is the command; V1-V9 is the evidence.
 
 **One reader per vendor format, and it is not Bifrost.** This is a decision, not yet code: no
 vendor-configuration interpreter exists anywhere in the spine. When Kepware or another vendor
-format is added, it is interpreted once, by Mímir — the component that reads what already runs in
-the plant — and published as an interpretation snapshot that Týr and Bifrost both consume. Bifrost
+format is added, it is interpreted once, by Mimir — the component that reads what already runs in
+the plant — and published as an interpretation snapshot that Tyr and Bifrost both consume. Bifrost
 will bundle a copy of that schema and verify the snapshot's pins and closure — that it refers to
 exact bytes under a declared interpreter profile — but not that the interpretation is right. For
 this row the cost is smaller than it looks: if the governed definition was itself adopted from an
@@ -624,7 +624,7 @@ arrives as a **file**, which is what a Composer export, an Ignition `tags/export
 `GET` all produce, and what [`ADOPTION.md`](ADOPTION.md) phase 2 already asks for: read the copy
 back, read-only, the same way the traffic side is handled. It is structurally what Huginn does with
 a pcap — the artifact is handed over and the tool is offline. If the fetch is built, it belongs to
-Mímir for the same reason the parse does: it is the read side of the plant.
+Mimir for the same reason the parse does: it is the read side of the plant.
 
 **There is no identity check, and there cannot be one.** `TemplateAdapter.adapt(external, ref,
 version)` takes the identity as parameters because the external document does not carry Bifrost's.

@@ -398,7 +398,7 @@ final class EmbeddedMiloSim implements AutoCloseable {
         /**
          * MixerType ObjectType (ns=2;s=MixerType): a Mixer's members (Rpm, Temp, Running, Secret)
          * plus EURange engineering-range properties on the numeric members (Rpm, Temp). Exposed so a
-         * future northbound "Mímir" app can browse the TYPE (not an instance) to derive a canonical
+         * future northbound "Mimir" app can browse the TYPE (not an instance) to derive a canonical
          * spec definition.
          */
         private void createMixerType() {

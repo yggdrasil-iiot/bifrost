@@ -15,7 +15,7 @@ import java.util.stream.*;
 import static dev.krillin.bifrost.core.mapping.MappingJson.*;
 import static org.junit.jupiter.api.Assertions.*;
 
-/** Real wire package + real registered Ed25519 keys + real files; no Python or Týr code. */
+/** Real wire package + real registered Ed25519 keys + real files; no Python or Tyr code. */
 class MappingSemanticLifecycleTest {
     @TempDir Path tmp;
     Path bundle,registry,proposerKey,approverKey;

@@ -6,7 +6,7 @@ import java.time.OffsetDateTime;
 import java.util.*;
 import static dev.krillin.bifrost.core.mapping.MappingJson.*;
 
-/** Independent review/three-way data-contract verifier. No Týr code or parser execution. */
+/** Independent review/three-way data-contract verifier. No Tyr code or parser execution. */
 final class MappingImportWorkflow {
  static final Set<String> IMMUTABLE=Set.of("kind","id","version","equipmentInstanceId","status","evidenceRefs");
  static JsonNode canonical(JsonNode n){

@@ -1,6 +1,6 @@
 # Offline mapping publication
 
-Bifrost independently validates a Týr proposal and submission 2.9 envelope, including pinned equipment/connection context and the complete evidence inventory. Bundled schemas are wire data copies; Týr code is neither imported nor invoked.
+Bifrost independently validates a Tyr (Týr) proposal and submission 2.9 envelope, including pinned equipment/connection context and the complete evidence inventory. Bundled schemas are wire data copies; Tyr code is neither imported nor invoked.
 
 The gates jar dispatches mapping validate/diff/approve/publish/status. Approval requires distinct registered Ed25519 keys plus deny-by-default policy. A new publish action applies to target mapping-publication, kind mapping-release, ref streamId. Existing activation grants do not grant mapping publication.
 
@@ -19,14 +19,14 @@ Every mapping/graph must include the evidence of the entire parent chain. Change
 
 The capability family remains bifrost-mapping-v1 and the signed envelopes remain 2.9.0. This family string alone is not a schema-version negotiation: an older receiver without 2.10.0 resources must refuse such documents.
 
-Data-only fixtures live in core/src/test/resources/mapping-fixtures/a07. The independent Java suite checks the valid four-profile publication plus 12 resealed negative view mutations. The measured A07 mapping/CLI run is 60 tests (58 core + 2 CLI), including the prior mapping cases; this is not a new whole-reactor count. Maven package and these tests ran offline. No Týr Python/JavaScript code is shared or invoked.
+Data-only fixtures live in core/src/test/resources/mapping-fixtures/a07. The independent Java suite checks the valid four-profile publication plus 12 resealed negative view mutations. The measured A07 mapping/CLI run is 60 tests (58 core + 2 CLI), including the prior mapping cases; this is not a new whole-reactor count. Maven package and these tests ran offline. No Tyr Python/JavaScript code is shared or invoked.
 
 
 ## Bounded math graph 2.11.0
 
 The bundled value-graph/common schemas retain all 2.5.0 nodes and add sqrt and clamp. The independent receiver checks numeric input, dimensionless sqrt, equal known input/output units and ordered exact decimal clamp bounds. Schema validation fixes sqrt precision to 34 and rounding to half-even. Older graph versions cannot carry these operations.
 
-Java validates the declared graph; Týr evaluates virtual samples. Approval and immutable file publication bind the complete graph bytes without executing device reads, SQL or writes. Workspace, proposal and signed 2.9.0 envelope formats remain unchanged. An older receiver without 2.11.0 resources must refuse the new graph version. Data-only p3cb fixtures and boundedMath tests cover independent acceptance/publication, reversed bounds, dimensional sqrt and old-version refusal.
+Java validates the declared graph; Tyr evaluates virtual samples. Approval and immutable file publication bind the complete graph bytes without executing device reads, SQL or writes. Workspace, proposal and signed 2.9.0 envelope formats remain unchanged. An older receiver without 2.11.0 resources must refuse the new graph version. Data-only p3cb fixtures and boundedMath tests cover independent acceptance/publication, reversed bounds, dimensional sqrt and old-version refusal.
 
 
 ## Logical structures 2.12.0
@@ -47,7 +47,7 @@ Publication still binds immutable JSON/file evidence and does not decode native 
 
 The bundled graph/common schemas add add/multiply/divide with named left/right inputs and Decimal output. The independent Java receiver accepts only explicit linear-unit cases: same-unit addition, multiplication with at least one dimensionless input, division by dimensionless input or a same-unit ratio. Unknown/not-applicable units, Cel/K and unsupported products/inverse dimensions are refused. Divide requires precision 34 and half-even. Existing schemas and 2.9 submission/approval/release envelopes remain unchanged.
 
-Bifrost validates definitions, references, types, units, policy and evidence closure, then signs/publishes files. It does not execute arithmetic samples, read a PLC or establish absence of a zero denominator at runtime. Týr's virtual preview separately diagnoses zero division and precision/final cast loss. General expressions/dimensional inference/temperature deltas, physical field meaning and runtime activation remain separate.
+Bifrost validates definitions, references, types, units, policy and evidence closure, then signs/publishes files. It does not execute arithmetic samples, read a PLC or establish absence of a zero denominator at runtime. Tyr's virtual preview separately diagnoses zero division and precision/final cast loss. General expressions/dimensional inference/temperature deltas, physical field meaning and runtime activation remain separate.
 
 
 ## Registry-wide semantic catalog

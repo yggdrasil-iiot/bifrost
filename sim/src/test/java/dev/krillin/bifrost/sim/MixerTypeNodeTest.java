@@ -31,7 +31,7 @@ import org.junit.jupiter.api.Test;
  * member variables (Rpm, Temp, Running, Secret) via HasComponent, with correct DataTypes, and
  * that the numeric members (Rpm, Temp) additionally expose an EURange property (via HasProperty)
  * with the expected engineering range. This mirrors exactly the browse/read wiring a future
- * Mímir client would rely on to derive a canonical definition from the type node alone.
+ * Mimir client would rely on to derive a canonical definition from the type node alone.
  */
 class MixerTypeNodeTest {
 

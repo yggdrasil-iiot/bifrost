@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # CHUNK-5 ACCEPTANCE GATE (the ONE end-to-end integration gate): compose the three
 # separately-built, ZERO-shared-code sibling repos to prove the northbound governance spine
-# end-to-end — a "Line1 Mixer" flows Mímir(model) → Bifrost(govern) → Muninn(feed UNS):
+# end-to-end — a "Line1 Mixer" flows Mimir(model) → Bifrost(govern) → Muninn(feed UNS):
 #
 #   ../mimir/target/mimir.jar            — the modeler: live OPC-UA browse -> canonical UdtDefinition
 #   gates/target/bifrost-gates.jar       — the governor: ① schema-compat, master-spec conformance,

@@ -21,6 +21,9 @@ jobs:
         with:
           fetch-depth: 0            # the provenance gate reads git history
 
+      - name: Product names in ASCII
+        run: bash scripts/check-ascii-names.sh
+
       - uses: actions/setup-java@v4
         with:
           java-version: '17'

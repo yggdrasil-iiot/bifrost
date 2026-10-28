@@ -35,7 +35,7 @@ Two independent governed models, with distinct owners and lifecycles:
 | **Equipment** | *what exists* — the type of a piece of equipment | `UdtDefinition` (AAS-aligned, SemVer'd) | `gates schema` — compatibility (rejects breaking changes) |
 | **Process spec** | *how it must run* — admissible ranges, recipes, setpoints | `MasterSpec` + `ConformancePolicy` | `gates spec` / `gates template` — conformance |
 
-Bifrost is the **registry-of-record**: it admits, versions, seals, and activates. Sibling apps only *propose* (Mímir derives models), *author* (people write and review mappings between per-PLC access definitions and higher-level meaning in [Týr](https://github.com/yggdrasil-iiot/tyr) and submit them as files, which the `mapping` gate validates, approves and publishes; Týr creates no approval authority of its own), or *consume* (Muninn feeds the UNS); Bifrost remains the authority, and the apps share **zero code** — they compose only through the governed data/wire contract. Bifrost's authority is over definitions: admitting, versioning, sealing and activating them, and the record of that. The semantic dictionary those definitions point to (the home of semantic IDs) belongs to the enterprise catalog, outside Yggdrasil; Bifrost does not own the dictionary, it governs definitions that refer to it. A link from a definition to a catalog entry is not built.
+Bifrost is the **registry-of-record**: it admits, versions, seals, and activates. Sibling apps only *propose* (Mimir derives models), *author* (people write and review mappings between per-PLC access definitions and higher-level meaning in [Tyr (Týr)](https://github.com/yggdrasil-iiot/tyr) and submit them as files, which the `mapping` gate validates, approves and publishes; Tyr creates no approval authority of its own), or *consume* (Muninn feeds the UNS); Bifrost remains the authority, and the apps share **zero code** — they compose only through the governed data/wire contract. Bifrost's authority is over definitions: admitting, versioning, sealing and activating them, and the record of that. The semantic dictionary those definitions point to (the home of semantic IDs) belongs to the enterprise catalog, outside Yggdrasil; Bifrost does not own the dictionary, it governs definitions that refer to it. A link from a definition to a catalog entry is not built.
 
 ## The gate CLI (pre-deploy, fail-closed)
 
@@ -145,7 +145,7 @@ scripts/run-key-rotation-gate.sh           # a signing key rotates without break
 scripts/run-model-reconciliation-gate.sh   # the vendor's copy of a model against the governed one; divergence named per member
 scripts/run-huginn-seam-gate.sh            # a write to governed equipment that is not the edge, found by running the real Huginn
 scripts/run-federation-gate.sh             # multi-site — enterprise template + cross-domain anchor + federated audit
-scripts/run-yggdrasil-spine-gate.sh        # Mímir → Bifrost → Muninn northbound spine
+scripts/run-yggdrasil-spine-gate.sh        # Mimir → Bifrost → Muninn northbound spine
 scripts/run-yggdrasil-full-loop-gate.sh    # closed loop: observe → command → observe
 ```
 
@@ -187,7 +187,7 @@ them. The list below is the short form — the long form, with what would force 
 
 ## Offline mapping publication
 
-The `mapping` gate independently validates Týr mapping proposals against bundled copies of its published wire schemas (1.0.0–2.22.0); no Týr code is imported or invoked. It pins the evidence bundle, requires four-eyes approval with distinct registered Ed25519 keys, and publishes an immutable file release atomically. Runtime activation and device/SQL/write execution are excluded. 237 of the tests above cover this path (core 235 · gates CLI 2), measured 2026-10-20. [Boundary, contract versions and usage](docs/MAPPING-PUBLICATION.md).
+The `mapping` gate independently validates Tyr mapping proposals against bundled copies of its published wire schemas (1.0.0–2.22.0); no Tyr code is imported or invoked. It pins the evidence bundle, requires four-eyes approval with distinct registered Ed25519 keys, and publishes an immutable file release atomically. Runtime activation and device/SQL/write execution are excluded. 237 of the tests above cover this path (core 235 · gates CLI 2), measured 2026-10-20. [Boundary, contract versions and usage](docs/MAPPING-PUBLICATION.md).
 
 ## License
 

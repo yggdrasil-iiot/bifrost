@@ -7,7 +7,7 @@ import java.math.BigDecimal;
 import java.util.*;
 import static dev.krillin.bifrost.core.mapping.MappingJson.*;
 
-/** Independent Bifrost receiver. Consumes wire data, never imports or invokes Týr implementation. */
+/** Independent Bifrost receiver. Consumes wire data, never imports or invokes Tyr implementation. */
 public final class MappingBundle {
     public static final String CAPABILITY="bifrost-mapping-v1";
     public record Checked(ObjectNode report,JsonNode proposal,JsonNode submission,Map<String,JsonNode> documents,Map<String,String> files) {
@@ -67,7 +67,7 @@ public final class MappingBundle {
                     case "source-definition" -> source(d);
                     case "semantic-definition" -> semantic(d);
                     case "import-batch" -> {
-                        // Retain raw provenance. No template/alias re-interpretation is delegated to Týr.
+                        // Retain raw provenance. No template/alias re-interpretation is delegated to Tyr.
                         try{
                             if(text(d,"schemaVersion").equals("2.14.0")){
                                 if(!MappingImportWorkflow.validate(d,docs))add("import.unresolved",path);
