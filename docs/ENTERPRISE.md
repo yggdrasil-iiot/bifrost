@@ -624,7 +624,7 @@ arrives as a **file**, which is what a Composer export, an Ignition `tags/export
 `GET` all produce, and what [`ADOPTION.md`](ADOPTION.md) phase 2 already asks for: read the copy
 back, read-only, the same way the traffic side is handled. It is structurally what Huginn does with
 a pcap — the artifact is handed over and the tool is offline. If the fetch is built, it belongs to
-Mimir for the same reason the parse does: it is the read side of the plant.
+Mimir for the same reason the parse does: it is the read side of the plant. For Ignition, the parse already exists: Mimir's tag export interpreter (Ignition 8.3) reads that file.
 
 **There is no identity check, and there cannot be one.** `TemplateAdapter.adapt(external, ref,
 version)` takes the identity as parameters because the external document does not carry Bifrost's.
@@ -740,8 +740,7 @@ direction this section already describes, at whole-entity granularity with per-m
 **Model preservation.** A benefit is that meaning survives a change of platform or
 vendor.
 
-**Documented limits.** The projection that generates shapes, and an adapter that reads the
-platform's exports, do not exist yet; this repository's adapters today are Ignition, CFIHOS and AAS.
+**Documented limits.** The projection that generates shapes, and an adapter that reads the platform's exports, do not exist yet; this repository's adapters today are an Ignition-style UDT summary, CFIHOS and AAS, while Mimir interprets the real Ignition 8.3 tag export.
 The generated output is a package handed over to the platform's own process, not a write into a
 running system.
 

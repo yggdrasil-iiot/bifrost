@@ -2,8 +2,9 @@ package dev.krillin.bifrost.core.conformance.adapter;
 import java.util.*;
 import com.fasterxml.jackson.databind.JsonNode;
 import dev.krillin.bifrost.core.schema.*;
-/** Ignition UDT export (tags/dataType/engLow/engHigh) -> UdtDefinition. Ignition dataTypes map to our type
- *  vocabulary; engLow/engHigh -> Range; semanticId read from a designated custom property (honest carry). */
+/** Ignition-style UDT summary (flat tags[]: dataType, engLow/engHigh, semanticId) -> UdtDefinition.
+ *  Maps Ignition data types to Bifrost vocabulary and engLow/engHigh to Range. A gateway's own
+ *  Ignition 8.3 tags/export JSON is interpreted by Mimir's tag export interpreter. */
 public final class IgnitionUdtAdapter implements TemplateAdapter {
     public UdtDefinition adapt(JsonNode ext, String ref, String version) {
         List<Member> members = new ArrayList<>();
