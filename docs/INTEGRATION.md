@@ -154,10 +154,7 @@ component either way: Muninn here, or Ignition + Cirrus Link, or HiveMQ Edge els
    copy gets hand-edited is the real source of truth**, regardless of what the registry says.
 
 `gates model-reconcile` addresses the second: it compares the vendor's exported model against the
-governed definition and names divergence **per member**. Three `TemplateAdapter` implementations
-(`IgnitionUdtAdapter`, `CfihosTemplateAdapter`, `AasSubmodelAdapter`) mean the enterprise template
-does not have to be expressed in one vendor's dialect, and the port carries **granularity** so a
-product that can only export a blob is recorded as weaker evidence than a per-object one.
+governed definition and names divergence **per member**. Three `TemplateAdapter` implementations (`IgnitionUdtAdapter`, `CfihosTemplateAdapter`, `AasSubmodelAdapter`) mean the enterprise template does not have to be expressed in one vendor's dialect, and the port carries **granularity** so a product that can only export a blob is recorded as weaker evidence than a per-object one. `IgnitionUdtAdapter` reads an Ignition-style UDT summary, while a gateway's own `tags/export` goes to Mimir.
 
 Which product exposes what, and at which version, is in
 [`ENTERPRISE.md` §13](ENTERPRISE.md#13-governed-model-vs-vendor-runtime). The short version: the

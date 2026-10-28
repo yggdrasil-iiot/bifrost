@@ -158,7 +158,7 @@ and exits 0 agreed, 1 diverged, 2 if it could not read either side.
 **The export is handed over, exactly like the capture in phase 0.** Nothing connects to a running
 product; a Composer export, an Ignition `tags/export` and a Kepware `GET` all produce a file, and
 the file is the interface. That keeps this phase inert in the same way phase 0 is: the tool cannot
-reach the plant, and obtaining the export is the part with a person in it.
+reach the plant, and obtaining the export is the part with a person in it. Bifrost's `--adapter ignition` reads an Ignition-style UDT summary of flat tag definitions and ranges. A gateway's own `tags/export` goes through Mimir's interpreter, which publishes an interpretation snapshot.
 
 **`--granularity` is a fact about the product, not about the file.** Kepware and Ignition can be
 corrected per object; ThingWorx has no per-object write, so a correction re-imports an entity set.
