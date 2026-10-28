@@ -11,6 +11,10 @@ Identity/policy files and the filesystem are operator-controlled trust roots. Th
 The receiver rejects draft/unresolved/unsupported definitions and requires confirmed units. XLSX locator validation does not claim vendor parser completeness. MappingPublicationTest uses real temporary keys and shared wire data to exercise stale approval/base, tampering and prior-head preservation. Device access, external SQL, writes and operational activation remain excluded.
 
 
+## Approval digests
+
+In a mapping approval receipt, `payloadSha256` and `changeSha256` are SHA-256 digests over Bifrost's own serialization: Jackson, keys sorted, compact (`MappingJson.bytes`), not RFC 8785 (JCS). Bifrost computes them at approval and recomputes them with the same code at publication and recovery; no other program is expected to reproduce them. Consumers outside Bifrost verify a release by raw-byte SHA-256: the head's `sha256` over `release.json` bytes and `files[].sha256` over each payload file.
+
 ## Explicit integer-word views (2026-10-18)
 
 The bundled 2.10.0 source-definition schema adds read-only PLC alias/bit views. Existing schema bytes and proposal/submission/approval/release formats remain unchanged. The receiver resolves exact parent id/version, a maximum of 16 relations, cycles/missing parents, equipment/connection/access/raw snapshots, parent readiness/readability, integer widths and bit bounds. Aliases inherit the logical value/unit; bit views produce Boolean with no physical unit. Array/codec/native-bit/non-PLC parents are outside this capability.
