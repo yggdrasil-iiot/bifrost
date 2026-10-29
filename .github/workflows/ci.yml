@@ -24,6 +24,14 @@ jobs:
       - name: Product names in ASCII
         run: bash scripts/check-ascii-names.sh
 
+      # The committed .wasm must be the build of the committed Rego; the digest pins the OPA binary.
+      - name: OPA policies are the build of their Rego v1 sources
+        run: |
+          curl -sSfL -o "$RUNNER_TEMP/opa" https://github.com/open-policy-agent/opa/releases/download/v1.21.4/opa_linux_amd64_static
+          echo "2ab571f367f293bb19523b76f92f1945bbf245003392c7f392903f95c2b9b630  $RUNNER_TEMP/opa" | sha256sum -c -
+          chmod +x "$RUNNER_TEMP/opa"
+          OPA="$RUNNER_TEMP/opa" bash scripts/build-opa-wasm.sh --check
+
       - uses: actions/setup-java@v4
         with:
           java-version: '17'

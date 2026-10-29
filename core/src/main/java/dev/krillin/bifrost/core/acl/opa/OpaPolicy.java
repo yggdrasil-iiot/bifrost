@@ -25,7 +25,7 @@ import java.util.List;
  * Evaluates an OPA-compiled-to-WebAssembly policy in-process, on the pure-JVM Chicory WASM
  * runtime — no OPA sidecar process.
  *
- * <p>This wraps the OPA WASM one-shot ABI (opa 0.70.0, {@code opa build -t wasm}):
+ * <p>This wraps the OPA WASM one-shot ABI (opa 1.21.4, Rego v1, {@code scripts/build-opa-wasm.sh}):
  * the host supplies {@code env.memory} (an imported {@link Memory}) plus stub host functions
  * {@code env.opa_abort} and {@code env.opa_builtin0..4}; the module exports {@code opa_malloc},
  * {@code opa_heap_ptr_get}/{@code opa_heap_ptr_set}, and {@code opa_eval}. See the OPA WASM SDK
