@@ -1,5 +1,7 @@
 package dev.krillin.bifrost.core.schema;
 
+import com.fasterxml.jackson.core.util.DefaultIndenter;
+import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.krillin.bifrost.core.identity.KeyFileSigner;
 import java.io.IOException;
@@ -18,6 +20,9 @@ public final class RecipeDefinitionStore {
 
     private final Path root;
     private final ObjectMapper mapper = JsonMapperFactory.create();
+    // LF on every OS: the manifest bytes are hashed and signed, so they must not follow line.separator.
+    private static final DefaultPrettyPrinter MANIFEST_PRINTER =
+            new DefaultPrettyPrinter().withObjectIndenter(new DefaultIndenter("  ", "\n"));
 
     public RecipeDefinitionStore(Path root) { this.root = root; }
 
@@ -45,7 +50,7 @@ public final class RecipeDefinitionStore {
             return existing;
         }
         RecipeManifest m = new RecipeManifest(kind, ref, version, defRef, contentSha256, sourcePath, atMillis);
-        byte[] manifestBytes = mapper.writerWithDefaultPrettyPrinter().writeValueAsBytes(m);
+        byte[] manifestBytes = mapper.writer(MANIFEST_PRINTER).writeValueAsBytes(m);
         if (signer != null) RecipeAttestation.admit(root, signer, kind, ref);   // refused before anything is written
         Files.createDirectories(dir);
         if (signer != null) {

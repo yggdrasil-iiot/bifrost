@@ -14,8 +14,8 @@ class RecipeManifestBytesTest {
         return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(p)));
     }
 
-    // Taken from main before the publication attestation existed (5a808b4).
-    static final String MANIFEST_SHA = "03b1beddb850b1c85c02c711a498349bbaab87d9b339375ec33aca7c2d4cc543";
+    // The bytes main (5a808b4) wrote on Linux. On Windows it wrote CRLF instead; the manifest is LF on every OS now.
+    static final String MANIFEST_SHA = "5e65bbff38ea22b74c8cc5fe9c73c8530e30aa8db1b08b5c03274075f7048022";
 
     @Test void unsignedManifestBytesAreUnchanged(@TempDir Path tmp) throws Exception {
         byte[] content = "endpoint: x\nsetpoints: {}\n".getBytes(StandardCharsets.UTF_8);
