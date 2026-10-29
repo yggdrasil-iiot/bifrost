@@ -27,7 +27,7 @@ The attestation is written before the receipt. A process stopped between the two
 3. Check that `predicate` equals the receipt payload.
 4. Check that the `subject` set equals `files[]` and that each file's raw SHA-256 matches.
 
-A key retired later still verifies the attestations it signed, as it does for receipts. The activation policy and key validity windows were checked by Bifrost at approval; the envelope does not carry them. Recipe provenance manifests are not attested yet: no principal signs a recipe publication today.
+A key retired later still verifies the attestations it signed, as it does for receipts. The activation policy and key validity windows were checked by Bifrost at approval; the envelope does not carry them. A recipe publication can be signed by a single publisher with an in-toto `Statement` whose predicate is SLSA Provenance v1, described in [RECIPE-PUBLICATION.md](RECIPE-PUBLICATION.md).
 
 ## Explicit integer-word views (2026-10-18)
 

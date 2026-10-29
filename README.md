@@ -48,7 +48,7 @@ One `gates` jar, deny-by-default, exit `0` admit / `1` governance-refuse / `2` u
 | `spec` | `MasterSpec` conformance against the governed `ConformancePolicy` |
 | `template` · `adapt-template` | **site ⊨ enterprise** prescriptive governance; a ports-&-adapters core proven standard-agnostic (Ignition / CFIHOS / AAS adapt ≡ native) |
 | `policy` | deny-by-default NCMD command authorization (also as an OPA/Rego policy evaluated in-JVM via WebAssembly) |
-| `provenance` | git-anchored SHA-256 manifest for the recipe store |
+| `provenance` | git-anchored SHA-256 manifest for the recipe store; a publisher can sign it as an in-toto/SLSA attestation ([docs/RECIPE-PUBLICATION.md](docs/RECIPE-PUBLICATION.md)) |
 | `activate` · `active` · `activation-log` | the governed **activation** lifecycle (below) |
 | `activation verify-chain` | T4 — tamper-evidence of the activation ledger |
 | `identity keygen` · `identity verify-signed` | T5 — cryptographic identity over activations |
