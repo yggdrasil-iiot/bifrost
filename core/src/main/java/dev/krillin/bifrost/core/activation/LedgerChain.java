@@ -27,7 +27,15 @@ public final class LedgerChain {
     static String preimage(ActivationEvent e, String prevHash) {
         return f(e.target()) + SEP + f(e.kind()) + SEP + f(e.ref()) + SEP + f(e.version()) + SEP
              + f(e.contentSha256()) + SEP + f(e.activatedBy()) + SEP + f(e.approvedBy()) + SEP
-             + e.activatedAt() + SEP + f(e.priorVersion()) + SEP + f(e.action()) + SEP + f(prevHash);
+             + e.activatedAt() + SEP + f(e.priorVersion()) + SEP + f(e.action()) + SEP + f(prevHash)
+             + publication(e.publication());
+    }
+
+    /** Appended only when present: an entry without a publication keeps the preimage it was written with, so a
+     *  ledger written before the field existed still verifies. */
+    private static String publication(PublicationRef p) {
+        if (p == null) return "";
+        return "" + SEP + f(p.manifestSha256()) + SEP + f(p.defRef()) + SEP + f(p.attestationSha256());
     }
 
     private static String f(String v) { return v == null ? NULL_SENTINEL : v; }

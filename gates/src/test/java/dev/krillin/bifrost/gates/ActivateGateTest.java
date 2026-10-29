@@ -2,7 +2,7 @@ package dev.krillin.bifrost.gates;
 import static org.junit.jupiter.api.Assertions.*;
 import java.nio.file.*;
 import java.util.List;
-import dev.krillin.bifrost.core.conformance.MasterSpecStore;
+import dev.krillin.bifrost.core.activation.Sha256;
 import dev.krillin.bifrost.core.schema.*;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
@@ -13,8 +13,9 @@ class ActivateGateTest {
         reg = dir;
         MasterSpec s = new MasterSpec("mix-recipe","1.0.0","Line1","Line1-Mixer","1.0.0",
             List.of(new Setpoint("Rpm","Double",1500)));
-        Path f = new MasterSpecStore().file(reg,"mix-recipe","1.0.0"); Files.createDirectories(f.getParent());
-        JsonMapperFactory.create().writeValue(f.toFile(), s);
+        byte[] bytes = JsonMapperFactory.create().writeValueAsBytes(s);
+        new RecipeDefinitionStore(reg).publish("recipe-setpoints", "mix-recipe", "1.0.0", bytes,
+                "0123456789abcdef0123456789abcdef01234567", Sha256.hex(bytes), "recipes/mix-recipe.json", 1L);
     }
     int run(String... a){ return ActivateGate.run(a); }
 

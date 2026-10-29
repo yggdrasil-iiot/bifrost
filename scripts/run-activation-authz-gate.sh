@@ -14,7 +14,10 @@
 #   AZ3  same seeded policy; signed activate --by alice --approved-by carol (carol has NO APPROVE rule)
 #        -> REFUSED activation.authz.denied (exit 1). maker-checker: the approver leg is enforced too.
 #   AZ4  registry WITHOUT activation-policy.json (absent = deny-all); authorized-keyed signed activate
-#        -> REFUSED activation.authz.denied (exit 1). Deny-by-default: no policy denies every signed activation.
+#        -> REFUSED (exit 1). Deny-by-default: no policy denies every signed activation. The first grant it
+#        reaches is the publisher's publish grant on the signed publication, so the rule is
+#        activation.publication.attestation:recipe.publish-denied, before activator authz is asked.
+#        (The recipe versions are published while a policy grants alice PUBLISH, then the policy is removed.)
 #   AZ5  gates identity authorize: allow case (alice activate) exit 0 + deny case (alice approve) exit 1.
 #   AZ6  (broker, OPTIONAL) authorized signed activation, then rewrite the policy REMOVING alice's ACTIVATE,
 #        restart Heimdall REQUIRE_SIGNED_ACTIVATION=on -> log has activation.edge.authz-denied and the edge
@@ -27,6 +30,7 @@
 #   # expect: [AUTHZ] GATE PASS (AZ1-AZ5 [+AZ6-AZ7])  exit 0
 set -euo pipefail
 cd "$(dirname "$0")/.."
+. scripts/_publish-recipe.sh
 
 # cygpath exists only under Git Bash / Cygwin. Elsewhere a POSIX path is already what the JVM
 # wants, so shim it to identity (drop the -m, keep the last argument) rather than making every
@@ -100,33 +104,49 @@ grep -q '"alice"' "$AKF" && grep -q '"bob"' "$AKF" && grep -q '"carol"' "$AKF" \
 echo "[AUTHZ] keys ready (alice,bob,carol registered)"
 
 # the authorized policy: alice may ACTIVATE, bob may APPROVE, on (Line1, recipe, mix-recipe). deny-by-default.
+# alice also holds PUBLISH on the recipe publication: activation binds only a published canonical, and a signed
+# activation needs a signed publication whose publisher the policy still grants.
 write_policy() {  # $1 = registry dir (bash path)
   cat > "$1/identity/activation-policy.json" <<'JSON'
 {"version":"1","default":"deny","rules":[
   {"id":"r-activate","principal":"alice","action":"activate","target":"Line1","kind":"recipe","ref":"mix-recipe"},
-  {"id":"r-approve","principal":"bob","action":"approve","target":"Line1","kind":"recipe","ref":"mix-recipe"}
+  {"id":"r-approve","principal":"bob","action":"approve","target":"Line1","kind":"recipe","ref":"mix-recipe"},
+  {"id":"r-publish","principal":"alice","action":"publish","target":"recipe-publication","kind":"recipe-setpoints","ref":"mix-recipe"}
 ]}
 JSON
 }
 
 # a policy that REVOKES alice's ACTIVATE (bob->APPROVE only) — used by AZ6 to prove bind-fresh revocation.
+# alice keeps PUBLISH, so the published canonical still verifies and the edge refusal is the activator leg.
 write_policy_revoked() {  # $1 = registry dir (bash path)
   cat > "$1/identity/activation-policy.json" <<'JSON'
 {"version":"1","default":"deny","rules":[
-  {"id":"r-approve","principal":"bob","action":"approve","target":"Line1","kind":"recipe","ref":"mix-recipe"}
+  {"id":"r-approve","principal":"bob","action":"approve","target":"Line1","kind":"recipe","ref":"mix-recipe"},
+  {"id":"r-publish","principal":"alice","action":"publish","target":"recipe-publication","kind":"recipe-setpoints","ref":"mix-recipe"}
 ]}
 JSON
 }
 
-# stage a lean CLI registry: resolvable recipe artifacts + trust anchor (+ policy unless mode=nopolicy).
+# publish mix-recipe 1.0.0 + 1.1.0 into a registry, signed by alice. Runs once the registry's trust anchor and
+# policy exist: the publish checks alice's key and PUBLISH grant before it writes anything.
+publish_versions() {  # $1 = registry dir (bash path)
+  local v w; w="$(cygpath -m "$(pwd)/$1")"
+  for v in 1.0.0 1.1.0; do
+    PUBLISH_SRC_ROOT="$WORK/src" publish_recipe "$GATES_JAR_WIN" "$w" "$FIX/spec-mix-recipe-$v.json" mix-recipe "$v" \
+      --by alice --by-key "$KEYS_WIN/alice.key" || fail "could not publish mix-recipe@$v into $1"
+  done
+}
+
+# stage a lean CLI registry: published recipe artifacts + trust anchor (+ policy unless mode=nopolicy).
+# nopolicy publishes under the seeded policy and then removes it, so the registry ends with no policy file.
 stage_reg() {  # $1 = registry dir; $2 = seed|nopolicy (default seed); sets $reg / $reg_win globals
   reg="$1"
   rm -rf "$reg"
-  mkdir -p "$reg/spec/mix-recipe" "$reg/identity"
-  cp "$FIX/spec-mix-recipe-1.0.0.json" "$reg/spec/mix-recipe/1.0.0.json"
-  cp "$FIX/spec-mix-recipe-1.1.0.json" "$reg/spec/mix-recipe/1.1.0.json"
+  mkdir -p "$reg/identity"
   cp "$AKF"                            "$reg/identity/authorized-keys.jsonl"
-  [ "${2:-seed}" = "seed" ] && write_policy "$reg"
+  write_policy "$reg"
+  publish_versions "$reg"
+  [ "${2:-seed}" = "seed" ] || rm -f "$reg/identity/activation-policy.json"
   reg_win="$(cygpath -m "$(pwd)/$reg")"
 }
 
@@ -175,14 +195,15 @@ grep -q "activation.authz.denied" "$WORK/az3.txt" || { cat "$WORK/az3.txt"; fail
 echo "[AUTHZ] AZ3 => PASS (activation.authz.denied on unauthorized approver)"
 
 # ---------------------------------------------------------------------------
-echo "[AUTHZ] ===== AZ4: absent policy = deny-all -> activation.authz.denied ====="
+echo "[AUTHZ] ===== AZ4: absent policy = deny-all -> the publisher's grant is denied first ====="
 stage_reg "$WORK/reg-az4" nopolicy
 [ ! -f "$reg/identity/activation-policy.json" ] || fail "AZ4 registry must have NO activation-policy.json"
 set +e
 sactivate 1.0.0 alice bob alice.key bob.key >"$WORK/az4.txt" 2>&1; rc=$?
 set -e
 [ "$rc" -eq 1 ] || { cat "$WORK/az4.txt"; fail "AZ4 signed activate against absent policy returned $rc — expected 1 (deny-all)"; }
-grep -q "activation.authz.denied" "$WORK/az4.txt" || { cat "$WORK/az4.txt"; fail "AZ4 missing activation.authz.denied"; }
+grep -q "activation.publication.attestation:recipe.publish-denied" "$WORK/az4.txt" \
+  || { cat "$WORK/az4.txt"; fail "AZ4 missing activation.publication.attestation:recipe.publish-denied"; }
 echo "[AUTHZ] AZ4 => PASS (absent policy denies every signed activation, deny-by-default)"
 
 # ---------------------------------------------------------------------------
@@ -201,7 +222,7 @@ grep -q "DENY" "$WORK/az5-deny.txt" || { cat "$WORK/az5-deny.txt"; fail "AZ5 den
 echo "[AUTHZ] AZ5 => PASS (authorize allow=0 / deny=1)"
 
 # ---------------------------------------------------------------------------
-# AZ6/AZ7 — broker legs. Need a FULL conformance registry (udt + conformance + spec + policy + trust anchor)
+# AZ6/AZ7 — broker legs. Need a FULL conformance registry (udt + conformance + published recipe + policy + trust anchor)
 # so Heimdall reaches the recipe/activationTarget bind branch where assertActivationAuthorized() runs.
 echo "[AUTHZ] ===== AZ6/AZ7: edge authZ re-check (REQUIRE_SIGNED_ACTIVATION=on) ====="
 if ! command -v docker >/dev/null 2>&1; then
@@ -209,14 +230,13 @@ if ! command -v docker >/dev/null 2>&1; then
 else
   BREG="$WORK/reg-broker"
   rm -rf "$BREG"
-  mkdir -p "$BREG/udt/Line1-Mixer" "$BREG/conformance/Line1-Mixer" "$BREG/spec/mix-recipe" "$BREG/identity"
+  mkdir -p "$BREG/udt/Line1-Mixer" "$BREG/conformance/Line1-Mixer" "$BREG/identity"
   cp "$FIX/udt-Line1-Mixer.json"       "$BREG/udt/Line1-Mixer/1.0.0.json"
   cp "$FIX/conformance-recipe.json"    "$BREG/conformance/Line1-Mixer/recipe.json"
-  cp "$FIX/spec-mix-recipe-1.0.0.json" "$BREG/spec/mix-recipe/1.0.0.json"
-  cp "$FIX/spec-mix-recipe-1.1.0.json" "$BREG/spec/mix-recipe/1.1.0.json"
   cp "$FIX/policy.json"                "$BREG/policy.json"
   cp "$AKF"                            "$BREG/identity/authorized-keys.jsonl"
   write_policy "$BREG"                                             # authorized: alice ACTIVATE, bob APPROVE
+  publish_versions "$BREG"                                         # alice-signed recipe/mix-recipe/{1.0.0,1.1.0}
   reg="$BREG"; reg_win="$(cygpath -m "$(pwd)/$BREG")"
   CONF_RECIPE_WIN="$(cygpath -m "$(pwd)/$BREG/conformance/Line1-Mixer/recipe.json")"
   POLICY_WIN="$(cygpath -m "$(pwd)/$BREG/policy.json")"

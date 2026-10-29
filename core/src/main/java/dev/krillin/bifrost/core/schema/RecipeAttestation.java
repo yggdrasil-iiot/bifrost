@@ -83,8 +83,15 @@ public final class RecipeAttestation {
         Path canonical = dir.resolve(CANONICAL), manifestFile = dir.resolve(MANIFEST), file = dir.resolve(FILE);
         require(Files.isRegularFile(canonical) && Files.isRegularFile(manifestFile), "recipe.unresolved");
         require(Files.isRegularFile(file), "recipe.attestation-missing");
+        return verify(registry, ref, version, Files.readAllBytes(canonical), Files.readAllBytes(manifestFile), Files.readAllBytes(file));
+    }
+
+    /** The same checks over bytes the caller has already read, so a caller that also hashes and parses those bytes
+     *  checks one snapshot rather than files that may change between two reads. */
+    public static JsonNode verify(Path registry, String ref, String version, byte[] canonicalBytes, byte[] manifestBytes,
+                                  byte[] envelopeBytes) throws IOException {
         JsonNode env;
-        try { env = JSON.readTree(Files.readAllBytes(file)); } catch (Exception e) { throw new Refused("recipe.attestation-signature:identity.dsse.shape"); }
+        try { env = JSON.readTree(envelopeBytes); } catch (Exception e) { throw new Refused("recipe.attestation-signature:identity.dsse.shape"); }
         // The publisher is read from the unverified payload only to know whose key to try; it counts once that key verifies.
         String publisher;
         try { publisher = JSON.readTree(Base64.getDecoder().decode(env.path("payload").asText()))
@@ -94,8 +101,7 @@ public final class RecipeAttestation {
         try { body = Dsse.verify(env, Dsse.IN_TOTO, AuthorizedKeys.load(registry), List.of(publisher)); }
         catch (IdentityException e) { throw new Refused("recipe.attestation-signature:" + e.rule()); }
         JsonNode s = JSON.readTree(body);
-        RecipeManifest m = JsonMapperFactory.create().readValue(manifestFile.toFile(), RecipeManifest.class);
-        byte[] canonicalBytes = Files.readAllBytes(canonical), manifestBytes = Files.readAllBytes(manifestFile);
+        RecipeManifest m = JsonMapperFactory.create().readValue(manifestBytes, RecipeManifest.class);
         lineEndings(s, canonicalBytes, manifestBytes);
         matches(s, m, ref, version, sha(canonicalBytes), sha(manifestBytes));
         authorized(registry, publisher, m.kind(), ref);

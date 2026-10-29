@@ -44,6 +44,7 @@
 #   # expect: [ANCHORED] GATE PASS (AN1-AN7 [+AN8])  exit 0
 set -euo pipefail
 cd "$(dirname "$0")/.."
+. scripts/_publish-recipe.sh
 
 # cygpath exists only under Git Bash / Cygwin. Elsewhere a POSIX path is already what the JVM
 # wants, so shim it to identity (drop the -m, keep the last argument) rather than making every
@@ -113,21 +114,32 @@ gates identity keygen bob   --out "$KEYS_WIN" >>"$AKF" 2>/dev/null
 grep -q '"alice"' "$AKF" && grep -q '"bob"' "$AKF" || fail "authorized-keys.jsonl not built with alice/bob"
 echo "[ANCHORED] keys ready (alice activator, bob approver — both registered)"
 
-# stage a fresh governed registry: resolvable recipe artifacts (spec/mix-recipe/{1.0.0,1.1.0}) + trust anchor
+# publish mix-recipe 1.0.0 + 1.1.0 into a registry, signed by alice. Activation binds only a published canonical
+# and a signed activation needs a signed publication; the publish checks alice's key and PUBLISH grant, so it runs
+# once the registry's trust anchor and activation-policy exist.
+publish_versions() {  # $1 = registry dir (bash path)
+  local v w; w="$(cygpath -m "$(pwd)/$1")"
+  for v in 1.0.0 1.1.0; do
+    PUBLISH_SRC_ROOT="$WORK/src" publish_recipe "$GATES_JAR_WIN" "$w" "$FIX/spec-mix-recipe-$v.json" mix-recipe "$v" \
+      --by alice --by-key "$KEYS_WIN/alice.key" || fail "could not publish mix-recipe@$v into $1"
+  done
+}
+
+# stage a fresh governed registry: published recipe artifacts (recipe/mix-recipe/{1.0.0,1.1.0}) + trust anchor
 stage_reg() {  # $1 = registry dir (bash path); sets $reg / $reg_win globals
   reg="$1"
   rm -rf "$reg"
-  mkdir -p "$reg/spec/mix-recipe" "$reg/identity"
-  cp "$FIX/spec-mix-recipe-1.0.0.json" "$reg/spec/mix-recipe/1.0.0.json"
-  cp "$FIX/spec-mix-recipe-1.1.0.json" "$reg/spec/mix-recipe/1.1.0.json"
+  mkdir -p "$reg/identity"
   cp "$AKF"                            "$reg/identity/authorized-keys.jsonl"
   # T6: seed the activation-policy so legitimate alice/bob signed activations pass deny-by-default authZ.
   cat > "$reg/identity/activation-policy.json" <<'JSON'
 {"version":"1","default":"deny","rules":[
   {"id":"r-activate","principal":"alice","action":"activate","target":"Line1","kind":"recipe","ref":"mix-recipe"},
-  {"id":"r-approve","principal":"bob","action":"approve","target":"Line1","kind":"recipe","ref":"mix-recipe"}
+  {"id":"r-approve","principal":"bob","action":"approve","target":"Line1","kind":"recipe","ref":"mix-recipe"},
+  {"id":"r-publish","principal":"alice","action":"publish","target":"recipe-publication","kind":"recipe-setpoints","ref":"mix-recipe"}
 ]}
 JSON
+  publish_versions "$reg"
   reg_win="$(cygpath -m "$(pwd)/$reg")"
 }
 
@@ -305,23 +317,23 @@ if [ -n "${SKIP_AN8:-}" ]; then
 elif ! command -v docker >/dev/null 2>&1; then
   echo "[ANCHORED] AN8 skipped (no docker)"
 else
-  # stage a FULL conformance registry (udt + recipe conformance + spec + policy + trust anchor) so Heimdall
+  # stage a FULL conformance registry (udt + recipe conformance + published recipe + policy + trust anchor) so Heimdall
   # reaches the recipe/activationTarget bind branch where assertLedgerTrustworthy() runs.
   AN8REG="$WORK/reg-an8"
   rm -rf "$AN8REG"
-  mkdir -p "$AN8REG/udt/Line1-Mixer" "$AN8REG/conformance/Line1-Mixer" "$AN8REG/spec/mix-recipe" "$AN8REG/identity"
+  mkdir -p "$AN8REG/udt/Line1-Mixer" "$AN8REG/conformance/Line1-Mixer" "$AN8REG/identity"
   cp "$FIX/udt-Line1-Mixer.json"       "$AN8REG/udt/Line1-Mixer/1.0.0.json"
   cp "$FIX/conformance-recipe.json"    "$AN8REG/conformance/Line1-Mixer/recipe.json"
-  cp "$FIX/spec-mix-recipe-1.0.0.json" "$AN8REG/spec/mix-recipe/1.0.0.json"
-  cp "$FIX/spec-mix-recipe-1.1.0.json" "$AN8REG/spec/mix-recipe/1.1.0.json"
   cp "$FIX/policy.json"                "$AN8REG/policy.json"
   cp "$AKF"                            "$AN8REG/identity/authorized-keys.jsonl"
   cat > "$AN8REG/identity/activation-policy.json" <<'JSON'
 {"version":"1","default":"deny","rules":[
   {"id":"r-activate","principal":"alice","action":"activate","target":"Line1","kind":"recipe","ref":"mix-recipe"},
-  {"id":"r-approve","principal":"bob","action":"approve","target":"Line1","kind":"recipe","ref":"mix-recipe"}
+  {"id":"r-approve","principal":"bob","action":"approve","target":"Line1","kind":"recipe","ref":"mix-recipe"},
+  {"id":"r-publish","principal":"alice","action":"publish","target":"recipe-publication","kind":"recipe-setpoints","ref":"mix-recipe"}
 ]}
 JSON
+  publish_versions "$AN8REG"
   reg="$AN8REG"; reg_win="$(cygpath -m "$(pwd)/$AN8REG")"
   AN8LEDGER="$AN8REG/activation/Line1.jsonl"
   AN8HEAD="$AN8REG/identity/Line1.head"

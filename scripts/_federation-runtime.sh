@@ -70,6 +70,9 @@ gitcfg "$WORK/rt-busan"; gitcfg "$WORK/rt-ulsan"
 RT_BUSAN_WIN="$(cygpath -m "$(pwd)/$WORK/rt-busan")"
 RT_ULSAN_WIN="$(cygpath -m "$(pwd)/$WORK/rt-ulsan")"
 
+# The recipe versions arrive with the clone: run-federation-gate.sh publishes recipe/mix-recipe/{1.0.0,1.1.0} at
+# the enterprise (signed by alice) before committing it, so each runtime clone is both the registry the signed
+# activation resolves against and the REGISTRY_PATH its Heimdall binds the published canonical from.
 sactivate() {  # $1=regWin $2=version  (signed, file anchor; REQUIRE_ANCHORED off so bind needs no anchor)
   gates activate "$1" Line1 recipe mix-recipe "$2" --by alice --approved-by bob \
         --by-key "$KEYS_WIN/alice.key" --approved-by-key "$KEYS_WIN/bob.key"

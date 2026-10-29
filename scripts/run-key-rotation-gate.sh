@@ -46,6 +46,7 @@
 #   # expect: [KR] GATE PASS (K1-K7 K9 K10 [+K8])  exit 0
 set -euo pipefail
 cd "$(dirname "$0")/.."
+. scripts/_publish-recipe.sh
 
 # cygpath exists only under Git Bash / Cygwin. Elsewhere a POSIX path is already what the JVM wants.
 command -v cygpath >/dev/null 2>&1 || cygpath() { printf '%s\n' "${@: -1}"; }
@@ -112,19 +113,32 @@ write_policy() {  # $1 = registry dir
   cat > "$1/identity/activation-policy.json" <<'JSON'
 {"version":"1","default":"deny","rules":[
   {"id":"r-activate","principal":"alice","action":"activate","target":"Line1","kind":"recipe","ref":"mix-recipe"},
-  {"id":"r-approve","principal":"bob","action":"approve","target":"Line1","kind":"recipe","ref":"mix-recipe"}
+  {"id":"r-approve","principal":"bob","action":"approve","target":"Line1","kind":"recipe","ref":"mix-recipe"},
+  {"id":"r-publish","principal":"alice","action":"publish","target":"recipe-publication","kind":"recipe-setpoints","ref":"mix-recipe"}
 ]}
 JSON
+}
+
+# publish mix-recipe 1.0.0 + 1.1.0 into a registry, signed by alice. Activation binds only a published canonical
+# and a signed activation needs a signed publication. The publish checks the key against the registry's trust
+# anchor and alice's PUBLISH grant, so it runs once both are installed, with whichever of alice's key files that
+# anchor currently binds: alice.key until the rotation, alice-old.key for a registry still on the old anchor after.
+# Verification of the envelope is not time-filtered, so a publication signed by a since-retired key still verifies.
+publish_versions() {  # $1 = registry dir (bash path); $2 = alice key file name (default alice.key)
+  local v w; w="$(cygpath -m "$(pwd)/$1")"
+  for v in 1.0.0 1.1.0; do
+    PUBLISH_SRC_ROOT="$WORK/src" publish_recipe "$GATES_JAR_WIN" "$w" "$FIX/spec-mix-recipe-$v.json" mix-recipe "$v" \
+      --by alice --by-key "$KEYS_WIN/${2:-alice.key}" || fail "could not publish mix-recipe@$v into $1"
+  done
 }
 
 stage_reg() {  # $1 = registry dir; $2 = the trust-anchor file to install; sets $reg / $reg_win
   reg="$1"
   rm -rf "$reg"
-  mkdir -p "$reg/spec/mix-recipe" "$reg/identity"
-  cp "$FIX/spec-mix-recipe-1.0.0.json" "$reg/spec/mix-recipe/1.0.0.json"
-  cp "$FIX/spec-mix-recipe-1.1.0.json" "$reg/spec/mix-recipe/1.1.0.json"
+  mkdir -p "$reg/identity"
   cp "$2"                              "$reg/identity/authorized-keys.jsonl"
   write_policy "$reg"
+  publish_versions "$reg"
   reg_win="$(cygpath -m "$(pwd)/$reg")"
 }
 
@@ -217,14 +231,13 @@ echo "[KR] K4 => PASS (both keys' entries verify together in one ledger)"
 echo "[KR] ===== K5: the edge still boots on a rotated registry ====="
 BREG="$WORK/reg-edge"
 rm -rf "$BREG"
-mkdir -p "$BREG/udt/Line1-Mixer" "$BREG/conformance/Line1-Mixer" "$BREG/spec/mix-recipe" "$BREG/identity"
+mkdir -p "$BREG/udt/Line1-Mixer" "$BREG/conformance/Line1-Mixer" "$BREG/identity"
 cp "$FIX/udt-Line1-Mixer.json"       "$BREG/udt/Line1-Mixer/1.0.0.json"
 cp "$FIX/conformance-recipe.json"    "$BREG/conformance/Line1-Mixer/recipe.json"
-cp "$FIX/spec-mix-recipe-1.0.0.json" "$BREG/spec/mix-recipe/1.0.0.json"
-cp "$FIX/spec-mix-recipe-1.1.0.json" "$BREG/spec/mix-recipe/1.1.0.json"
 cp "$FIX/policy.json"                "$BREG/policy.json"
 cp "$AKF"                            "$BREG/identity/authorized-keys.jsonl"
 write_policy "$BREG"
+publish_versions "$BREG" alice-old.key        # this registry is still on the pre-rotation anchor
 reg="$BREG"; reg_win="$(cygpath -m "$(pwd)/$BREG")"
 CONF_RECIPE_WIN="$(cygpath -m "$(pwd)/$BREG/conformance/Line1-Mixer/recipe.json")"
 POLICY_WIN="$(cygpath -m "$(pwd)/$BREG/policy.json")"

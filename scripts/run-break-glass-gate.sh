@@ -30,6 +30,7 @@
 #   # expect: [BG] GATE PASS (B1-B9)  exit 0
 set -euo pipefail
 cd "$(dirname "$0")/.."
+. scripts/_publish-recipe.sh
 
 # cygpath exists only under Git Bash / Cygwin. Elsewhere a POSIX path is already what the JVM wants, so
 # shim it to identity (drop the -m, keep the last argument) rather than making every call site conditional.
@@ -82,14 +83,16 @@ grep -q '"alice"' "$AKF" && grep -q '"bob"' "$AKF" || fail "authorized-keys.json
 
 # alice may ACTIVATE on Line1 AND Line2, bob may APPROVE on Line1, the duty key may BREAK_GLASS_APPROVE on
 # Line1 only. alice's reach over Line2 is what makes B8 unambiguous: the denial there can only be the
-# approver leg, because the activator leg is permitted.
+# approver leg, because the activator leg is permitted. alice also publishes the recipe versions every
+# activation binds (r-publish); publication is not scoped to a line.
 write_policy() {  # $1 = registry dir
   cat > "$1/identity/activation-policy.json" <<'JSON'
 {"version":"1","default":"deny","rules":[
   {"id":"r-activate","principal":"alice","action":"activate","target":"Line1","kind":"recipe","ref":"mix-recipe"},
   {"id":"r-activate-l2","principal":"alice","action":"activate","target":"Line2","kind":"recipe","ref":"mix-recipe"},
   {"id":"r-approve","principal":"bob","action":"approve","target":"Line1","kind":"recipe","ref":"mix-recipe"},
-  {"id":"r-bg","principal":"breakglass-duty","action":"break_glass_approve","target":"Line1","kind":"recipe","ref":"mix-recipe"}
+  {"id":"r-bg","principal":"breakglass-duty","action":"break_glass_approve","target":"Line1","kind":"recipe","ref":"mix-recipe"},
+  {"id":"r-publish","principal":"alice","action":"publish","target":"recipe-publication","kind":"recipe-setpoints","ref":"mix-recipe"}
 ]}
 JSON
 }
@@ -101,19 +104,31 @@ write_policy_dual() {  # $1 = registry dir
 {"version":"1","default":"deny","rules":[
   {"id":"r-activate","principal":"alice","action":"activate","target":"Line1","kind":"recipe","ref":"mix-recipe"},
   {"id":"r-bg","principal":"breakglass-duty","action":"break_glass_approve","target":"Line1","kind":"recipe","ref":"mix-recipe"},
-  {"id":"r-also-approve","principal":"breakglass-duty","action":"approve","target":"Line1","kind":"recipe","ref":"mix-recipe"}
+  {"id":"r-also-approve","principal":"breakglass-duty","action":"approve","target":"Line1","kind":"recipe","ref":"mix-recipe"},
+  {"id":"r-publish","principal":"alice","action":"publish","target":"recipe-publication","kind":"recipe-setpoints","ref":"mix-recipe"}
 ]}
 JSON
 }
 
+# publish mix-recipe 1.0.0 + 1.1.0 into a registry, signed by alice. Activation binds only a published canonical
+# and a signed activation needs a signed publication; the publish checks alice's key and PUBLISH grant, so it runs
+# once the registry's trust anchor and activation-policy exist.
+publish_versions() {  # $1 = registry dir (bash path)
+  local v w; w="$(cygpath -m "$(pwd)/$1")"
+  for v in 1.0.0 1.1.0; do
+    PUBLISH_SRC_ROOT="$WORK/src" publish_recipe "$GATES_JAR_WIN" "$w" "$FIX/spec-mix-recipe-$v.json" mix-recipe "$v" \
+      --by alice --by-key "$KEYS_WIN/alice.key" || fail "could not publish mix-recipe@$v into $1"
+  done
+}
+
+# a fresh registry: trust anchor + policy + published recipe/mix-recipe/{1.0.0,1.1.0}
 stage_reg() {  # $1 = registry dir; sets $reg / $reg_win globals
   reg="$1"
   rm -rf "$reg"
-  mkdir -p "$reg/spec/mix-recipe" "$reg/identity"
-  cp "$FIX/spec-mix-recipe-1.0.0.json" "$reg/spec/mix-recipe/1.0.0.json"
-  cp "$FIX/spec-mix-recipe-1.1.0.json" "$reg/spec/mix-recipe/1.1.0.json"
+  mkdir -p "$reg/identity"
   cp "$AKF"                            "$reg/identity/authorized-keys.jsonl"
   write_policy "$reg"
+  publish_versions "$reg"
   reg_win="$(cygpath -m "$(pwd)/$reg")"
 }
 
@@ -207,14 +222,13 @@ echo "[BG] ===== B6: the edge still binds after a break-glass (signed, then anch
 # line -- happens before the first network connect, so the assertion is reachable offline.
 BREG="$WORK/reg-edge"
 rm -rf "$BREG"
-mkdir -p "$BREG/udt/Line1-Mixer" "$BREG/conformance/Line1-Mixer" "$BREG/spec/mix-recipe" "$BREG/identity"
+mkdir -p "$BREG/udt/Line1-Mixer" "$BREG/conformance/Line1-Mixer" "$BREG/identity"
 cp "$FIX/udt-Line1-Mixer.json"       "$BREG/udt/Line1-Mixer/1.0.0.json"
 cp "$FIX/conformance-recipe.json"    "$BREG/conformance/Line1-Mixer/recipe.json"
-cp "$FIX/spec-mix-recipe-1.0.0.json" "$BREG/spec/mix-recipe/1.0.0.json"
-cp "$FIX/spec-mix-recipe-1.1.0.json" "$BREG/spec/mix-recipe/1.1.0.json"
 cp "$FIX/policy.json"                "$BREG/policy.json"
 cp "$AKF"                            "$BREG/identity/authorized-keys.jsonl"
 write_policy "$BREG"
+publish_versions "$BREG"
 reg="$BREG"; reg_win="$(cygpath -m "$(pwd)/$BREG")"
 CONF_RECIPE_WIN="$(cygpath -m "$(pwd)/$BREG/conformance/Line1-Mixer/recipe.json")"
 POLICY_WIN="$(cygpath -m "$(pwd)/$BREG/policy.json")"

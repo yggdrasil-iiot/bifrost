@@ -3,7 +3,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import java.nio.file.*;
 import java.time.*;
 import java.util.List;
-import dev.krillin.bifrost.core.conformance.MasterSpecStore;
 import dev.krillin.bifrost.core.schema.*;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
@@ -22,8 +21,9 @@ class ActivationServiceTest {
     }
     void writeSpec(String ref,String ver,double rpm) throws Exception {
         MasterSpec s = new MasterSpec(ref,ver,"Line1","Line1-Mixer","1.0.0",List.of(new Setpoint("Rpm","Double",rpm)));
-        Path f = new MasterSpecStore().file(reg,ref,ver); Files.createDirectories(f.getParent());
-        JsonMapperFactory.create().writeValue(f.toFile(), s);
+        byte[] bytes = JsonMapperFactory.create().writeValueAsBytes(s);
+        new RecipeDefinitionStore(reg).publish(PublishedRecipe.MANIFEST_KIND, ref, ver, bytes,
+                "0123456789abcdef0123456789abcdef01234567", Sha256.hex(bytes), "recipes/" + ref + ".json", 1L);
     }
     ActivationRequest req(String ver,String by,String appr,boolean rb){
         return new ActivationRequest("Line1","recipe","mix-recipe",ver,by,appr,rb);

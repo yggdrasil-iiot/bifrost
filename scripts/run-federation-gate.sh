@@ -33,6 +33,7 @@
 #   # expect: [FED] GATE PASS (F1 F5 F6 [+F2 F3 F4])  exit 0
 set -euo pipefail
 cd "$(dirname "$0")/.."
+. scripts/_publish-recipe.sh
 
 # cygpath exists only under Git Bash / Cygwin. Elsewhere a POSIX path is already what the JVM
 # wants, so shim it to identity (drop the -m, keep the last argument) rather than making every
@@ -110,7 +111,7 @@ echo "[FED] keys ready (alice activator, bob approver — both enterprise-regist
 echo "[FED] step 2: build the ENTERPRISE git registry (authority) + enterprise anchor"
 ENT="$WORK/enterprise"
 mkdir -p "$ENT/udt/Mixer" "$ENT/udt/Line1-Mixer" "$ENT/conformance/Line1-Mixer" \
-         "$ENT/spec/mix-recipe" "$ENT/identity"
+         "$ENT/identity"
 
 # F1 enterprise TEMPLATE: Mixer@1.0.0 — the envelope each site must conform to (Rpm 0-3000, Temp 0-450).
 cat > "$ENT/udt/Mixer/1.0.0.json" <<'JSON'
@@ -126,11 +127,10 @@ cat > "$ENT/udt/Mixer/1.0.0.json" <<'JSON'
 }
 JSON
 
-# runtime fixtures (F3 Heimdall bind): equipment udt + recipe conformance + recipe spec artifacts + command policy.
+# runtime fixtures (F3 Heimdall bind): equipment udt + recipe conformance + command policy. The recipe versions
+# are published below, once the identity files they are checked against exist.
 cp "$FIX/udt-Line1-Mixer.json"       "$ENT/udt/Line1-Mixer/1.0.0.json"
 cp "$FIX/conformance-recipe.json"    "$ENT/conformance/Line1-Mixer/recipe.json"
-cp "$FIX/spec-mix-recipe-1.0.0.json" "$ENT/spec/mix-recipe/1.0.0.json"
-cp "$FIX/spec-mix-recipe-1.1.0.json" "$ENT/spec/mix-recipe/1.1.0.json"
 # command policy — PER-SITE scoped slices (each site enforces the rule keyed to its own group/edge).
 cat > "$ENT/policy.json" <<'JSON'
 {
@@ -145,19 +145,29 @@ cat > "$ENT/policy.json" <<'JSON'
 }
 JSON
 cp "$AKF"                            "$ENT/identity/authorized-keys.jsonl"
-# T6 deny-by-default activation policy (federates DOWN with the mirror): alice=activate, bob=approve.
+# T6 deny-by-default activation policy (federates DOWN with the mirror): alice=activate, bob=approve,
+# alice=publish (the recipe publications the sites activate).
 cat > "$ENT/identity/activation-policy.json" <<'JSON'
 {"version":"1","default":"deny","rules":[
   {"id":"r-activate","principal":"alice","action":"activate","target":"Line1","kind":"recipe","ref":"mix-recipe"},
-  {"id":"r-approve","principal":"bob","action":"approve","target":"Line1","kind":"recipe","ref":"mix-recipe"}
+  {"id":"r-approve","principal":"bob","action":"approve","target":"Line1","kind":"recipe","ref":"mix-recipe"},
+  {"id":"r-publish","principal":"alice","action":"publish","target":"recipe-publication","kind":"recipe-setpoints","ref":"mix-recipe"}
 ]}
 JSON
+
+# publish the recipe versions at the AUTHORITY, signed by alice: activation binds only a published canonical and
+# a signed activation needs a signed publication. recipe/mix-recipe/{1.0.0,1.1.0} is committed below and reaches
+# every site (and the runtime clones Heimdall reads as REGISTRY_PATH) with the mirror.
+for v in 1.0.0 1.1.0; do
+  PUBLISH_SRC_ROOT="$WORK/src" publish_recipe "$GATES_JAR_WIN" "$(cygpath -m "$(pwd)/$ENT")" "$FIX/spec-mix-recipe-$v.json" \
+    mix-recipe "$v" --by alice --by-key "$KEYS_WIN/alice.key" || fail "could not publish mix-recipe@$v at the enterprise"
+done
 
 git -C "$ENT" init -q
 gitcfg "$ENT"
 git -C "$ENT" add -A
 git -C "$ENT" commit -qm "enterprise governed registry seed"
-echo "[FED] enterprise registry committed (templates + policy + identity + recipe artifacts)"
+echo "[FED] enterprise registry committed (templates + policy + identity + published recipe artifacts)"
 
 # enterprise anchor domain: PER-SITE anchor repos under one enterprise-owned dir (different trust
 # domain than the site clones). Per-site because the anchor's seq is monotonic PER TARGET — both sites

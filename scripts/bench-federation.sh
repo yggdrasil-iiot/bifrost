@@ -18,6 +18,7 @@
 # them would be a day.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+. scripts/_publish-recipe.sh
 
 # cygpath exists only under Git Bash / Cygwin. Elsewhere a POSIX path is already what the JVM
 # wants, so shim it to identity (drop the -m, keep the last argument) rather than making every
@@ -42,12 +43,10 @@ median3() { printf '%s\n' "$@" | sort -n | sed -n 2p; }
 # stage: one real signed ledger of MAXN entries
 rm -rf "$WORK"
 STAGE="$WORK/stage"
-mkdir -p "$STAGE/udt/Line1-Mixer" "$STAGE/conformance/Line1-Mixer" "$STAGE/spec/mix-recipe" \
+mkdir -p "$STAGE/udt/Line1-Mixer" "$STAGE/conformance/Line1-Mixer" \
          "$STAGE/identity" "$WORK/keys"
 cp "$FIX/udt-Line1-Mixer.json"       "$STAGE/udt/Line1-Mixer/1.0.0.json"
 cp "$FIX/conformance-recipe.json"    "$STAGE/conformance/Line1-Mixer/recipe.json"
-cp "$FIX/spec-mix-recipe-1.0.0.json" "$STAGE/spec/mix-recipe/1.0.0.json"
-cp "$FIX/spec-mix-recipe-1.1.0.json" "$STAGE/spec/mix-recipe/1.1.0.json"
 cp "$FIX/policy.json"                "$STAGE/policy.json"
 
 KEYSW="$(cygpath -m "$(pwd)/$WORK/keys")"
@@ -56,11 +55,18 @@ java -jar "$JARW" identity keygen bob   --out "$KEYSW" >> "$STAGE/identity/autho
 cat > "$STAGE/identity/activation-policy.json" <<'JSON'
 {"version":"1","default":"deny","rules":[
   {"id":"r-activate","principal":"alice","action":"activate","target":"Line1","kind":"recipe","ref":"mix-recipe"},
-  {"id":"r-approve","principal":"bob","action":"approve","target":"Line1","kind":"recipe","ref":"mix-recipe"}
+  {"id":"r-approve","principal":"bob","action":"approve","target":"Line1","kind":"recipe","ref":"mix-recipe"},
+  {"id":"r-publish","principal":"alice","action":"publish","target":"recipe-publication","kind":"recipe-setpoints","ref":"mix-recipe"}
 ]}
 JSON
 
 STAGEW="$(cygpath -m "$(pwd)/$STAGE")"
+# Activation binds only a published canonical, and a signed activation needs a signed publication:
+# alice publishes both versions (her r-publish grant above). Progress lines go to stderr.
+for v in 1.0.0 1.1.0; do
+  PUBLISH_SRC_ROOT="$WORK/src" publish_recipe "$JARW" "$STAGEW" "$FIX/spec-mix-recipe-$v.json" mix-recipe "$v" \
+    --by alice --by-key "$KEYSW/alice.key" >&2 || { echo "# could not publish mix-recipe@$v" >&2; exit 1; }
+done
 echo "# staging one signed ledger of $MAXN entries (one JVM start each) ..." >&2
 for ((i=0; i<MAXN; i++)); do
   if [ $((i % 2)) -eq 0 ]; then v=1.0.0; else v=1.1.0; fi

@@ -1,3 +1,4 @@
 # Published wire/schema snapshots and hash-pinned fixture bytes must not be normalized.
 core/src/main/resources/mapping-contracts/** -text
 core/src/test/resources/mapping-fixtures/** -text
+core/src/test/resources/legacy-ledger/** -text

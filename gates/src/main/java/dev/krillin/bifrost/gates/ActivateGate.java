@@ -86,7 +86,7 @@ public final class ActivateGate {
             System.out.println("[GATE] activated target=" + e.target() + " kind=" + e.kind() + " ref=" + e.ref()
                 + " version=" + e.version() + " action=" + e.action() + " by=" + e.activatedBy()
                 + " approvedBy=" + e.approvedBy() + " sha256=" + e.contentSha256()
-                + (byKey != null ? " signed=true" : ""));
+                + (byKey != null ? " signed=true" : "") + published(e));
             return 0;
         }
         System.out.println("[GATE] REFUSED:");
@@ -100,8 +100,17 @@ public final class ActivateGate {
         Optional<ActivationEvent> e = new ActivationLedger(reg).active(a[1], a[2], a[3]);
         if (e.isEmpty()) { System.out.println("[GATE] active target=" + a[1] + " " + a[2] + "/" + a[3] + " => none"); return 0; }
         System.out.println("[GATE] active target=" + a[1] + " " + a[2] + "/" + a[3] + " => version=" + e.get().version()
-            + " sha256=" + e.get().contentSha256() + " (by " + e.get().activatedBy() + ", approvedBy " + e.get().approvedBy() + ")");
+            + " sha256=" + e.get().contentSha256() + " (by " + e.get().activatedBy() + ", approvedBy " + e.get().approvedBy() + ")"
+            + published(e.get()));
         return 0;
+    }
+
+    /** The publication an entry names: the git commit, and the envelope digest or "unsigned"; "none" on an entry
+     *  written before activation named its publication. */
+    static String published(ActivationEvent e) {
+        PublicationRef p = e.publication();
+        if (p == null) return " published=none";
+        return " published=" + p.defRef() + " attestation=" + (p.attestationSha256() == null ? "unsigned" : p.attestationSha256());
     }
 
     private static int log(String[] a) throws Exception {
@@ -112,7 +121,7 @@ public final class ActivateGate {
             ActivationEvent e = en.event();
             System.out.println("  " + e.action() + " " + e.kind() + "/" + e.ref() + "@" + e.version()
                 + " by=" + e.activatedBy() + " approvedBy=" + e.approvedBy() + " prior=" + e.priorVersion()
-                + " sha256=" + e.contentSha256() + " entryHash=" + en.entryHash());
+                + " sha256=" + e.contentSha256() + " entryHash=" + en.entryHash() + published(e));
         }
         return 0;
     }

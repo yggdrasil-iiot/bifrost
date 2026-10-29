@@ -308,7 +308,7 @@ a prerequisite for this phase rather than a nice-to-have.
 ### 5 — Raise the ladder
 
 `REQUIRE_SIGNED_ACTIVATION` first, then `REQUIRE_ANCHORED_ACTIVATION`. **One at a time, each
-reversible by a restart.**
+reversible by a restart.** `REQUIRE_PUBLISHED_ACTIVATION` belongs on the same ladder. Turn it on once every active recipe on that edge has been published and activated again, because before that an edge with it on refuses the older entries.
 
 The measurements in [§11](ENTERPRISE.md#11-audit-query-at-scale) settle one question that would
 otherwise stall this phase: anchoring costs nothing on top of signing, and the expensive half of

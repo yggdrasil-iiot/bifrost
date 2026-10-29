@@ -17,7 +17,9 @@
 #                                   no approver -> exit 1 activation.approval.missing.
 #   A3a activate-time refuse (CLI): activate mix-recipe@9.9.9 -> exit 1 activation.artifact.unresolved;
 #                                   ledger event count unchanged (still just A1's one event).
-#   A3b edge provenance (broker):   tamper one byte of the active spec -> bridge throws
+#   A3c unpublished refuse (CLI):   a spec/ file with no publication -> exit 1 activation.publication.missing;
+#                                   ledger event count unchanged.
+#   A3b edge provenance (broker):   tamper one byte of the active published canonical -> bridge throws
 #                                   activation.edge.content-mismatch and NEVER prints [BRIDGE] ready.
 #   A4 runtime flip (broker):       1.0.0 active -> Rpm=1500 APPLY, Rpm=1600 DENY deviation. activate
 #                                   1.1.0 -> Rpm=1600 APPLY, Rpm=1500 DENY deviation (one act moved the edge).
@@ -30,6 +32,7 @@
 #   # expect: [GATE] PASS run-activation-gate.sh ... exit 0
 set -euo pipefail
 cd "$(dirname "$0")/.."
+. scripts/_publish-recipe.sh
 
 # cygpath exists only under Git Bash / Cygwin. Elsewhere a POSIX path is already what the JVM
 # wants, so shim it to identity (drop the -m, keep the last argument) rather than making every
@@ -107,21 +110,22 @@ echo "[GATE] heimdall=$HEIMDALL_JAR_WIN"
 echo "[GATE] sim=$SIM_JAR_WIN"
 
 # ---------------------------------------------------------------------------
-echo "[GATE] step 1: stage the governed registry (udt + recipe conformance + spec 1.0.0 + acl)"
+echo "[GATE] step 1: stage the governed registry (udt + recipe conformance + published recipe 1.0.0 + acl)"
 rm -rf "$WORK"
 mkdir -p "$WORK/registry/udt/Line1-Mixer" \
-         "$WORK/registry/conformance/Line1-Mixer" \
-         "$WORK/registry/spec/mix-recipe"
+         "$WORK/registry/conformance/Line1-Mixer"
 cp "$FIX/udt-Line1-Mixer.json"        "$WORK/registry/udt/Line1-Mixer/1.0.0.json"
 cp "$FIX/conformance-recipe.json"     "$WORK/registry/conformance/Line1-Mixer/recipe.json"
-cp "$FIX/spec-mix-recipe-1.0.0.json"  "$WORK/registry/spec/mix-recipe/1.0.0.json"
 cp "$FIX/policy.json"                 "$WORK/registry/policy.json"
-# pristine copy of the active spec bytes — A3b tampers the live one then restores from this.
+# pristine copy of the active canonical bytes — A3b tampers the live one then restores from this.
 cp "$FIX/spec-mix-recipe-1.0.0.json"  "$WORK/pristine-1.0.0.json"
 
 REG="$WORK/registry"
-SPEC_1_0_0="$WORK/registry/spec/mix-recipe/1.0.0.json"
+SPEC_1_0_0="$WORK/registry/recipe/mix-recipe/1.0.0/recipe-setpoints.yaml"
 REG_WIN="$(cygpath -m "$(pwd)/$REG")"
+PUBLISH_SRC_ROOT="$WORK/src" publish_recipe "$GATES_JAR_WIN" "$REG_WIN" "$FIX/spec-mix-recipe-1.0.0.json" mix-recipe 1.0.0 \
+  || fail "step 1 could not publish mix-recipe@1.0.0"
+cmp -s "$FIX/spec-mix-recipe-1.0.0.json" "$SPEC_1_0_0" || fail "step 1 published canonical differs from the fixture bytes"
 CONF_RECIPE_WIN="$(cygpath -m "$(pwd)/$WORK/registry/conformance/Line1-Mixer/recipe.json")"
 POLICY_WIN="$(cygpath -m "$(pwd)/$WORK/registry/policy.json")"
 ACTIVATION_TARGET="Line1"
@@ -172,6 +176,20 @@ grep -q "activation.artifact.unresolved" "$WORK/a3a.txt" || fail "A3a missing ru
 gates activation-log "$REG_WIN" "$ACTIVATION_TARGET" > "$WORK/log-a3a.txt"
 grep -q "events=1" "$WORK/log-a3a.txt" || fail "A3a ledger event count changed — expected events=1 (still only A1's ACTIVATE); got: $(grep events= "$WORK/log-a3a.txt")"
 echo "[GATE] A3a OK: unresolvable version refused (fail-closed), ledger unchanged (events=1)"
+
+echo "[GATE] ===== A3c: activate-time refuse — a spec/ file nobody published ====="
+mkdir -p "$WORK/registry/spec/mix-recipe"
+cp "$FIX/spec-mix-recipe-1.1.0.json" "$WORK/registry/spec/mix-recipe/0.9.0.json"
+set +e
+gates activate "$REG_WIN" "$ACTIVATION_TARGET" recipe mix-recipe 0.9.0 --by alice --approved-by bob > "$WORK/a3c.txt" 2>&1
+code=$?
+set -e
+[ "$code" -eq 1 ] || fail "A3c activate of an unpublished spec returned $code — expected 1 (refused)"
+grep -q "activation.publication.missing" "$WORK/a3c.txt" || fail "A3c missing rule activation.publication.missing"
+gates activation-log "$REG_WIN" "$ACTIVATION_TARGET" > "$WORK/log-a3c.txt"
+grep -q "events=1" "$WORK/log-a3c.txt" || fail "A3c ledger event count changed — expected events=1"
+rm -rf "$WORK/registry/spec"
+echo "[GATE] A3c OK: an unpublished spec/ file is refused by name, ledger unchanged (events=1)"
 
 # ---------------------------------------------------------------------------
 echo "[GATE] step 2: start HiveMQ CE (broker) + wait for :1883"
@@ -253,8 +271,8 @@ wait_deny() {  # $1=node  $2=reason substring  $3=bridge log
 }
 
 # ---------------------------------------------------------------------------
-echo "[GATE] ===== A3b: edge provenance — tamper the active spec, edge refuses to bind ====="
-# 1.0.0 is active. Append one byte to the runtime spec bytes: its sha256 no longer matches the
+echo "[GATE] ===== A3b: edge provenance — tamper the active canonical, edge refuses to bind ====="
+# 1.0.0 is active. Append one byte to the published canonical: its sha256 no longer matches the
 # four-eyes-attested seal in the ledger, so the edge MUST throw activation.edge.content-mismatch
 # and MUST NOT print [BRIDGE] ready. BESPOKE launcher (NOT start_bridge — that fail()s on no-ready).
 printf 'X' >> "$SPEC_1_0_0"
@@ -272,7 +290,7 @@ for i in $(seq 1 15); do
 done
 [ "$ok" = "1" ] || fail "A3b edge did not throw activation.edge.content-mismatch on tampered spec"
 grep -q "\[BRIDGE\] ready" "$BLOG_A3B" && fail "A3b edge printed [BRIDGE] ready despite content-mismatch — must fail closed"
-echo "[GATE] A3b OK: tampered spec bytes rejected by the edge (content-mismatch, no [BRIDGE] ready)"
+echo "[GATE] A3b OK: tampered canonical bytes rejected by the edge (content-mismatch, no [BRIDGE] ready)"
 stop_bridge
 # restore the pristine active bytes so the sha256 seal matches again for A4.
 cp "$WORK/pristine-1.0.0.json" "$SPEC_1_0_0"
@@ -294,8 +312,9 @@ wait_deny "$RPM_NODE" "conformance.recipe.deviation" "$BLOG_A4" \
 echo "[GATE] A4c: Rpm=1600 DENIED (conformance.recipe.deviation vs 1.0.0)"
 stop_bridge
 
-# Governed flip: stage 1.1.0 then activate it. ONE act re-scopes the edge's admissible setpoint.
-cp "$FIX/spec-mix-recipe-1.1.0.json" "$WORK/registry/spec/mix-recipe/1.1.0.json"
+# Governed flip: publish 1.1.0 then activate it. ONE act re-scopes the edge's admissible setpoint.
+PUBLISH_SRC_ROOT="$WORK/src" publish_recipe "$GATES_JAR_WIN" "$REG_WIN" "$FIX/spec-mix-recipe-1.1.0.json" mix-recipe 1.1.0 \
+  || fail "A4 could not publish mix-recipe@1.1.0"
 set +e
 gates activate "$REG_WIN" "$ACTIVATION_TARGET" recipe mix-recipe 1.1.0 --by alice --approved-by bob
 code=$?

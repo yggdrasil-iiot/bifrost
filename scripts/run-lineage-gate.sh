@@ -28,6 +28,7 @@
 #   # expect: [LINEAGE] GATE PASS (LN1-LN4)  exit 0
 set -euo pipefail
 cd "$(dirname "$0")/.."
+. scripts/_publish-recipe.sh
 
 # cygpath exists only under Git Bash / Cygwin. Elsewhere a POSIX path is already what the JVM
 # wants, so shim it to identity (drop the -m, keep the last argument) rather than making every
@@ -100,20 +101,23 @@ echo "[LINEAGE] heimdall=$HEIMDALL_JAR_WIN"
 echo "[LINEAGE] sim=$SIM_JAR_WIN"
 
 # ---------------------------------------------------------------------------
-echo "[LINEAGE] step 1: stage the governed registry (udt + recipe conformance + spec 1.0.0/1.1.0 + policy)"
+echo "[LINEAGE] step 1: stage the governed registry (udt + recipe conformance + published recipe 1.0.0/1.1.0 + policy)"
 rm -rf "$WORK"
 mkdir -p "$WORK/registry/udt/Line1-Mixer" \
-         "$WORK/registry/conformance/Line1-Mixer" \
-         "$WORK/registry/spec/mix-recipe"
+         "$WORK/registry/conformance/Line1-Mixer"
 cp "$FIX/udt-Line1-Mixer.json"        "$WORK/registry/udt/Line1-Mixer/1.0.0.json"
 cp "$FIX/conformance-recipe.json"     "$WORK/registry/conformance/Line1-Mixer/recipe.json"
-cp "$FIX/spec-mix-recipe-1.0.0.json"  "$WORK/registry/spec/mix-recipe/1.0.0.json"
-cp "$FIX/spec-mix-recipe-1.1.0.json"  "$WORK/registry/spec/mix-recipe/1.1.0.json"   # 1.1.0 staged up front — LN1 activates it
 cp "$FIX/policy.json"                 "$WORK/registry/policy.json"
 
 REG="$WORK/registry"
 LEDGER="$REG/activation/Line1.jsonl"
 REG_WIN="$(cygpath -m "$(pwd)/$REG")"
+# activation binds only a published canonical: publish both versions (unsigned — LN1-LN4 activate unsigned).
+# 1.1.0 is published up front — LN1 activates it.
+for v in 1.0.0 1.1.0; do
+  PUBLISH_SRC_ROOT="$WORK/src" publish_recipe "$GATES_JAR_WIN" "$REG_WIN" "$FIX/spec-mix-recipe-$v.json" mix-recipe "$v" \
+    || fail "step 1 could not publish mix-recipe@$v"
+done
 CONF_RECIPE_WIN="$(cygpath -m "$(pwd)/$WORK/registry/conformance/Line1-Mixer/recipe.json")"
 POLICY_WIN="$(cygpath -m "$(pwd)/$WORK/registry/policy.json")"
 ACTIVATION_TARGET="Line1"

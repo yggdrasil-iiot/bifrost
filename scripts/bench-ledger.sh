@@ -18,6 +18,7 @@
 # mostly a measurement of `java -jar`.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+. scripts/_publish-recipe.sh
 
 # cygpath exists only under Git Bash / Cygwin. Elsewhere a POSIX path is already what the JVM
 # wants, so shim it to identity (drop the -m, keep the last argument) rather than making every
@@ -33,11 +34,9 @@ MODE="${MODE:-plain}"
 [ -f "$JAR" ] || mvn -q -pl core,gates -am install
 
 rm -rf "$WORK"
-mkdir -p "$WORK/registry/udt/Line1-Mixer" "$WORK/registry/conformance/Line1-Mixer" "$WORK/registry/spec/mix-recipe"
+mkdir -p "$WORK/registry/udt/Line1-Mixer" "$WORK/registry/conformance/Line1-Mixer"
 cp "$FIX/udt-Line1-Mixer.json"       "$WORK/registry/udt/Line1-Mixer/1.0.0.json"
 cp "$FIX/conformance-recipe.json"    "$WORK/registry/conformance/Line1-Mixer/recipe.json"
-cp "$FIX/spec-mix-recipe-1.0.0.json" "$WORK/registry/spec/mix-recipe/1.0.0.json"
-cp "$FIX/spec-mix-recipe-1.1.0.json" "$WORK/registry/spec/mix-recipe/1.1.0.json"
 cp "$FIX/policy.json"                "$WORK/registry/policy.json"
 
 REG="$(cygpath -m "$(pwd)/$WORK/registry")"
@@ -45,10 +44,12 @@ JARW="$(cygpath -m "$(pwd)/$JAR")"
 LEDGER="$WORK/registry/activation/Line1.jsonl"
 
 SIGN_ARGS=()
+PUBLISH_ARGS=()
 VERIFY=(activation verify-chain)
 if [ "$MODE" = "signed" ]; then
   # A signed ledger needs keys, an authorized-keys list, and an activation policy that lets
-  # alice activate and bob approve. Same shape stage_reg uses in run-identity-gate.sh.
+  # alice activate and bob approve -- and publish, since a signed activation needs a signed
+  # publication. Same shape stage_reg uses in run-identity-gate.sh.
   KEYS="$WORK/keys"; mkdir -p "$KEYS" "$WORK/registry/identity"
   KEYSW="$(cygpath -m "$(pwd)/$KEYS")"
   java -jar "$JARW" identity keygen alice --out "$KEYSW" >  "$WORK/registry/identity/authorized-keys.jsonl" 2>/dev/null
@@ -56,12 +57,21 @@ if [ "$MODE" = "signed" ]; then
   cat > "$WORK/registry/identity/activation-policy.json" <<'JSON'
 {"version":"1","default":"deny","rules":[
   {"id":"r-activate","principal":"alice","action":"activate","target":"Line1","kind":"recipe","ref":"mix-recipe"},
-  {"id":"r-approve","principal":"bob","action":"approve","target":"Line1","kind":"recipe","ref":"mix-recipe"}
+  {"id":"r-approve","principal":"bob","action":"approve","target":"Line1","kind":"recipe","ref":"mix-recipe"},
+  {"id":"r-publish","principal":"alice","action":"publish","target":"recipe-publication","kind":"recipe-setpoints","ref":"mix-recipe"}
 ]}
 JSON
   SIGN_ARGS=(--by-key "$KEYSW/alice.key" --approved-by-key "$KEYSW/bob.key")
+  PUBLISH_ARGS=(--by alice --by-key "$KEYSW/alice.key")
   VERIFY=(identity verify-signed)
 fi
+
+# Activation binds only a published canonical, so publish both versions first (signed in signed
+# mode). Its progress lines go to stderr: stdout is the CSV.
+for v in 1.0.0 1.1.0; do
+  PUBLISH_SRC_ROOT="$WORK/src" publish_recipe "$JARW" "$REG" "$FIX/spec-mix-recipe-$v.json" mix-recipe "$v" \
+    "${PUBLISH_ARGS[@]}" >&2 || { echo "# could not publish mix-recipe@$v" >&2; exit 1; }
+done
 echo "# mode=$MODE  verify=${VERIFY[*]}"
 
 ms()      { date +%s%3N; }
