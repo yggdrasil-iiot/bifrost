@@ -1,6 +1,7 @@
 package dev.krillin.bifrost.core.schema;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.krillin.bifrost.core.identity.KeyFileSigner;
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.Comparator;
@@ -24,23 +25,43 @@ public final class RecipeDefinitionStore {
 
     public RecipeManifest publish(String kind, String ref, String version, byte[] contentBytes,
                                   String defRef, String contentSha256, String sourcePath, long atMillis) throws IOException {
+        return publish(kind, ref, version, contentBytes, defRef, contentSha256, sourcePath, atMillis, null);
+    }
+
+    /** With a signer, a new version gets recipe/<ref>/<version>/manifest.dsse.json, written first. An existing
+     *  version is never signed after the fact: its envelope must already exist and verify, or publish refuses. */
+    public RecipeManifest publish(String kind, String ref, String version, byte[] contentBytes, String defRef,
+                                  String contentSha256, String sourcePath, long atMillis, KeyFileSigner signer) throws IOException {
         Path dir = root.resolve("recipe").resolve(ref).resolve(version);
         Path manifestFile = dir.resolve("manifest.json");
         if (Files.exists(manifestFile)) {
             RecipeManifest existing = mapper.readValue(manifestFile.toFile(), RecipeManifest.class);
             if (!existing.contentSha256().equals(contentSha256))
                 throw new IOException("recipe " + ref + "/" + version + " already published with different content (immutable - bump version)");
+            if (signer != null) {
+                RecipeAttestation.require(Files.exists(dir.resolve(RecipeAttestation.FILE)), "recipe.publish.already-published-unsigned");
+                RecipeAttestation.verify(root, ref, version);
+            }
             return existing;
         }
+        RecipeManifest m = new RecipeManifest(kind, ref, version, defRef, contentSha256, sourcePath, atMillis);
+        byte[] manifestBytes = mapper.writerWithDefaultPrettyPrinter().writeValueAsBytes(m);
+        if (signer != null) RecipeAttestation.admit(root, signer, kind, ref);   // refused before anything is written
         Files.createDirectories(dir);
+        if (signer != null) {
+            // Envelope first: a crash leaves at most an envelope with no manifest, which a retry replaces.
+            Path pending = dir.resolve(RecipeAttestation.FILE + ".pending");
+            Files.write(pending, RecipeAttestation.envelope(
+                    RecipeAttestation.statement(m, RecipeAttestation.sha(manifestBytes), signer.principal()), signer));
+            Files.move(pending, dir.resolve(RecipeAttestation.FILE), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+        }
         // SKELETON WART: this store is recipe-shaped throughout — the on-disk path is registry/recipe/<ref>/…,
         // the canonical file is always named recipe-setpoints.yaml (here and in resolveUnchecked), and the
         // RecipePublish log line says "recipe". Only the manifest's `kind` field distinguishes a master-spec
         // artifact. Acceptable for the skeleton; a real master-spec store (Chunk 4/5) must generalize path +
         // filename + naming, not just this line.
         Files.write(dir.resolve("recipe-setpoints.yaml"), contentBytes);
-        RecipeManifest m = new RecipeManifest(kind, ref, version, defRef, contentSha256, sourcePath, atMillis);
-        mapper.writerWithDefaultPrettyPrinter().writeValue(manifestFile.toFile(), m);
+        Files.write(manifestFile, manifestBytes);
         return m;
     }
 

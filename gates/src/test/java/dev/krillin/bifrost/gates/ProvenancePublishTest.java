@@ -1,5 +1,6 @@
 package dev.krillin.bifrost.gates;
 
+import dev.krillin.bifrost.core.identity.Ed25519Keys;
 import dev.krillin.bifrost.core.schema.RecipeDefinitionStore;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -93,5 +94,34 @@ class ProvenancePublishTest {
         Path emptyRegistry = tmp.resolve("empty-registry");
         Files.createDirectories(emptyRegistry);
         assertEquals(2, ProvenancePublish.run(new String[]{ "verify", emptyRegistry.toString(), "no-such-ref" }));
+    }
+
+    @Test void signedPublish_verifiesAndAnUnsignedVersionIsRefused(@TempDir Path tmp) throws Exception {
+        Path repo = seedRepo(tmp, "endpoint: x\nsetpoints: {rpm: 1500}\n".getBytes(StandardCharsets.UTF_8));
+        Path registry = tmp.resolve("registry");
+        var pair = Ed25519Keys.generate();
+        Path key = tmp.resolve("publisher.key");
+        Files.writeString(key, Ed25519Keys.privateKeyB64(pair.getPrivate()));
+        Files.createDirectories(registry.resolve("identity"));
+        Files.writeString(registry.resolve("identity/authorized-keys.jsonl"),
+                "{\"principal\":\"publisher\",\"publicKey\":\"" + Ed25519Keys.publicKeyB64(pair.getPublic()) + "\"}\n");
+        Files.writeString(registry.resolve("identity/activation-policy.json"), "{\"version\":\"1.0.0\",\"default\":\"deny\",\"rules\":["
+                + "{\"id\":\"p\",\"principal\":\"publisher\",\"action\":\"publish\",\"target\":\"recipe-publication\",\"kind\":\"recipe-setpoints\",\"ref\":\"line1\"}]}");
+        String[] base = { "publish", registry.toString(), repo.toString(), "model/recipe-setpoints.yaml", "line1" };
+
+        assertEquals(2, ProvenancePublish.run(concat(base, "1.0.0", "--by", "publisher")), "--by without --by-key");
+        assertEquals(0, ProvenancePublish.run(concat(base, "1.0.0", "--by", "publisher", "--by-key", key.toString())));
+        assertEquals(0, ProvenancePublish.run(new String[]{ "verify-attestation", registry.toString(), "line1", "1.0.0" }));
+        assertEquals(1, ProvenancePublish.run(concat(base, "1.0.1", "--by", "nobody", "--by-key", key.toString())), "an unregistered principal");
+        assertEquals(0, ProvenancePublish.run(concat(base, "1.0.2")));
+        assertEquals(1, ProvenancePublish.run(new String[]{ "verify-attestation", registry.toString(), "line1", "1.0.2" }));
+        assertEquals(0, ProvenancePublish.run(new String[]{ "verify", registry.toString(), "line1" }), "the unsigned check is unchanged");
+        assertEquals(1, ProvenancePublish.run(concat(base, "1.0.2", "--by", "publisher", "--by-key", key.toString())), "signing an unsigned version afterwards");
+    }
+
+    private static String[] concat(String[] a, String... b) {
+        String[] out = java.util.Arrays.copyOf(a, a.length + b.length);
+        System.arraycopy(b, 0, out, a.length, b.length);
+        return out;
     }
 }

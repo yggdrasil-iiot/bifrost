@@ -1,20 +1,24 @@
 package dev.krillin.bifrost.core.schema;
 
+import dev.krillin.bifrost.core.identity.AuthorizedKeys;
+import dev.krillin.bifrost.core.identity.KeyFileSigner;
 import java.io.ByteArrayOutputStream;
 import java.nio.file.Path;
 import java.security.MessageDigest;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
  * Mints a recipe version reference. The ONLY place git runs in the whole feature — once, at publish.
- * Usage: RecipePublish <registryDir> <sourceRepoDir> <sourcePathRelToRepo> <ref> [<version>] [--kind <kind>]
- * Exit: 0 published (or no-op re-publish), 1 refused (dirty / no commit), 2 error/usage.
+ * Usage: RecipePublish <registryDir> <sourceRepoDir> <sourcePathRelToRepo> <ref> [<version>] [--kind <kind>] [--by <principal> --by-key <keyFile>]
+ * With --by/--by-key the publisher signs recipe/<ref>/<version>/manifest.dsse.json (see RecipeAttestation).
+ * Exit: 0 published (or no-op re-publish), 1 refused (dirty / no commit / signing refused), 2 error/usage.
  */
 public final class RecipePublish {
 
-    private static final String USAGE = "Usage: RecipePublish <registryDir> <sourceRepoDir> <sourcePath> <ref> [<version>] [--kind <kind>]";
+    private static final String USAGE = "Usage: RecipePublish <registryDir> <sourceRepoDir> <sourcePath> <ref> [<version>] [--kind <kind>] [--by <principal> --by-key <keyFile>]";
     private static final String DEFAULT_KIND = "recipe-setpoints";
 
     public static void main(String[] args) { System.exit(run(args)); }
@@ -22,17 +26,19 @@ public final class RecipePublish {
     public static int run(String[] args) {
         // Scan out the position-independent --kind <value> flag, leaving only positionals behind.
         // --kind may appear at index 4 (no version) or index 5 (version given) — order-agnostic scan.
-        String kind = DEFAULT_KIND;
+        String kind = DEFAULT_KIND, by = null, byKey = null;
         List<String> pos = new ArrayList<>();
         for (int i = 0; i < args.length; i++) {
-            if ("--kind".equals(args[i])) {
-                if (i + 1 >= args.length) { System.err.println("[PUBLISH] error: --kind requires a value\n" + USAGE); return 2; }
-                kind = args[++i];
+            if ("--kind".equals(args[i]) || "--by".equals(args[i]) || "--by-key".equals(args[i])) {
+                if (i + 1 >= args.length) { System.err.println("[PUBLISH] error: " + args[i] + " requires a value\n" + USAGE); return 2; }
+                String flag = args[i], value = args[++i];
+                if (flag.equals("--kind")) kind = value; else if (flag.equals("--by")) by = value; else byKey = value;
             } else {
                 pos.add(args[i]);
             }
         }
         if (pos.size() < 4) { System.err.println(USAGE); return 2; }
+        if ((by == null) != (byKey == null)) { System.err.println("[PUBLISH] error: --by and --by-key go together\n" + USAGE); return 2; }
         Path registry = Path.of(pos.get(0));
         Path repo = Path.of(pos.get(1));
         String sourcePath = pos.get(2), ref = pos.get(3);
@@ -47,11 +53,15 @@ public final class RecipePublish {
             byte[] blob = gitBytes(repo, "show", defRef + ":" + sourcePath);
             if (blob == null) { System.err.println("[PUBLISH] error: git show failed"); return 2; }
             String sha256 = sha256hex(blob);
+            KeyFileSigner signer = by == null ? null
+                    : KeyFileSigner.create(by, Path.of(byKey), AuthorizedKeys.load(registry), Clock.systemUTC());
             RecipeManifest m = new RecipeDefinitionStore(registry)
-                    .publish(kind, ref, version, blob, defRef, sha256, sourcePath, System.currentTimeMillis());
-            System.out.println("[PUBLISH] recipe " + ref + "/" + m.version() + " defRef=" + defRef + " sha256=" + sha256);
+                    .publish(kind, ref, version, blob, defRef, sha256, sourcePath, System.currentTimeMillis(), signer);
+            System.out.println("[PUBLISH] recipe " + ref + "/" + m.version() + " defRef=" + defRef + " sha256=" + sha256
+                    + (signer == null ? "" : " signedBy=" + by));
             return 0;
-        } catch (Exception e) { System.err.println("[PUBLISH] error: " + e.getMessage()); return 2; }
+        } catch (RecipeAttestation.Refused e) { System.err.println("[PUBLISH] refuse: " + e.getMessage()); return 1; }
+        catch (Exception e) { System.err.println("[PUBLISH] error: " + e.getMessage()); return 2; }
     }
 
     private static String sha256hex(byte[] b) throws Exception {
