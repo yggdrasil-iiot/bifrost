@@ -2,6 +2,8 @@ package dev.krillin.bifrost.core.schema;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.util.DefaultIndenter;
+import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import java.io.IOException;
@@ -39,5 +41,12 @@ public final class JsonMapperFactory {
             }
         });
         return new ObjectMapper().registerModule(m);
+    }
+
+    /** Pretty JSON that ends every line with LF. Jackson's default pretty printer uses line.separator, so the
+     *  same value would be CRLF bytes on Windows and LF on Linux — and a file whose bytes are hashed must not
+     *  depend on the OS that wrote it. Every pretty-printed file in the reactor goes through here. */
+    public static ObjectWriter prettyWriter(ObjectMapper mapper) {
+        return mapper.writer(new DefaultPrettyPrinter().withObjectIndenter(new DefaultIndenter("  ", "\n")));
     }
 }

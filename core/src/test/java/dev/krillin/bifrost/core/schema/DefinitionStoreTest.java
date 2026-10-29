@@ -28,6 +28,13 @@ class DefinitionStoreTest {
         assertEquals(SemVer.parse("1.10.0"), latest.get().version());
     }
 
+    @Test void promote_writesLfOnEveryOs(@TempDir Path root) throws Exception {
+        new DefinitionStore(root).promote(new UdtDefinition("Motor", SemVer.parse("1.0.0"), List.of(new Member("Rpm", "Double", null, null)), List.of(), null));
+        String written = Files.readString(root.resolve("udt/Motor/1.0.0.json"));
+        assertTrue(written.contains("\n"), "pretty-printed");
+        assertFalse(written.contains("\r"), "line.separator must not reach the bytes");
+    }
+
     @Test void latest_emptyForUnknownRef(@TempDir Path root) throws Exception {
         assertTrue(new DefinitionStore(root).latest("Nope").isEmpty());
     }

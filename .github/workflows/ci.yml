@@ -77,3 +77,22 @@ jobs:
           name: bifrost-sbom
           path: target/bifrost-sbom.*
           if-no-files-found: error
+
+  # Hashed and signed bytes must not depend on the OS that wrote them. A byte golden taken on one OS
+  # passes there by construction, so the tests also run on the other one.
+  windows:
+    name: tests on Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: temurin
+          cache: maven
+
+      - name: Build and test
+        run: mvn -B -ntp install

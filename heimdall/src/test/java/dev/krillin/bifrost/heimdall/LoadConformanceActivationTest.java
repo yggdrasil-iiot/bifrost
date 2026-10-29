@@ -54,6 +54,15 @@ class LoadConformanceActivationTest {
         Files.writeString(f, Files.readString(f) + " ");
         var ex = assertThrows(Exception.class, () -> NcmdOpcUaBridgeMain.loadConformance(cfg()));
         assertTrue(ex.getMessage().contains("activation.edge.content-mismatch"));
+        assertFalse(ex.getMessage().contains(":line-endings"), "a trailing space is an edit, not a conversion");
+    }
+    @Test void aLineEndingConversionStillFailsClosedButIsNamed() throws Exception {
+        Path f = new MasterSpecStore().file(reg,"mix-recipe","1.0.0");
+        JsonMapperFactory.prettyWriter(JsonMapperFactory.create()).writeValue(f.toFile(), JsonMapperFactory.create().readTree(f.toFile()));
+        activate("1.0.0");
+        Files.writeString(f, Files.readString(f).replace("\n", "\r\n"));   // git core.autocrlf checkout on the edge
+        var ex = assertThrows(Exception.class, () -> NcmdOpcUaBridgeMain.loadConformance(cfg()));
+        assertTrue(ex.getMessage().contains("activation.edge.content-mismatch:line-endings"), ex.getMessage());
     }
     @Test void brokenLedgerChainFailsClosed() throws Exception {
         activate("1.0.0");
