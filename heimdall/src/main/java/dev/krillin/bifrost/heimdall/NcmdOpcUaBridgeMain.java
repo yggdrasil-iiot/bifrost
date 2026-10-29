@@ -7,6 +7,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import dev.krillin.bifrost.core.acl.AclMapperFactory;
 import dev.krillin.bifrost.core.acl.CommandPolicy;
+import dev.krillin.bifrost.core.activation.ActivationEvent;
+import dev.krillin.bifrost.core.activation.ArtifactResolver;
+import dev.krillin.bifrost.core.activation.LineEndings;
+import dev.krillin.bifrost.core.activation.PublicationRef;
+import dev.krillin.bifrost.core.activation.PublishedRecipe;
+import dev.krillin.bifrost.core.activation.Sha256;
 import dev.krillin.bifrost.core.conformance.ConformancePolicy;
 import dev.krillin.bifrost.core.conformance.MasterSpecStore;
 import dev.krillin.bifrost.core.schema.DefinitionStore;
@@ -38,6 +44,8 @@ import dev.krillin.bifrost.core.schema.UdtDefinition;
  *
  *   COMMAND_LEDGER_PATH    (unset)   (root of the chained command record; unset = no record)
  *   REQUIRE_COMMAND_LEDGER false     (an unwritable INTENT entry refuses the command)
+ *
+ *   REQUIRE_PUBLISHED_ACTIVATION false (an active entry that names no publication refuses to bind)
  * </pre>
  *
  * Run: {@code mvn -q compile exec:java -Dexec.mainClass=dev.krillin.bifrost.heimdall.NcmdOpcUaBridgeMain}
@@ -53,13 +61,16 @@ public final class NcmdOpcUaBridgeMain {
      * one tier further to {@link dev.krillin.bifrost.core.identity.TrustLevel#ANCHORED} (adds the external
      * anchor cross-check + four-eyes head); it IMPLIES signed (anchored presupposes authN). {@code anchorStore}
      * ({@code ANCHOR_STORE}, file|git) and {@code anchorDir} ({@code ANCHOR_DIR}) pick the anchor witness.
+     * {@code requirePublishedActivation} (env {@code REQUIRE_PUBLISHED_ACTIVATION}, default OFF) refuses an active
+     * entry written before activation named its publication; off, such an entry binds spec/ with a WARN.
      */
     record Config(String broker, String opcua, String group, String edge, String policyPath,
                   String registryPath, String conformancePath, String activationPath, String activationTarget,
                   boolean requireSignedActivation, boolean requireAnchoredActivation, String anchorStore,
                   String anchorDir, boolean enforcementLogOnly, int healthPort, int applyThreads, String identityDir,
                   boolean requireSignedCommand, int replayWindow,
-                  String commandLedgerPath, boolean requireCommandLedger, int certWarnDays) {}
+                  String commandLedgerPath, boolean requireCommandLedger, int certWarnDays,
+                  boolean requirePublishedActivation) {}
 
     /**
      * Tri-state flag parse shared by every boolean env toggle. {@code true/on/1} and {@code false/off/0}
@@ -108,10 +119,11 @@ public final class NcmdOpcUaBridgeMain {
         int replayWindow = intEnv(getenv, "HEIMDALL_REPLAY_WINDOW", 1024);
         String commandLedgerPath = env(getenv, "COMMAND_LEDGER_PATH", null);
         boolean requireCommandLedger = flag(getenv, "REQUIRE_COMMAND_LEDGER", "");
+        boolean requirePublished = flag(getenv, "REQUIRE_PUBLISHED_ACTIVATION", "");
         return new Config(broker, opcua, group, edge, policyPath, registryPath, conformancePath, activationPath,
                 activationTarget, requireSignedEffective, requireAnchored, anchorStore, anchorDir, logOnly,
                 healthPort, applyThreads, identityDir, requireSignedCommand, replayWindow,
-                commandLedgerPath, requireCommandLedger, certWarnDays);
+                commandLedgerPath, requireCommandLedger, certWarnDays, requirePublished);
     }
 
     /**
@@ -197,20 +209,11 @@ public final class NcmdOpcUaBridgeMain {
                 // denied at the edge. (A non-recipe activation never reaches this bind — it fails at no-active-pointer.)
                 assertActivationAuthorized(ledgerDir, config.activationTarget(), "recipe", ref,
                         active.activatedBy(), active.approvedBy(), config.requireSignedActivation());
-                java.nio.file.Path specFile = new MasterSpecStore().file(registryDir, ref, active.version());
-                if (!java.nio.file.Files.isRegularFile(specFile))
-                    throw new IllegalStateException("activation.edge.artifact-missing: " + specFile);
-                byte[] bytes = java.nio.file.Files.readAllBytes(specFile);      // verify BEFORE parse
-                String sha = dev.krillin.bifrost.core.activation.Sha256.hex(bytes);
-                if (!sha.equals(active.contentSha256()))
-                    throw new IllegalStateException("activation.edge.content-mismatch"
-                            + (dev.krillin.bifrost.core.activation.LineEndings.explainMismatch(bytes, active.contentSha256())
-                                    ? ":line-endings" : "")
-                            + ": ref " + ref + "@" + active.version()
-                            + " edge sha " + sha + " != approved " + active.contentSha256());
-                recipe = cmapper.readValue(bytes, MasterSpec.class);
-                System.out.println("[BRIDGE] activation bound " + ref + "@" + active.version()
-                        + " (approved by " + active.approvedBy() + ", sha256 " + sha + ")");
+                if (active.publication() == null) {
+                    recipe = bindUnpublished(registryDir, ref, active, config.requirePublishedActivation(), cmapper);
+                } else {
+                    recipe = bindPublished(registryDir, ref, active, config.requireSignedActivation());
+                }
             } else {
                 recipe = new MasterSpecStore()
                         .load(registryDir, ref, cp.dial().activeRecipeVersion())
@@ -221,6 +224,80 @@ public final class NcmdOpcUaBridgeMain {
         System.out.println("[BRIDGE] conformance loaded " + cp.equipmentRef() + "@" + cp.equipmentVersion()
                 + " dial=" + (cp.dial() == null ? "none" : cp.dial().mode()));
         return new Conformance(cdef, cp, recipe);
+    }
+
+    /**
+     * Binds an active entry that names its publication. The publication files are read once; then, in order: the
+     * canonical bytes must be the approved bytes, the manifest and envelope must be the ones the entry recorded, the
+     * publication must check (manifest, kind, envelope signature and publisher grant, MasterSpec for this ref and
+     * version), and a signed-activation edge must not bind an unsigned publication. The MasterSpec bound is the one
+     * parsed from the checked bytes. Throws {@link IllegalStateException} with the reason-coded message.
+     */
+    static MasterSpec bindPublished(Path registryDir, String ref, ActivationEvent active, boolean requireSigned)
+            throws java.io.IOException {
+        PublicationRef pinned = active.publication();
+        java.util.Optional<PublishedRecipe.Snapshot> read;
+        try { read = PublishedRecipe.read(registryDir, ref, active.version()); }
+        catch (ArtifactResolver.Unresolvable u) {
+            throw new IllegalStateException("activation.edge.publication-invalid:" + u.rule() + ": " + u.getMessage());
+        }
+        PublishedRecipe.Snapshot s = read.orElseThrow(() ->
+                new IllegalStateException("activation.edge.publication-missing: recipe/" + ref + "/" + active.version()
+                        + " is not in the registry"));
+        String sha = Sha256.hex(s.canonicalBytes());
+        if (!sha.equals(active.contentSha256()))
+            throw new IllegalStateException("activation.edge.content-mismatch"
+                    + (LineEndings.explainMismatch(s.canonicalBytes(), active.contentSha256()) ? ":line-endings" : "")
+                    + ": ref " + ref + "@" + active.version() + " edge sha " + sha + " != approved " + active.contentSha256());
+        String manifestSha = Sha256.hex(s.manifestBytes());
+        if (!manifestSha.equals(pinned.manifestSha256()))
+            throw new IllegalStateException("activation.edge.publication-manifest-mismatch"
+                    + (LineEndings.explainMismatch(s.manifestBytes(), pinned.manifestSha256()) ? ":line-endings" : "")
+                    + ": manifest.json sha " + manifestSha + " != activated " + pinned.manifestSha256());
+        String envelopeSha = s.envelope() == null ? null : Sha256.hex(s.envelope());
+        if (!java.util.Objects.equals(envelopeSha, pinned.attestationSha256()))
+            throw new IllegalStateException("activation.edge.publication-attestation-mismatch: manifest.dsse.json sha "
+                    + envelopeSha + " != activated " + pinned.attestationSha256());
+        PublishedRecipe.Checked c;
+        try { c = PublishedRecipe.check(registryDir, ref, active.version(), s); }
+        catch (ArtifactResolver.Unresolvable u) {
+            throw new IllegalStateException("activation.edge.publication-invalid:" + u.rule() + ": " + u.getMessage());
+        }
+        if (requireSigned && envelopeSha == null)
+            throw new IllegalStateException("activation.edge.publication-unsigned: " + ref + "@" + active.version()
+                    + " was published unsigned and REQUIRE_SIGNED_ACTIVATION is on");
+        System.out.println("[BRIDGE] activation bound " + ref + "@" + active.version()
+                + " (approved by " + active.approvedBy() + ", sha256 " + sha + ", published from " + pinned.defRef()
+                + (envelopeSha == null ? ", unsigned" : ", signed") + ")");
+        return c.spec();
+    }
+
+    /**
+     * Binds an active entry written before activation named its publication: spec/&lt;ref&gt;/&lt;version&gt;.json,
+     * hashed against the approved bytes before it is parsed. With {@code requirePublished} it refuses instead.
+     */
+    static MasterSpec bindUnpublished(Path registryDir, String ref, ActivationEvent active, boolean requirePublished,
+                                      ObjectMapper cmapper) throws java.io.IOException {
+        if (requirePublished)
+            throw new IllegalStateException("activation.edge.publication-missing: the active entry for " + ref + "@"
+                    + active.version() + " names no publication and REQUIRE_PUBLISHED_ACTIVATION is on");
+        System.err.println("[BRIDGE] WARN activation.edge.legacy-unpublished: " + ref + "@" + active.version()
+                + " was activated without a publication; binding spec/. Publish it and activate again, then set"
+                + " REQUIRE_PUBLISHED_ACTIVATION=on.");
+        Path specFile = new MasterSpecStore().file(registryDir, ref, active.version());
+        if (!java.nio.file.Files.isRegularFile(specFile))
+            throw new IllegalStateException("activation.edge.artifact-missing: " + specFile);
+        byte[] bytes = java.nio.file.Files.readAllBytes(specFile);      // verify BEFORE parse
+        String sha = Sha256.hex(bytes);
+        if (!sha.equals(active.contentSha256()))
+            throw new IllegalStateException("activation.edge.content-mismatch"
+                    + (LineEndings.explainMismatch(bytes, active.contentSha256()) ? ":line-endings" : "")
+                    + ": ref " + ref + "@" + active.version()
+                    + " edge sha " + sha + " != approved " + active.contentSha256());
+        MasterSpec recipe = cmapper.readValue(bytes, MasterSpec.class);
+        System.out.println("[BRIDGE] activation bound " + ref + "@" + active.version()
+                + " (approved by " + active.approvedBy() + ", sha256 " + sha + ", unpublished)");
+        return recipe;
     }
 
     /**

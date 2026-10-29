@@ -101,4 +101,10 @@ class NcmdOpcUaBridgeMainConfigTest {
         var garbage = NcmdOpcUaBridgeMain.resolve(Map.of("REQUIRE_SIGNED_ACTIVATION", "maybe")::get);
         assertFalse(garbage.requireSignedActivation());
     }
+
+    // Off by default so an edge upgraded under a ledger with unpublished entries keeps binding them, with a WARN.
+    @Test void requirePublishedActivationIsOffByDefaultAndParsesOn() {
+        assertFalse(NcmdOpcUaBridgeMain.resolve(Map.<String, String>of()::get).requirePublishedActivation());
+        assertTrue(NcmdOpcUaBridgeMain.resolve(Map.of("REQUIRE_PUBLISHED_ACTIVATION", "on")::get).requirePublishedActivation());
+    }
 }

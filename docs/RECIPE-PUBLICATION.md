@@ -27,11 +27,48 @@ Statement `subject` has two entries, `recipe-setpoints.yaml` and `manifest.json`
 4. Check that the subject digests equal the raw SHA-256 of the two files.
 5. Check that `externalParameters` and `resolvedDependencies` restate `manifest.json`.
 
-`gates provenance verify-attestation <registry> <ref> <version>` exits 0 when the envelope verifies and 1 with a reason code otherwise; an unsigned version is refused (`recipe.attestation-missing`), never accepted on the SHA-256 check alone. It checks, in order: the publisher named in `publishedBy` signed with a registered key; `_type`, `predicateType`, `buildType` and `builder.id`; the subject equals the two files on disk; the predicate restates `manifest.json` and the requested ref and version; the policy still grants that publisher `publish`. Reason codes: `recipe.attestation-missing`, `recipe.attestation-signature:<identity rule>`, `recipe.attestation-statement`, `recipe.attestation-subject`, `recipe.attestation-subject:line-endings`, `recipe.attestation-predicate`, `recipe.publish-denied`. The `publish` grant is Bifrost policy and is not part of the statement. A key retired later still verifies what it signed; the validity window is checked when signing. The activation ledger seals `spec/<ref>/<version>.json`, a different file; the publisher attestation covers the recipe registry and does not link the two.
+`gates provenance verify-attestation <registry> <ref> <version>` exits 0 when the envelope verifies and 1 with a reason code otherwise; an unsigned version is refused (`recipe.attestation-missing`), never accepted on the SHA-256 check alone. It checks, in order: the publisher named in `publishedBy` signed with a registered key; `_type`, `predicateType`, `buildType` and `builder.id`; the subject equals the two files on disk; the predicate restates `manifest.json` and the requested ref and version; the policy still grants that publisher `publish`. Reason codes: `recipe.attestation-missing`, `recipe.attestation-signature:<identity rule>`, `recipe.attestation-statement`, `recipe.attestation-subject`, `recipe.attestation-subject:line-endings`, `recipe.attestation-predicate`, `recipe.publish-denied`. The `publish` grant is Bifrost policy and is not part of the statement. A key retired later still verifies what it signed; the validity window is checked when signing.
+
+## Activation
+
+`gates activate <registry> <target> recipe <ref> <version>` binds the published canonical `recipe/<ref>/<version>/recipe-setpoints.yaml`, not a file under `spec/`.
+
+Before it writes a ledger entry, activation reads `recipe-setpoints.yaml`, `manifest.json` and, if present, `manifest.dsse.json` once, and checks those bytes: `manifest.json` parses, names the requested ref and version, has `kind` `recipe-setpoints`, and its `contentSha256` is the SHA-256 of the canonical; an envelope that is present must verify as described under Verification, whether or not the activation is signed; the canonical parses as a `MasterSpec` whose `specRef` and `version` are the requested ref and version. A published UDT or policy is therefore not activatable as a recipe.
+
+A signed activation (`--by-key` and `--approved-by-key`) also requires a signed publication. An unsigned activation accepts an unsigned publication.
+
+Activation-time reason codes:
+- `activation.publication.missing` (a `spec/<ref>/<version>.json` exists but nothing is published for that version)
+- `activation.publication.incomplete`
+- `activation.publication.manifest-invalid`
+- `activation.publication.manifest-mismatch`
+- `activation.publication.kind-mismatch`
+- `activation.publication.content-mismatch` (with the `:line-endings` suffix when only line endings differ)
+- `activation.publication.attestation:<recipe reason code>`
+- `activation.publication.spec-identity`
+- `activation.publication.unsigned`
+
+When nothing exists at all the code stays `activation.artifact.unresolved`. A refusal leaves the ledger untouched.
+
+The ledger entry records `contentSha256` (the canonical bytes) and a `publication` object: `manifestSha256` (raw SHA-256 of `manifest.json`), `defRef` (the git commit the manifest names) and `attestationSha256` (raw SHA-256 of `manifest.dsse.json`, omitted for an unsigned publication). These fields are part of the entry hash, so the dual signatures cover them. `gates active` and `gates activation-log` print them as `published=<defRef> attestation=<digest or unsigned>`.
+
+Heimdall binds such an entry in this order, reading the files once:
+- the files exist, else `activation.edge.publication-missing`
+- the canonical hash equals `contentSha256`, else `activation.edge.content-mismatch`
+- the `manifest.json` hash equals `manifestSha256`, else `activation.edge.publication-manifest-mismatch`
+- the envelope hash equals `attestationSha256` (both absent counts as equal), else `activation.edge.publication-attestation-mismatch`
+- the publication checks as at activation, else `activation.edge.publication-invalid:<activation reason code>`
+- with `REQUIRE_SIGNED_ACTIVATION` on, an unsigned publication fails with `activation.edge.publication-unsigned`
+
+Because the envelope check asks the current policy for the publisher's `publish` grant, removing that grant stops the next bind.
+
+Entries written before activation named a publication have no `publication`. Their bytes, chain hash and signatures are unchanged. Heimdall binds them from `spec/<ref>/<version>.json` as before and prints the warning `activation.edge.legacy-unpublished`. With `REQUIRE_PUBLISHED_ACTIVATION` on (default off) it refuses them with `activation.edge.publication-missing`. To move a site over: commit the exact `spec/` bytes to the source repository, publish them, activate that version again, then turn the flag on.
+
+An older Heimdall cannot read a ledger line that has a `publication` object and fails at startup. Upgrade every edge before the control plane writes the first such entry.
 
 ## Registry bytes
 
-Bifrost seals raw file bytes in two places: the publisher attestation subject (`recipe-setpoints.yaml` and `manifest.json` under `recipe/<ref>/<version>/`) and the activation ledger (`spec/<ref>/<version>.json`, which Heimdall hashes again before it binds the version). Bifrost writes `manifest.json` with LF line endings on every OS and copies `recipe-setpoints.yaml` byte for byte from the git commit.
+Bifrost seals raw file bytes in two places: the publisher attestation subject (`recipe-setpoints.yaml` and `manifest.json` under `recipe/<ref>/<version>/`) and the activation ledger (the same `recipe-setpoints.yaml`, which Heimdall hashes again before it binds the version; ledger entries written before activation named a publication seal `spec/<ref>/<version>.json` instead). Bifrost writes `manifest.json` with LF line endings on every OS and copies `recipe-setpoints.yaml` byte for byte from the git commit.
 
 A copy that converts line endings changes those bytes. Git with `core.autocrlf` does this on checkout and on commit. The result is refused like any other changed byte. The refusal names the cause when the only difference from the sealed bytes is line endings: `gates provenance verify-attestation` refuses with `recipe.attestation-subject:line-endings`, and Heimdall fails with `activation.edge.content-mismatch:line-endings`. The fix is to restore the original bytes, not to re-seal.
 

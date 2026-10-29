@@ -8,15 +8,22 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class RecipeArtifactResolverTest {
-    @Test void resolvesBytesAndSha(@TempDir Path reg) throws Exception {
-        MasterSpec spec = new MasterSpec("mix-recipe","1.0.0","Line1","Line1-Mixer","1.0.0",
-            List.of(new Setpoint("Rpm","Double",1500)));
-        Path f = new MasterSpecStore().file(reg,"mix-recipe","1.0.0");
-        Files.createDirectories(f.getParent());
-        JsonMapperFactory.create().writeValue(f.toFile(), spec);
+    static final String DEF_REF = "0123456789abcdef0123456789abcdef01234567";
+    static byte[] spec() throws Exception {
+        return JsonMapperFactory.create().writeValueAsBytes(new MasterSpec("mix-recipe","1.0.0","Line1","Line1-Mixer","1.0.0",
+            List.of(new Setpoint("Rpm","Double",1500))));
+    }
+    static void publish(Path reg, byte[] bytes) throws Exception {
+        new RecipeDefinitionStore(reg).publish(PublishedRecipe.MANIFEST_KIND, "mix-recipe", "1.0.0", bytes, DEF_REF,
+                Sha256.hex(bytes), "recipes/mix-recipe.json", 1L);
+    }
+    @Test void resolvesThePublishedCanonicalAndItsPublication(@TempDir Path reg) throws Exception {
+        publish(reg, spec());
+        Path dir = reg.resolve("recipe/mix-recipe/1.0.0");
         var r = new RecipeArtifactResolver(reg).resolve("recipe","mix-recipe","1.0.0").orElseThrow();
-        assertEquals(f, r.path());
-        assertEquals(Sha256.hex(Files.readAllBytes(f)), r.sha256());
+        assertEquals(dir.resolve("recipe-setpoints.yaml"), r.path());
+        assertEquals(Sha256.hex(spec()), r.sha256());
+        assertEquals(new PublicationRef(Sha256.hex(Files.readAllBytes(dir.resolve("manifest.json"))), DEF_REF, null), r.publication());
     }
     @Test void absentVersionIsEmpty(@TempDir Path reg) {
         assertTrue(new RecipeArtifactResolver(reg).resolve("recipe","mix-recipe","9.9.9").isEmpty());
@@ -24,10 +31,18 @@ class RecipeArtifactResolverTest {
     @Test void nonRecipeKindIsEmpty(@TempDir Path reg) {
         assertTrue(new RecipeArtifactResolver(reg).resolve("equipment","x","1.0.0").isEmpty());
     }
-    @Test void invalidJsonIsEmpty(@TempDir Path reg) throws Exception {
-        Path f = new MasterSpecStore().file(reg,"broken","1.0.0");
+    @Test void anUnpublishedSpecFileIsRefusedByName(@TempDir Path reg) throws Exception {
+        Path f = new MasterSpecStore().file(reg,"mix-recipe","1.0.0");
         Files.createDirectories(f.getParent());
-        Files.writeString(f, "{ not valid master spec");
-        assertTrue(new RecipeArtifactResolver(reg).resolve("recipe","broken","1.0.0").isEmpty());
+        Files.write(f, spec());
+        var u = assertThrows(ArtifactResolver.Unresolvable.class,
+                () -> new RecipeArtifactResolver(reg).resolve("recipe","mix-recipe","1.0.0"));
+        assertEquals("activation.publication.missing", u.rule());
+    }
+    @Test void aPublishedCanonicalThatIsNotAMasterSpecIsUnresolved(@TempDir Path reg) throws Exception {
+        publish(reg, "{ not valid master spec".getBytes());
+        var u = assertThrows(ArtifactResolver.Unresolvable.class,
+                () -> new RecipeArtifactResolver(reg).resolve("recipe","mix-recipe","1.0.0"));
+        assertEquals("activation.artifact.unresolved", u.rule());
     }
 }

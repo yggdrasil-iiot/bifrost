@@ -18,9 +18,12 @@ public final class ActivationService {
     public ActivationVerdict activate(ActivationRequest r, LedgerSigner signer, ActivationPolicy policy) {
         boolean breakGlass = false;
         try {
-            var resolved = resolver.resolve(r.kind(), r.ref(), r.version());
+            Optional<ArtifactResolver.ResolvedArtifact> resolved;
+            try { resolved = resolver.resolve(r.kind(), r.ref(), r.version()); }
+            catch (ArtifactResolver.Unresolvable u) { return refuse(u.rule(), u.getMessage()); }
             if (resolved.isEmpty()) return refuse("activation.artifact.unresolved",
                     r.kind() + " " + r.ref() + "@" + r.version() + " is not a resolvable governed artifact");
+            PublicationRef publication = resolved.get().publication();
             if (r.approvedBy() == null || r.approvedBy().isBlank())
                 return refuse("activation.approval.missing", "activation requires a distinct approver (--approved-by)");
             if (r.approvedBy().equals(r.by()))
@@ -31,6 +34,10 @@ public final class ActivationService {
             if (signer != null) {                                   // T5: fail-closed identity checks
                 var idv = signer.preflight();
                 if (!idv.isEmpty()) return new ActivationVerdict(false, null, idv);
+                // An authenticated activator and approver must not bind bytes nobody authenticated putting there.
+                if (publication != null && publication.attestationSha256() == null)
+                    return refuse("activation.publication.unsigned", r.kind() + " " + r.ref() + "@" + r.version()
+                            + " was published unsigned; a signed activation needs a signed publication (provenance publish --by)");
                 // Bind the signing identity to the event's NAMED principals, so the record's integrity holds
                 // at the point of record — not only when a later verifier rejects a signed-but-unverifiable line.
                 if (!signer.activatorPrincipal().equals(r.by()) || !signer.approverPrincipal().equals(r.approvedBy()))
@@ -67,7 +74,7 @@ public final class ActivationService {
             String prior = ledger.active(r.target(), r.kind(), r.ref()).map(ActivationEvent::version).orElse(null);
             ActivationEvent e = new ActivationEvent(r.target(), r.kind(), r.ref(), r.version(),
                     resolved.get().sha256(), r.by(), r.approvedBy(), clock.millis(), prior,
-                    breakGlass ? "BREAK_GLASS" : (r.rollback() ? "ROLLBACK" : "ACTIVATE"));
+                    breakGlass ? "BREAK_GLASS" : (r.rollback() ? "ROLLBACK" : "ACTIVATE"), publication);
             ledger.append(e, signer);
             return new ActivationVerdict(true, e, List.of());
         } catch (Exception ex) {

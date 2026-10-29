@@ -1,11 +1,17 @@
 package dev.krillin.bifrost.gates;
 
 import dev.krillin.bifrost.core.activation.FileAnchorStore;
+import dev.krillin.bifrost.core.activation.Sha256;
+import dev.krillin.bifrost.core.identity.AuthorizedKeys;
 import dev.krillin.bifrost.core.identity.Ed25519Keys;
+import dev.krillin.bifrost.core.identity.KeyFileSigner;
+import dev.krillin.bifrost.core.schema.RecipeDefinitionStore;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.security.KeyPair;
+import java.time.Clock;
 import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -35,15 +41,16 @@ class ActivateGateSignedTest {
         Files.writeString(pol,
             "{\"version\":\"1\",\"default\":\"deny\",\"rules\":["
           + "{\"id\":\"r-act\",\"principal\":\"alice\",\"action\":\"activate\",\"target\":\""+target+"\",\"kind\":\"recipe\",\"ref\":\""+ref+"\"},"
-          + "{\"id\":\"r-app\",\"principal\":\"bob\",\"action\":\"approve\",\"target\":\""+target+"\",\"kind\":\"recipe\",\"ref\":\""+ref+"\"}"
+          + "{\"id\":\"r-app\",\"principal\":\"bob\",\"action\":\"approve\",\"target\":\""+target+"\",\"kind\":\"recipe\",\"ref\":\""+ref+"\"},"
+          + "{\"id\":\"r-pub\",\"principal\":\"alice\",\"action\":\"publish\",\"target\":\"recipe-publication\",\"kind\":\"recipe-setpoints\",\"ref\":\""+ref+"\"}"
           + "]}");
-        // recipe MasterSpec the resolver seals: spec/<ref>/<version>.json
-        Path art = root.resolve("spec").resolve(ref).resolve(version + ".json");
-        Files.createDirectories(art.getParent());
-        Files.writeString(art,
-            "{\"specRef\":\""+ref+"\",\"version\":\""+version+"\",\"site\":\""+target+"\","
+        // the recipe MasterSpec the resolver seals, published and signed by alice: a signed activation needs a signed publication
+        byte[] spec = ("{\"specRef\":\""+ref+"\",\"version\":\""+version+"\",\"site\":\""+target+"\","
           + "\"equipmentRef\":\""+target+"-Mixer\",\"equipmentVersion\":\"1.0.0\","
-          + "\"setpoints\":[{\"member\":\"Rpm\",\"type\":\"Double\",\"value\":1500.0}]}");
+          + "\"setpoints\":[{\"member\":\"Rpm\",\"type\":\"Double\",\"value\":1500.0}]}").getBytes(StandardCharsets.UTF_8);
+        new RecipeDefinitionStore(root).publish("recipe-setpoints", ref, version, spec,
+                "0123456789abcdef0123456789abcdef01234567", Sha256.hex(spec), "recipes/" + ref + ".json", 1L,
+                KeyFileSigner.create("alice", a, AuthorizedKeys.load(root), Clock.systemUTC()));
         return new Path[]{a, b};
     }
 

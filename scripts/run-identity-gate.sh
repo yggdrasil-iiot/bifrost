@@ -35,6 +35,7 @@
 #   # expect: [IDENTITY] GATE PASS (I1-I6 [+I7])  exit 0
 set -euo pipefail
 cd "$(dirname "$0")/.."
+. scripts/_publish-recipe.sh
 
 # cygpath exists only under Git Bash / Cygwin. Elsewhere a POSIX path is already what the JVM
 # wants, so shim it to identity (drop the -m, keep the last argument) rather than making every
@@ -114,21 +115,32 @@ grep -q '"alice"' "$AKF" && grep -q '"bob"' "$AKF" && grep -q '"carol"' "$AKF" &
 [ -f "$KEYS/mallory.key" ] || fail "mallory keypair not generated"
 echo "[IDENTITY] keys ready (alice,bob,carol,dave registered; dave⊇carol pubkey; mallory unregistered)"
 
-# stage a fresh governed registry: resolvable recipe artifacts (spec/mix-recipe/{1.0.0,1.1.0}) + trust anchor
+# publish mix-recipe 1.0.0 + 1.1.0 into a registry, signed by alice. Activation binds only a published canonical
+# and a signed activation needs a signed publication; the publish checks alice's key and PUBLISH grant, so it runs
+# once the registry's trust anchor and activation-policy exist.
+publish_versions() {  # $1 = registry dir (bash path)
+  local v w; w="$(cygpath -m "$(pwd)/$1")"
+  for v in 1.0.0 1.1.0; do
+    PUBLISH_SRC_ROOT="$WORK/src" publish_recipe "$GATES_JAR_WIN" "$w" "$FIX/spec-mix-recipe-$v.json" mix-recipe "$v" \
+      --by alice --by-key "$KEYS_WIN/alice.key" || fail "could not publish mix-recipe@$v into $1"
+  done
+}
+
+# stage a fresh governed registry: published recipe artifacts (recipe/mix-recipe/{1.0.0,1.1.0}) + trust anchor
 stage_reg() {  # $1 = registry dir (bash path); echoes nothing, sets $reg / $reg_win globals
   reg="$1"
   rm -rf "$reg"
-  mkdir -p "$reg/spec/mix-recipe" "$reg/identity"
-  cp "$FIX/spec-mix-recipe-1.0.0.json" "$reg/spec/mix-recipe/1.0.0.json"
-  cp "$FIX/spec-mix-recipe-1.1.0.json" "$reg/spec/mix-recipe/1.1.0.json"
+  mkdir -p "$reg/identity"
   cp "$AKF"                            "$reg/identity/authorized-keys.jsonl"
   # T6: seed the activation-policy so legitimate alice/bob signed activations pass deny-by-default authZ.
   cat > "$reg/identity/activation-policy.json" <<'JSON'
 {"version":"1","default":"deny","rules":[
   {"id":"r-activate","principal":"alice","action":"activate","target":"Line1","kind":"recipe","ref":"mix-recipe"},
-  {"id":"r-approve","principal":"bob","action":"approve","target":"Line1","kind":"recipe","ref":"mix-recipe"}
+  {"id":"r-approve","principal":"bob","action":"approve","target":"Line1","kind":"recipe","ref":"mix-recipe"},
+  {"id":"r-publish","principal":"alice","action":"publish","target":"recipe-publication","kind":"recipe-setpoints","ref":"mix-recipe"}
 ]}
 JSON
+  publish_versions "$reg"
   reg_win="$(cygpath -m "$(pwd)/$reg")"
 }
 
@@ -168,6 +180,9 @@ def eh(ev, prev):
     parts=[f(ev['target']),f(ev['kind']),f(ev['ref']),f(ev['version']),f(ev['contentSha256']),
            f(ev['activatedBy']),f(ev['approvedBy']),str(ev['activatedAt']),f(ev.get('priorVersion')),
            f(ev['action']),f(prev)]
+    pub=ev.get('publication')                    # LedgerChain appends the publication only when the entry names one
+    if pub is not None:
+        parts+=[f(pub.get('manifestSha256')),f(pub.get('defRef')),f(pub.get('attestationSha256'))]
     return hashlib.sha256(SEP.join(parts).encode('utf-8')).hexdigest()
 ls=[json.loads(l) for l in open(p,encoding='utf-8').read().splitlines() if l.strip()]
 ls[0]['event']['version']='9.9.9'               # forge the past event (a business field); keep the registered
@@ -306,24 +321,24 @@ if [ -n "${SKIP_I7:-}" ]; then
 elif ! command -v docker >/dev/null 2>&1; then
   echo "[IDENTITY] I7 skipped (no docker)"
 else
-  # stage a FULL conformance registry (udt + recipe conformance + spec + policy + trust anchor) so Heimdall
+  # stage a FULL conformance registry (udt + recipe conformance + published recipe + policy + trust anchor) so Heimdall
   # reaches the recipe/activationTarget bind branch where assertLedgerTrustworthy() runs.
   I7REG="$WORK/reg-i7"
   rm -rf "$I7REG"
-  mkdir -p "$I7REG/udt/Line1-Mixer" "$I7REG/conformance/Line1-Mixer" "$I7REG/spec/mix-recipe" "$I7REG/identity"
+  mkdir -p "$I7REG/udt/Line1-Mixer" "$I7REG/conformance/Line1-Mixer" "$I7REG/identity"
   cp "$FIX/udt-Line1-Mixer.json"       "$I7REG/udt/Line1-Mixer/1.0.0.json"
   cp "$FIX/conformance-recipe.json"    "$I7REG/conformance/Line1-Mixer/recipe.json"
-  cp "$FIX/spec-mix-recipe-1.0.0.json" "$I7REG/spec/mix-recipe/1.0.0.json"
-  cp "$FIX/spec-mix-recipe-1.1.0.json" "$I7REG/spec/mix-recipe/1.1.0.json"
   cp "$FIX/policy.json"                "$I7REG/policy.json"
   cp "$AKF"                            "$I7REG/identity/authorized-keys.jsonl"
   # T6: seed the activation-policy so the signed activation below passes deny-by-default authZ.
   cat > "$I7REG/identity/activation-policy.json" <<'JSON'
 {"version":"1","default":"deny","rules":[
   {"id":"r-activate","principal":"alice","action":"activate","target":"Line1","kind":"recipe","ref":"mix-recipe"},
-  {"id":"r-approve","principal":"bob","action":"approve","target":"Line1","kind":"recipe","ref":"mix-recipe"}
+  {"id":"r-approve","principal":"bob","action":"approve","target":"Line1","kind":"recipe","ref":"mix-recipe"},
+  {"id":"r-publish","principal":"alice","action":"publish","target":"recipe-publication","kind":"recipe-setpoints","ref":"mix-recipe"}
 ]}
 JSON
+  publish_versions "$I7REG"
   reg="$I7REG"; reg_win="$(cygpath -m "$(pwd)/$I7REG")"
   I7LEDGER="$I7REG/activation/Line1.jsonl"
   CONF_RECIPE_WIN="$(cygpath -m "$(pwd)/$I7REG/conformance/Line1-Mixer/recipe.json")"
