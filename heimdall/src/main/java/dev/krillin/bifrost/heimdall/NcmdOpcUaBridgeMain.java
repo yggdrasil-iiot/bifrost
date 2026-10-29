@@ -203,7 +203,10 @@ public final class NcmdOpcUaBridgeMain {
                 byte[] bytes = java.nio.file.Files.readAllBytes(specFile);      // verify BEFORE parse
                 String sha = dev.krillin.bifrost.core.activation.Sha256.hex(bytes);
                 if (!sha.equals(active.contentSha256()))
-                    throw new IllegalStateException("activation.edge.content-mismatch: ref " + ref + "@" + active.version()
+                    throw new IllegalStateException("activation.edge.content-mismatch"
+                            + (dev.krillin.bifrost.core.activation.LineEndings.explainMismatch(bytes, active.contentSha256())
+                                    ? ":line-endings" : "")
+                            + ": ref " + ref + "@" + active.version()
                             + " edge sha " + sha + " != approved " + active.contentSha256());
                 recipe = cmapper.readValue(bytes, MasterSpec.class);
                 System.out.println("[BRIDGE] activation bound " + ref + "@" + active.version()

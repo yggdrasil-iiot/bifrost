@@ -95,9 +95,24 @@ public final class RecipeAttestation {
         catch (IdentityException e) { throw new Refused("recipe.attestation-signature:" + e.rule()); }
         JsonNode s = JSON.readTree(body);
         RecipeManifest m = JsonMapperFactory.create().readValue(manifestFile.toFile(), RecipeManifest.class);
-        matches(s, m, ref, version, sha(Files.readAllBytes(canonical)), sha(Files.readAllBytes(manifestFile)));
+        byte[] canonicalBytes = Files.readAllBytes(canonical), manifestBytes = Files.readAllBytes(manifestFile);
+        lineEndings(s, canonicalBytes, manifestBytes);
+        matches(s, m, ref, version, sha(canonicalBytes), sha(manifestBytes));
         authorized(registry, publisher, m.kind(), ref);
         return s;
+    }
+
+    /** Refuses with its own code when the only difference from the signed subject is a line-ending conversion. */
+    static void lineEndings(JsonNode s, byte[] canonicalBytes, byte[] manifestBytes) {
+        Map<String, String> signed = new HashMap<>();
+        for (JsonNode e : s.path("subject")) signed.put(e.path("name").asText(), e.path("digest").path("sha256").asText());
+        String canonicalSha = signed.get(CANONICAL), manifestSha = signed.get(MANIFEST);
+        if (canonicalSha == null || manifestSha == null) return;
+        boolean canonicalConverted = LineEndings.explainMismatch(canonicalBytes, canonicalSha);
+        boolean manifestConverted = LineEndings.explainMismatch(manifestBytes, manifestSha);
+        require(!((canonicalConverted || sha(canonicalBytes).equals(canonicalSha))
+                && (manifestConverted || sha(manifestBytes).equals(manifestSha))
+                && (canonicalConverted || manifestConverted)), "recipe.attestation-subject:line-endings");
     }
 
     static void matches(JsonNode s, RecipeManifest m, String ref, String version, String canonicalSha, String manifestSha) {

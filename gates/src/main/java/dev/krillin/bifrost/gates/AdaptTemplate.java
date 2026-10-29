@@ -24,7 +24,7 @@ public final class AdaptTemplate {
             ObjectMapper mapper = JsonMapperFactory.create();
             JsonNode tree = mapper.readTree(Path.of(args[1]).toFile());
             UdtDefinition def = adapter.adapt(tree, args[3], args[4]);
-            mapper.writerWithDefaultPrettyPrinter().writeValue(Path.of(args[2]).toFile(), def);
+            JsonMapperFactory.prettyWriter(mapper).writeValue(Path.of(args[2]).toFile(), def);
             System.out.println("[GATE] adapted " + kind + " -> " + args[2] + " (ref=" + args[3] + "@" + args[4] + ", members=" + def.members().size() + ")");
             return 0;
         } catch (Exception e) { System.err.println("[GATE] error: " + e.getMessage()); return 2; }

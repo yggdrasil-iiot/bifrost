@@ -144,6 +144,24 @@ class RecipeAttestationTest {
         assertNotNull(RecipeAttestation.verify(registry, "line1", "1.0.0"));
     }
 
+    @Test void aLineEndingConversionIsStillRefusedButNamed() throws Exception {
+        publish(signer("proposer", "proposer"));
+        Path yaml = dir().resolve("recipe-setpoints.yaml"), manifest = dir().resolve("manifest.json");
+        byte[] manifestBytes = Files.readAllBytes(manifest);
+        String crlfYaml = new String(CONTENT, StandardCharsets.UTF_8).replace("\n", "\r\n");
+        String crlfManifest = new String(manifestBytes, StandardCharsets.UTF_8).replace("\n", "\r\n");
+        Files.writeString(yaml, crlfYaml);
+        assertEquals("recipe.attestation-subject:line-endings", refusal(), "git core.autocrlf on the canonical");
+        Files.writeString(manifest, crlfManifest);
+        assertEquals("recipe.attestation-subject:line-endings", refusal(), "both files converted");
+        Files.write(yaml, CONTENT);
+        assertEquals("recipe.attestation-subject:line-endings", refusal(), "only the manifest converted");
+        Files.writeString(yaml, crlfYaml.replace("endpoint: x", "endpoint: y"));
+        assertEquals("recipe.attestation-subject", refusal(), "a converted manifest does not excuse an edited canonical");
+        Files.write(yaml, CONTENT); Files.write(manifest, manifestBytes);
+        assertNotNull(RecipeAttestation.verify(registry, "line1", "1.0.0"));
+    }
+
     @Test void anEnvelopeLeftWithoutAManifestIsReplacedByTheSignedRetry() throws Exception {
         Files.createDirectories(dir());
         Files.writeString(envelope(), "orphan");

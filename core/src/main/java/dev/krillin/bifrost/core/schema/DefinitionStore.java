@@ -37,7 +37,7 @@ public final class DefinitionStore {
         Path dir = root.resolve("udt").resolve(def.templateRef());
         Files.createDirectories(dir);
         Path file = dir.resolve(def.version().toString() + ".json");
-        mapper.writerWithDefaultPrettyPrinter().writeValue(file.toFile(), def);
+        JsonMapperFactory.prettyWriter(mapper).writeValue(file.toFile(), def);
     }
 
     public UdtDefinition load(Path file) throws IOException {

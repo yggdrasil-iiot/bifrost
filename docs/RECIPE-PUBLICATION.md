@@ -27,4 +27,19 @@ Statement `subject` has two entries, `recipe-setpoints.yaml` and `manifest.json`
 4. Check that the subject digests equal the raw SHA-256 of the two files.
 5. Check that `externalParameters` and `resolvedDependencies` restate `manifest.json`.
 
-`gates provenance verify-attestation <registry> <ref> <version>` exits 0 when the envelope verifies and 1 with a reason code otherwise; an unsigned version is refused (`recipe.attestation-missing`), never accepted on the SHA-256 check alone. It checks, in order: the publisher named in `publishedBy` signed with a registered key; `_type`, `predicateType`, `buildType` and `builder.id`; the subject equals the two files on disk; the predicate restates `manifest.json` and the requested ref and version; the policy still grants that publisher `publish`. Reason codes: `recipe.attestation-missing`, `recipe.attestation-signature:<identity rule>`, `recipe.attestation-statement`, `recipe.attestation-subject`, `recipe.attestation-predicate`, `recipe.publish-denied`. The `publish` grant is Bifrost policy and is not part of the statement. A key retired later still verifies what it signed; the validity window is checked when signing. The activation ledger seals `spec/<ref>/<version>.json`, a different file; the publisher attestation covers the recipe registry and does not link the two.
+`gates provenance verify-attestation <registry> <ref> <version>` exits 0 when the envelope verifies and 1 with a reason code otherwise; an unsigned version is refused (`recipe.attestation-missing`), never accepted on the SHA-256 check alone. It checks, in order: the publisher named in `publishedBy` signed with a registered key; `_type`, `predicateType`, `buildType` and `builder.id`; the subject equals the two files on disk; the predicate restates `manifest.json` and the requested ref and version; the policy still grants that publisher `publish`. Reason codes: `recipe.attestation-missing`, `recipe.attestation-signature:<identity rule>`, `recipe.attestation-statement`, `recipe.attestation-subject`, `recipe.attestation-subject:line-endings`, `recipe.attestation-predicate`, `recipe.publish-denied`. The `publish` grant is Bifrost policy and is not part of the statement. A key retired later still verifies what it signed; the validity window is checked when signing. The activation ledger seals `spec/<ref>/<version>.json`, a different file; the publisher attestation covers the recipe registry and does not link the two.
+
+## Registry bytes
+
+Bifrost seals raw file bytes in two places: the publisher attestation subject (`recipe-setpoints.yaml` and `manifest.json` under `recipe/<ref>/<version>/`) and the activation ledger (`spec/<ref>/<version>.json`, which Heimdall hashes again before it binds the version). Bifrost writes `manifest.json` with LF line endings on every OS and copies `recipe-setpoints.yaml` byte for byte from the git commit.
+
+A copy that converts line endings changes those bytes. Git with `core.autocrlf` does this on checkout and on commit. The result is refused like any other changed byte. The refusal names the cause when the only difference from the sealed bytes is line endings: `gates provenance verify-attestation` refuses with `recipe.attestation-subject:line-endings`, and Heimdall fails with `activation.edge.content-mismatch:line-endings`. The fix is to restore the original bytes, not to re-seal.
+
+Keep a registry that lives in git out of line-ending conversion with a `.gitattributes` file at the root of that repository containing exactly these two lines:
+
+```gitattributes
+recipe/** -text
+spec/** -text
+```
+
+Files already converted by an earlier checkout come back once the attributes are committed: delete the converted copies and run `git checkout -- recipe spec`, which writes the bytes git stores.
