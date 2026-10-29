@@ -15,6 +15,20 @@ The receiver rejects draft/unresolved/unsupported definitions and requires confi
 
 In a mapping approval receipt, `payloadSha256` and `changeSha256` are SHA-256 digests over Bifrost's own serialization: Jackson, keys sorted, compact (`MappingJson.bytes`), not RFC 8785 (JCS). Bifrost computes them at approval and recomputes them with the same code at publication and recovery; no other program is expected to reproduce them. Consumers outside Bifrost verify a release by raw-byte SHA-256: the head's `sha256` over `release.json` bytes and `files[].sha256` over each payload file.
 
+## Approval attestation (in-toto Statement v1 + DSSE)
+
+`mapping approve` also writes `mappings/attestations/<approvalId>.dsse.json`: a DSSE v1.0.2 envelope (`payloadType` `application/vnd.in-toto+json`) holding an in-toto Statement v1, signed with the same two Ed25519 keys and at the same moment as the receipt. Each signature covers PAE(payloadType, payload). In the statement, `subject` is every file of the approved bundle, named as `release.json` will name it (`payload/<path>`), with `digest.sha256` over the file's raw bytes; `predicateType` is `https://github.com/yggdrasil-iiot/bifrost/attestation/mapping-approval/v1`; `predicate` is the receipt's `payload`, field for field.
+
+The attestation is written before the receipt. A process stopped between the two leaves an envelope no receipt refers to; approving again with the same approval id replaces it. An approval id that already has a receipt is refused before anything is written. Receipts, `release.json`, heads and payload files are byte-identical to before; `publish`, `recover` and the intent journal are unchanged. `gc` includes `attestations/` in `rootsSha256` and quarantines stale `.pending` files there like elsewhere.
+
+`mapping verify-attestation <registry> <release-id> <version> <release-sha256>` verifies the release, then the envelope. An outside verifier needs no Bifrost code or serialization:
+1. Read `approval.payload.approvalId` from `release.json` and open the envelope.
+2. Verify both signatures over PAE with the keys registered for `proposedBy` and `approvedBy` in `identity/authorized-keys.jsonl`, and require two different keys; `keyid` is only a hint.
+3. Check that `predicate` equals the receipt payload.
+4. Check that the `subject` set equals `files[]` and that each file's raw SHA-256 matches.
+
+A key retired later still verifies the attestations it signed, as it does for receipts. The activation policy and key validity windows were checked by Bifrost at approval; the envelope does not carry them. Recipe provenance manifests are not attested yet: no principal signs a recipe publication today.
+
 ## Explicit integer-word views (2026-10-18)
 
 The bundled 2.10.0 source-definition schema adds read-only PLC alias/bit views. Existing schema bytes and proposal/submission/approval/release formats remain unchanged. The receiver resolves exact parent id/version, a maximum of 16 relations, cycles/missing parents, equipment/connection/access/raw snapshots, parent readiness/readability, integer widths and bit bounds. Aliases inherit the logical value/unit; bit views produce Boolean with no physical unit. Array/codec/native-bit/non-PLC parents are outside this capability.
