@@ -10,7 +10,7 @@ public final class MappingGate {
     private MappingGate(){}
     public static int run(String[] a){
         try{
-            if(a.length<2)throw new IllegalArgumentException("usage: mapping validate|diff|approve|publish|status ...");
+            if(a.length<2)throw new IllegalArgumentException("usage: mapping validate|diff|approve|publish|status|verify-attestation ...");
             JsonNode result;
             switch(a[0]){
                 case "validate" -> {require(a.length==2,"usage");var c=new MappingBundle().validate(Path.of(a[1]));emit(c.report());return c.accepted()?0:1;}
@@ -27,6 +27,10 @@ public final class MappingGate {
                 case "publish" -> {
                     require(a.length==7&&a[5].equals("--approval"),"usage: mapping publish <registry> <bundle> <release-id> <version> --approval <id>");
                     result=new MappingRegistry(Path.of(a[1])).publish(Path.of(a[2]),a[3],a[4],a[6]);
+                }
+                case "verify-attestation" -> {
+                    require(a.length==5,"usage: mapping verify-attestation <registry> <release-id> <version> <release-sha256>");
+                    result=new MappingRegistry(Path.of(a[1])).verifyAttestation(a[2],a[3],a[4]);
                 }
                 default -> throw new IllegalArgumentException("usage: unknown mapping command");
             }

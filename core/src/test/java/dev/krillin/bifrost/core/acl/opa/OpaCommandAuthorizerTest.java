@@ -26,6 +26,7 @@ class OpaCommandAuthorizerTest {
     }
     @Test void extension_highRpm_nonExecute_deny() {
         assertFalse(opa.authorize(write(1500), new Context("Idle", 14)).allowed());
+        assertFalse(opa.authorize(write(1500), new Context("Held", 14)).allowed());
     }
     @Test void extension_safeHold_execute_allow_held_deny() {
         assertTrue(opa.authorize(safeHold(), new Context("Execute", 14)).allowed());

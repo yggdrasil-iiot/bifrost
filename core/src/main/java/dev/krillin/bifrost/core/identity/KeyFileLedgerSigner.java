@@ -100,6 +100,11 @@ public final class KeyFileLedgerSigner implements LedgerSigner {
         return new Signatures(Ed25519Keys.sign(msg, activatorKey), Ed25519Keys.sign(msg, approverKey));
     }
 
+    /** Both keys over exact bytes (a DSSE PAE), where {@link #sign} signs the UTF-8 of a string. */
+    public Signatures signRaw(byte[] msg) {
+        return new Signatures(Ed25519Keys.sign(msg, activatorKey), Ed25519Keys.sign(msg, approverKey));
+    }
+
     @Override public HeadSignatures signHead(String headPreimage) {
         byte[] msg = headPreimage.getBytes(StandardCharsets.UTF_8);
         return new HeadSignatures(Ed25519Keys.sign(msg, approverKey), Ed25519Keys.sign(msg, activatorKey));

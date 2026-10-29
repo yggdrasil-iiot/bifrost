@@ -141,6 +141,19 @@ public final class MappingRegistry {
         ObjectNode out=object().put("kind","semantic-lifecycle-catalog").put("schemaVersion","2.18.0").put("scope","registry-history").put("execution","excluded").put("activation","not-performed");out.set("entries",entries);out.set("events",events);out.set("eventReleases",eventReleases);out.set("impacts",impacts);out.put("catalogSha256",sha(bytes(out)));require(bytes(out).length<=4*1024*1024,"lifecycle.report-limit");return out;
     });}
     private static String signingMessage(JsonNode payload) throws Exception {return "BIFROST_MAPPING_APPROVAL_V1\n"+sha(bytes(payload));}
+    private Path attestationPath(String approvalId){id(approvalId);return mappings().resolve("attestations").resolve(approvalId+".dsse.json");}
+    /** Verifies a release, then the DSSE envelope of its approval: both principals' registered keys, distinct, over
+     *  a statement whose predicate is the release's receipt payload and whose subject is exactly its files[]. */
+    public JsonNode verifyAttestation(String releaseId,String ver,String expected) throws Exception {
+        return locked(()->{
+            JsonNode r=verifyRelease(releaseId,ver,expected);JsonNode p=r.path("approval").path("payload");
+            Path file=attestationPath(text(p,"approvalId"));require(Files.exists(file),"mapping.attestation-missing");
+            byte[] body;
+            try{body=Dsse.verify(read(safe(mappings(),mappings().relativize(file).toString().replace('\\','/'))),Dsse.IN_TOTO,AuthorizedKeys.load(registry),List.of(text(p,"proposedBy"),text(p,"approvedBy")));}
+            catch(IdentityException e){throw new IllegalArgumentException("mapping.attestation-signature:"+e.rule());}
+            JsonNode statement=JSON.readTree(body);MappingAttestation.matches(statement,r);return statement;
+        });
+    }
     public JsonNode approve(Path bundle,String approvalId,String by,Path byKey,String approvedBy,Path approvedKey) throws Exception {
         id(approvalId);id(by);id(approvedBy);
         return locked(()->{
@@ -155,7 +168,14 @@ public final class MappingRegistry {
             ObjectNode receipt=object();receipt.put("kind","mapping-approval");receipt.put("schemaVersion","2.9.0");receipt.set("payload",payload);receipt.set("changeAssessment",changes);receipt.put("payloadSha256",sha(bytes(payload)));
             receipt.put("proposerSignature",sig.activatorSig());receipt.put("approverSignature",sig.approverSig());schema(receipt,"mapping-approval");
             require(bytes(receipt).length<=4*1024*1024,"mapping.approval-limit");
-            Path dest=mappings().resolve("approvals").resolve(approvalId+".json");require(!Files.exists(dest),"mapping.approval-id-conflict");Path pending=dest.resolveSibling("."+UUID.randomUUID()+".pending");save(pending,receipt);Files.move(pending,dest,StandardCopyOption.ATOMIC_MOVE);return receipt;
+            Path dest=mappings().resolve("approvals").resolve(approvalId+".json");require(!Files.exists(dest),"mapping.approval-id-conflict");
+            // The in-toto attestation goes first: a crash between the two leaves an envelope no receipt refers to,
+            // which a retry with the same approval id replaces; never a receipt without its attestation.
+            byte[] statement=MappingAttestation.statement(c.files(),payload);Signatures dsse=signer.signRaw(Dsse.pae(Dsse.IN_TOTO,statement));
+            JsonNode envelope=Dsse.envelope(Dsse.IN_TOTO,statement,List.of(new Dsse.Signature(by,dsse.activatorSig()),new Dsse.Signature(approvedBy,dsse.approverSig())));
+            Path attestation=attestationPath(approvalId);Path staged=attestation.resolveSibling("."+UUID.randomUUID()+".pending");save(staged,envelope);
+            Files.move(staged,attestation,StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING);fault.accept("attestation-written");
+            Path pending=dest.resolveSibling("."+UUID.randomUUID()+".pending");save(pending,receipt);Files.move(pending,dest,StandardCopyOption.ATOMIC_MOVE);return receipt;
         });
     }
     private void verifyApproval(JsonNode receipt,boolean publication) throws Exception {
@@ -300,8 +320,8 @@ public final class MappingRegistry {
         Path heads=mappings().resolve("heads");if(Files.exists(heads))try(var files=Files.list(heads)){
             for(Path p:files.filter(x->x.getFileName().toString().matches("[a-z][a-z0-9._-]*\\.json")).toList())statusLocked(p.getFileName().toString().replaceFirst("\\.json$",""));
         }
-        ArrayNode candidates=JSON.createArrayNode();
-        for(Path dir:List.of(mappings(),approvals,heads))if(Files.exists(dir)){
+        ArrayNode candidates=JSON.createArrayNode();Path attestations=mappings().resolve("attestations");
+        for(Path dir:List.of(mappings(),approvals,heads,attestations))if(Files.exists(dir)){
             require(!Files.isSymbolicLink(dir),"mapping.gc-symlink");
             try(var files=Files.list(dir)){for(Path p:files.sorted().toList()){
                 String name=p.getFileName().toString();boolean recognized=dir.equals(mappings())?name.matches("\\.staging-[a-zA-Z0-9-]+"):
@@ -312,7 +332,7 @@ public final class MappingRegistry {
                 candidates.add(object().put("path",mappings().relativize(p).toString().replace('\\','/')).put("sha256",treeDigest(p)));
             }}
         }
-        Map<String,String> roots=new TreeMap<>();for(Path dir:List.of(releases,approvals,heads))if(Files.exists(dir))try(var walk=Files.walk(dir)){
+        Map<String,String> roots=new TreeMap<>();for(Path dir:List.of(releases,approvals,heads,attestations))if(Files.exists(dir))try(var walk=Files.walk(dir)){
             for(Path p:walk.filter(Files::isRegularFile).toList())roots.put(mappings().relativize(p).toString().replace('\\','/'),sha(p));
         }
         ObjectNode plan=object().put("rootsSha256",manifestDigest(roots)).put("kind","mapping-maintenance").put("operation","gc").put("graceSeconds",graceSeconds).put("execution","excluded").put("activation","not-performed");
