@@ -22,7 +22,7 @@ import org.eclipse.milo.opcua.sdk.server.nodes.UaObjectNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaObjectTypeNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaVariableNode;
 import org.eclipse.milo.opcua.stack.core.AttributeId;
-import org.eclipse.milo.opcua.stack.core.Identifiers;
+import org.eclipse.milo.opcua.stack.core.NodeIds;
 import org.eclipse.milo.opcua.stack.core.security.CertificateGroup;
 import org.eclipse.milo.opcua.stack.core.security.CertificateValidator;
 import org.eclipse.milo.opcua.stack.core.security.DefaultApplicationGroup;
@@ -374,8 +374,8 @@ final class EmbeddedMiloSim implements AutoCloseable {
                     .setNodeId(newNodeId(identifier))
                     .setBrowseName(newQualifiedName(browseName))
                     .setDisplayName(LocalizedText.english(browseName))
-                    .setDataType(Identifiers.Boolean)
-                    .setTypeDefinition(Identifiers.BaseDataVariableType)
+                    .setDataType(NodeIds.Boolean)
+                    .setTypeDefinition(NodeIds.BaseDataVariableType)
                     .setAccessLevel(Unsigned.ubyte(3))
                     .setUserAccessLevel(Unsigned.ubyte(3))
                     .setValue(new DataValue(new Variant(initial)))
@@ -387,8 +387,8 @@ final class EmbeddedMiloSim implements AutoCloseable {
                     .setNodeId(newNodeId(identifier))
                     .setBrowseName(newQualifiedName(browseName))
                     .setDisplayName(LocalizedText.english(browseName))
-                    .setDataType(Identifiers.Double)
-                    .setTypeDefinition(Identifiers.BaseDataVariableType)
+                    .setDataType(NodeIds.Double)
+                    .setTypeDefinition(NodeIds.BaseDataVariableType)
                     .setAccessLevel(Unsigned.ubyte(3))
                     .setUserAccessLevel(Unsigned.ubyte(3))
                     .setValue(new DataValue(new Variant(initial)))
@@ -409,13 +409,13 @@ final class EmbeddedMiloSim implements AutoCloseable {
                     .setIsAbstract(false)
                     .buildAndAdd();
             // MixerType is-subtype-of BaseObjectType (inverse HasSubtype); a browser walks this up.
-            mixerType.addReference(new Reference(mixerType.getNodeId(), Identifiers.HasSubtype,
-                    Identifiers.BaseObjectType.expanded(), false));
+            mixerType.addReference(new Reference(mixerType.getNodeId(), NodeIds.HasSubtype,
+                    NodeIds.BaseObjectType.expanded(), false));
 
-            UaVariableNode rpm = typeMember("MixerType.Rpm", "Rpm", Identifiers.Double, 0.0);
-            UaVariableNode temp = typeMember("MixerType.Temp", "Temp", Identifiers.Double, 0.0);
-            UaVariableNode run = typeMember("MixerType.Running", "Running", Identifiers.Boolean, false);
-            UaVariableNode sec = typeMember("MixerType.Secret", "Secret", Identifiers.Double, 0.0);
+            UaVariableNode rpm = typeMember("MixerType.Rpm", "Rpm", NodeIds.Double, 0.0);
+            UaVariableNode temp = typeMember("MixerType.Temp", "Temp", NodeIds.Double, 0.0);
+            UaVariableNode run = typeMember("MixerType.Running", "Running", NodeIds.Boolean, false);
+            UaVariableNode sec = typeMember("MixerType.Secret", "Secret", NodeIds.Double, 0.0);
             mixerType.addComponent(rpm);
             mixerType.addComponent(temp);
             mixerType.addComponent(run);
@@ -437,12 +437,12 @@ final class EmbeddedMiloSim implements AutoCloseable {
                     .setTypeDefinition(newNodeId("MixerType"))
                     .buildAndAdd();
             // Browsable under the Objects folder (inverse Organizes).
-            mixer1.addReference(new Reference(mixer1.getNodeId(), Identifiers.Organizes,
-                    Identifiers.ObjectsFolder.expanded(), false));
-            UaVariableNode iRpm = typeMember("Line1/Mixer1.Rpm", "Rpm", Identifiers.Double, 1535.0);
-            UaVariableNode iTemp = typeMember("Line1/Mixer1.Temp", "Temp", Identifiers.Double, 200.0);
-            UaVariableNode iRun = typeMember("Line1/Mixer1.Running", "Running", Identifiers.Boolean, true);
-            UaVariableNode iSec = typeMember("Line1/Mixer1.Secret", "Secret", Identifiers.Double, 42.0);
+            mixer1.addReference(new Reference(mixer1.getNodeId(), NodeIds.Organizes,
+                    NodeIds.ObjectsFolder.expanded(), false));
+            UaVariableNode iRpm = typeMember("Line1/Mixer1.Rpm", "Rpm", NodeIds.Double, 1535.0);
+            UaVariableNode iTemp = typeMember("Line1/Mixer1.Temp", "Temp", NodeIds.Double, 200.0);
+            UaVariableNode iRun = typeMember("Line1/Mixer1.Running", "Running", NodeIds.Boolean, true);
+            UaVariableNode iSec = typeMember("Line1/Mixer1.Secret", "Secret", NodeIds.Double, 42.0);
             mixer1.addComponent(iRpm);
             mixer1.addComponent(iTemp);
             mixer1.addComponent(iRun);
@@ -463,12 +463,12 @@ final class EmbeddedMiloSim implements AutoCloseable {
                     .setIsAbstract(false)
                     .buildAndAdd();
             // WeldControllerType is-subtype-of BaseObjectType (inverse HasSubtype); a browser walks this up.
-            weldType.addReference(new Reference(weldType.getNodeId(), Identifiers.HasSubtype,
-                    Identifiers.BaseObjectType.expanded(), false));
+            weldType.addReference(new Reference(weldType.getNodeId(), NodeIds.HasSubtype,
+                    NodeIds.BaseObjectType.expanded(), false));
 
-            UaVariableNode current = typeMember("WeldControllerType.WeldCurrent", "WeldCurrent", Identifiers.Double, 0.0);
-            UaVariableNode time = typeMember("WeldControllerType.WeldTime", "WeldTime", Identifiers.Double, 0.0);
-            UaVariableNode force = typeMember("WeldControllerType.ElectrodeForce", "ElectrodeForce", Identifiers.Double, 0.0);
+            UaVariableNode current = typeMember("WeldControllerType.WeldCurrent", "WeldCurrent", NodeIds.Double, 0.0);
+            UaVariableNode time = typeMember("WeldControllerType.WeldTime", "WeldTime", NodeIds.Double, 0.0);
+            UaVariableNode force = typeMember("WeldControllerType.ElectrodeForce", "ElectrodeForce", NodeIds.Double, 0.0);
             weldType.addComponent(current);
             weldType.addComponent(time);
             weldType.addComponent(force);
@@ -491,11 +491,11 @@ final class EmbeddedMiloSim implements AutoCloseable {
                     .setTypeDefinition(newNodeId("WeldControllerType"))
                     .buildAndAdd();
             // Browsable under the Objects folder (inverse Organizes).
-            weld1.addReference(new Reference(weld1.getNodeId(), Identifiers.Organizes,
-                    Identifiers.ObjectsFolder.expanded(), false));
-            UaVariableNode iCurrent = typeMember("BodyShop/Weld1.WeldCurrent", "WeldCurrent", Identifiers.Double, 6.0);
-            UaVariableNode iTime = typeMember("BodyShop/Weld1.WeldTime", "WeldTime", Identifiers.Double, 200.0);
-            UaVariableNode iForce = typeMember("BodyShop/Weld1.ElectrodeForce", "ElectrodeForce", Identifiers.Double, 2.5);
+            weld1.addReference(new Reference(weld1.getNodeId(), NodeIds.Organizes,
+                    NodeIds.ObjectsFolder.expanded(), false));
+            UaVariableNode iCurrent = typeMember("BodyShop/Weld1.WeldCurrent", "WeldCurrent", NodeIds.Double, 6.0);
+            UaVariableNode iTime = typeMember("BodyShop/Weld1.WeldTime", "WeldTime", NodeIds.Double, 200.0);
+            UaVariableNode iForce = typeMember("BodyShop/Weld1.ElectrodeForce", "ElectrodeForce", NodeIds.Double, 2.5);
             weld1.addComponent(iCurrent);
             weld1.addComponent(iTime);
             weld1.addComponent(iForce);
@@ -505,7 +505,7 @@ final class EmbeddedMiloSim implements AutoCloseable {
             return new UaVariableNode.UaVariableNodeBuilder(getNodeContext())
                     .setNodeId(newNodeId(id)).setBrowseName(newQualifiedName(name))
                     .setDisplayName(LocalizedText.english(name))
-                    .setDataType(dataType).setTypeDefinition(Identifiers.BaseDataVariableType)
+                    .setDataType(dataType).setTypeDefinition(NodeIds.BaseDataVariableType)
                     .setAccessLevel(Unsigned.ubyte(1)).setUserAccessLevel(Unsigned.ubyte(1))
                     .setValue(new DataValue(new Variant(initial))).buildAndAdd();
         }
@@ -516,11 +516,11 @@ final class EmbeddedMiloSim implements AutoCloseable {
             UaVariableNode euRange = new UaVariableNode.UaVariableNodeBuilder(getNodeContext())
                     .setNodeId(newNodeId(id)).setBrowseName(newQualifiedName("EURange"))
                     .setDisplayName(LocalizedText.english("EURange"))
-                    .setDataType(Identifiers.Range).setTypeDefinition(Identifiers.PropertyType)
+                    .setDataType(NodeIds.Range).setTypeDefinition(NodeIds.PropertyType)
                     .setValue(new DataValue(new Variant(eu))).buildAndAdd();
             // NB: UaNode.addProperty(...) is PACKAGE-PRIVATE (uncallable from this package) — wire
             // HasProperty explicitly.
-            member.addReference(new Reference(member.getNodeId(), Identifiers.HasProperty,
+            member.addReference(new Reference(member.getNodeId(), NodeIds.HasProperty,
                     euRange.getNodeId().expanded(), /* forward */ true));
         }
 

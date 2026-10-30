@@ -17,9 +17,9 @@ import org.eclipse.milo.opcua.stack.core.types.enumerated.TimestampsToReturn;
 import org.eclipse.milo.opcua.stack.core.types.structured.EndpointDescription;
 
 /**
- * Milo 1.0.0 OPC-UA client implementation of {@link Applier} — the write leg the lab lacked.
+ * Milo 1.1.8 OPC-UA client implementation of {@link Applier} — the write leg the lab lacked.
  *
- * <p>The Milo 1.0.0 Java client's read/write/connect are <b>synchronous</b> and throw the
+ * <p>The Milo 1.1.8 Java client's read/write/connect are <b>synchronous</b> and throw the
  * checked {@link UaException} — there is no singular {@code writeValue} and no
  * {@code CompletableFuture.get(...)}: writes go through the batch {@code writeValues(List,List)}.
  *

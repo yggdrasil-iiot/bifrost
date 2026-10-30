@@ -15,7 +15,7 @@ import org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.Unsigned;
  * session. This is the mechanism {@code docs/ENTERPRISE.md} §12 names as "server-side write
  * permission", and it is the half of write-path exclusivity that lives on the server.
  *
- * <p><b>Why a UserAccessLevel filter and not an AccessController.</b> Milo 1.0 has exactly the right
+ * <p><b>Why a UserAccessLevel filter and not an AccessController.</b> Milo 1.1.8 has exactly the right
  * interface — {@code AccessController.checkWriteAccess(Session, List<WriteValue>)} — and no way to
  * install one: {@code OpcUaServer} exposes {@code getAccessController()} with no setter and
  * {@code OpcUaServerConfig} has no property for it. What the default controller does consult is the

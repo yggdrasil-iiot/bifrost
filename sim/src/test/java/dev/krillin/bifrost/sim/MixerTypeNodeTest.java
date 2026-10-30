@@ -9,7 +9,7 @@ import java.util.Set;
 
 import org.eclipse.milo.opcua.sdk.client.OpcUaClient;
 import org.eclipse.milo.opcua.stack.core.AttributeId;
-import org.eclipse.milo.opcua.stack.core.Identifiers;
+import org.eclipse.milo.opcua.stack.core.NodeIds;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DataValue;
 import org.eclipse.milo.opcua.stack.core.types.builtin.ExtensionObject;
 import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
@@ -47,7 +47,7 @@ class MixerTypeNodeTest {
                 NodeId mixerType = NodeId.parse("ns=2;s=MixerType");
 
                 BrowseResult membersResult = client.browse(new BrowseDescription(
-                        mixerType, BrowseDirection.Forward, Identifiers.HasComponent, false,
+                        mixerType, BrowseDirection.Forward, NodeIds.HasComponent, false,
                         NODECLASS_ALL, RESULT_ALL));
                 ReferenceDescription[] memberRefs = safeRefs(membersResult);
 
@@ -109,7 +109,7 @@ class MixerTypeNodeTest {
 
                 BrowseResult membersResult = client.browse(new BrowseDescription(
                         NodeId.parse("ns=2;s=Line1/Mixer1"), BrowseDirection.Forward,
-                        Identifiers.HasComponent, false, NODECLASS_ALL, RESULT_ALL));
+                        NodeIds.HasComponent, false, NODECLASS_ALL, RESULT_ALL));
                 Set<String> memberNames = new LinkedHashSet<>();
                 for (ReferenceDescription ref : safeRefs(membersResult)) {
                     memberNames.add(ref.getBrowseName().getName());
@@ -184,7 +184,7 @@ class MixerTypeNodeTest {
 
     private static NodeId findEuRangeNodeId(OpcUaClient client, NodeId memberId) throws Exception {
         BrowseResult propsResult = client.browse(new BrowseDescription(
-                memberId, BrowseDirection.Forward, Identifiers.HasProperty, false,
+                memberId, BrowseDirection.Forward, NodeIds.HasProperty, false,
                 NODECLASS_ALL, RESULT_ALL));
         for (ReferenceDescription ref : safeRefs(propsResult)) {
             if ("EURange".equals(ref.getBrowseName().getName())) {
