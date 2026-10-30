@@ -1,0 +1,82 @@
+{
+  "kind": "uri-format-vectors",
+  "checker": "com.networknt:json-schema-validator 1.5.1, format assertions enabled, draft 2020-12, {\"type\":\"string\",\"format\":\"uri\"}",
+  "cases": [
+    {
+      "value": "urn:tyr:concept:x",
+      "bifrost": "accept"
+    },
+    {
+      "value": "urn:tyr:concept:Line1.Mixer.speed",
+      "bifrost": "accept"
+    },
+    {
+      "value": "https://example.com/a#b",
+      "bifrost": "accept"
+    },
+    {
+      "value": "http://opcfoundation.org/UA/#i=85",
+      "bifrost": "accept"
+    },
+    {
+      "value": "urn:irdi:0173-1%2302-AAO677%23002",
+      "bifrost": "accept"
+    },
+    {
+      "value": "0173-1#02-AAO677#002",
+      "bifrost": "reject"
+    },
+    {
+      "value": "0112/2///61360_4#AAA123#001",
+      "bifrost": "reject"
+    },
+    {
+      "value": "not a uri",
+      "bifrost": "reject"
+    },
+    {
+      "value": "relative/path",
+      "bifrost": "reject"
+    },
+    {
+      "value": "#frag",
+      "bifrost": "reject"
+    },
+    {
+      "value": "",
+      "bifrost": "reject"
+    },
+    {
+      "value": "urn:",
+      "bifrost": "accept"
+    },
+    {
+      "value": "http://exa mple.com",
+      "bifrost": "reject"
+    },
+    {
+      "value": "nsu=http://opcfoundation.org/UA/;i=85",
+      "bifrost": "reject"
+    },
+    {
+      "value": "mailto:a@b.c",
+      "bifrost": "accept"
+    },
+    {
+      "value": "urn:example:caf\u00e9",
+      "bifrost": "reject"
+    },
+    {
+      "value": "https://example.com/%zz",
+      "bifrost": "reject"
+    },
+    {
+      "value": "x:",
+      "bifrost": "accept"
+    },
+    {
+      "value": "urn:tyr:concept:a#b#c",
+      "bifrost": "reject"
+    }
+  ]
+}
