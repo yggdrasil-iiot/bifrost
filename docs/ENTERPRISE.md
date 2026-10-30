@@ -50,7 +50,7 @@ what is and is not answered; read the rows for why.
 | 8 | Brownfield vendor heterogeneity | **partial** | 3 `TemplateAdapter` implementations (inbound only — see row 13); the vendor-front gateway posture is designed, not built |
 | 9 | AAS alignment → conformance | **deferred** | Trigger: a customer asking for an IDTA submodel template by number |
 | 10 | **Certificate expiry, key rotation** | **partial** | `run-key-rotation-gate.sh` K1-K10 — a signing key rotates offline without breaking history, and an expiring certificate is announced rather than discovered. **No CA, no enrolment, and rotation is not revocation** ([detail](#10-certificate-expiry-and-key-rotation)) |
-| 11 | Audit query at scale | **measured** | `scripts/bench-ledger.sh` — growth is exactly 434 B/entry (645 signed); signature verification costs ~8× the chain walk, and anchoring is free on top of it ([detail](#11-audit-query-at-scale)). **Those numbers are for the activation ledger at roughly ten events a day. The command ledger is a different volume class — two entries per applied command — and is unmeasured** |
+| 11 | Audit query at scale | **measured** | `scripts/bench-ledger.sh` — growth is exactly 586 B/entry (884 signed); signature verification costs ~9× the chain walk, and anchoring is free on top of it ([detail](#11-audit-query-at-scale)). **Those numbers are for the activation ledger at roughly ten events a day. The command ledger is a different volume class — two entries per applied command — and is unmeasured** |
 | 12 | **Write-path exclusivity** | **partial** | `run-write-exclusivity-gate.sh` X1–X6 — the edge presents an X.509 identity and a server told to require it refuses a second client's write with `Bad_UserAccessDenied` while still serving its reads. A bypass **over another protocol** is now visible rather than merely acknowledged: `run-huginn-seam-gate.sh` H1–H8 reports a write to governed equipment from anything that is not the edge. **Visibility is not enforcement**, Modbus is still unenforced, and a plant's own server has to be configured — as does its network: a bypass over a protocol nobody decodes is the conduit rule's to stop, not a decoder's ([detail](#12-write-path-exclusivity), [layers](#5-conduit-inventory)) |
 | 13 | **Governed model vs vendor runtime** | **partial** | `run-model-reconciliation-gate.sh` V1-V9 — a vendor export is compared against the governed definition and divergence is reported per member, with the port carrying **granularity** so a blob product is recorded as weaker. **The comparison is built; the FETCH is not** — the export arrives as a file, nothing connects to a running product, and the projection direction does not exist. **Kepware is not adapted yet** (V8 refuses `--adapter kepware`); when it is, it arrives through Mimir's interpretation snapshot rather than a parser here ([detail](#13-governed-model-vs-vendor-runtime)) |
 
@@ -315,48 +315,48 @@ signed ladder); it asserts nothing and prints numbers.
 
 | entries | plain ledger | signed ledger |
 |---:|---:|---:|
-| 25 | 10,847 B | 16,122 B |
-| 100 | 43,397 B | 64,497 B |
-| 500 | 216,997 B | 322,497 B |
-| 2,000 | 867,997 B | 1,289,997 B |
+| 25 | 14,647 B | 22,097 B |
+| 100 | 58,597 B | 88,397 B |
+| 500 | 292,997 B | 441,997 B |
+| 2,000 | 1,171,997 B | 1,767,997 B |
 
-`plain = 434n − 3` and `signed = 645n − 3` fit every row with no residual, because a chained
-entry is a fixed set of fields plus one SHA-256. **434 bytes per activation, 645 once signed.**
+`plain = 586n − 3` and `signed = 884n − 3` fit every row with no residual, because a chained
+entry is a fixed set of fields plus one SHA-256. **586 bytes per activation, 884 once signed.**
 
-The 211-byte difference is fully accounted for: two Ed25519 signatures at 64 bytes each are 88
-base64 characters apiece (176), and the two JSON field wrappers `,"activatorSig":""` and
-`,"approverSig":""` are the remaining 35. Nothing unexplained is being stored.
+The 298-byte difference is fully accounted for: two Ed25519 signatures at 64 bytes each are 88
+base64 characters apiece (176), the two JSON field wrappers `,"activatorSig":""` and
+`,"approverSig":""` are 35, and `,"attestationSha256":""` (23) plus its 64 hex characters is the
+remaining 87. Nothing unexplained is being stored.
 
 Two smaller files sit beside the ledger. The **anchor** is append-only, one record per
 activation of the form `{"target":"Line1","seq":N,"tailEntryHash":"<64 hex>"}` — that is
 `109 + digits(N)` bytes, and 109×2000 + 6,890 comes to exactly the 224,890 B measured. The
 **head** is a single 347-byte file regardless of ledger length.
 
-At 645 B/entry plus 112, ten thousand signed activations is about 7.6 MB of newline-delimited
+At 884 B/entry plus 112, ten thousand signed activations is about 10 MB of newline-delimited
 JSON.
 
 ### Verification, measured back to back on one 2,000-entry signed ledger
 
 | | wall clock | minus JVM start | per entry |
 |---|---:|---:|---:|
-| bare `java -jar`, no arguments | 283 ms | — | — |
-| `activation verify-chain` | 820 ms | 537 ms | 0.27 ms |
-| `identity verify-signed` | 4,639 ms | 4,356 ms | 2.18 ms |
-| `identity verify-anchored` | 4,469 ms | 4,186 ms | 2.09 ms |
+| bare `java -jar`, no arguments | 321 ms | — | — |
+| `activation verify-chain` | 1,058 ms | 737 ms | 0.37 ms |
+| `identity verify-signed` | 7,000 ms | 6,679 ms | 3.34 ms |
+| `identity verify-anchored` | 7,114 ms | 6,793 ms | 3.40 ms |
 
-Medians of five, all four interleaved in one loop so they share the same machine conditions. An
-earlier two-way run reproduced the chain and signed figures (842 ms and 5,103 ms).
+Medians of five, all four interleaved in one loop so they share the same machine conditions.
 
 Two things fall out, and the second is the more useful.
 
-**Signature verification costs roughly eight times the plain chain walk** — 2.2 ms per entry
-against 0.27 — which is about 1 ms for each of the two Ed25519 verifications per entry. That
+**Signature verification costs roughly nine times the plain chain walk** — 3.3 ms per entry
+against 0.37 — which is about 1.7 ms for each of the two Ed25519 verifications per entry. That
 ratio is the number to carry, because it was measured on one ledger in one sitting. It is a floor:
 the federation sweep below shows the per-entry column here still contains process startup, which
 inflates the cheap side far more than the expensive one.
 
-**Anchoring is free on top of signing.** `verify-anchored` measured *below* `verify-signed`
-here, and the spreads overlap almost completely (anchored 4,346–5,183, signed 4,352–5,178). That
+**Anchoring is free on top of signing.** `verify-anchored` measured 114 ms above `verify-signed`
+here, inside overlapping spreads (anchored 5,957–9,673, signed 6,227–7,306). That
 is what the mechanism predicts: the anchor check compares one `(seq, tailEntryHash)` pair against
 the head, while the cost of both commands is the per-entry signature walk they share. **The
 strongest tier on the ladder costs no more than the tier below it**, so the reason to leave
@@ -391,10 +391,10 @@ anchor.
 ### Why there is no per-entry slope from the ladder
 
 The ladder runs produced timings that cannot be used, and it is worth saying why rather than
-quietly reporting the ones that looked plausible. In the signed ladder, 500 entries measured
-6,924 ms while 1,000 entries measured 3,044 ms. The work is monotonic in n, so that inversion is
-machine load, not the software. Across three runs on this laptop the bare JVM start alone moved
-between 281 ms and 842 ms. **A CLI-level stopwatch on a developer machine cannot resolve a
+quietly reporting the ones that looked plausible. In the signed ladder, 1,000 entries measured
+8,406 ms while 2,000 entries measured 8,090 ms. The work is monotonic in n, so that inversion is
+machine load, not the software. Across this session's runs on this laptop the bare JVM start alone
+moved between 291 ms and 404 ms. **A CLI-level stopwatch on a developer machine cannot resolve a
 sub-millisecond-per-entry signal.** The byte counts are a property of the format and reproduced
 identically every time; the timings are a property of one laptop's afternoon. Getting a real
 slope needs in-JVM timing or a quiet machine, and neither has been done.
@@ -406,42 +406,43 @@ Reproduce with `bash scripts/bench-federation.sh`.
 `federation audit` reads each site's activation ledger and rolls it up. It verifies nothing — no
 chain walk, no signature check — so the only work that can scale is reading and parsing lines,
 which makes **total entries** the quantity to test rather than site count. The staged ledger
-reconfirmed the byte formula at a fresh point on the way in: 200 signed entries came to 128,997 B,
-and `645 × 200 − 3` is 128,997.
+reconfirmed the byte formula at a fresh point on the way in: 200 signed entries came to 176,797 B,
+and `884 × 200 − 3` is 176,797.
 
-Sweep A holds every site at 200 entries and grows the site count. Bare JVM start was 241 ms.
+Sweep A holds every site at 200 entries and grows the site count. The first run of this session
+was not monotonic in total entries (10 sites / 2,000 entries measured 2,171 ms, above 100 sites /
+20,000 entries at 1,498 ms) and was discarded; the second run is reported. Bare JVM start was 355 ms.
 
 | sites | total entries | audit | minus JVM |
 |---:|---:|---:|---:|
-| 1 | 200 | 601 ms | 360 ms |
-| 2 | 400 | 633 ms | 392 ms |
-| 5 | 1,000 | 647 ms | 406 ms |
-| 10 | 2,000 | 723 ms | 482 ms |
-| 25 | 5,000 | 857 ms | 616 ms |
-| 50 | 10,000 | 917 ms | 676 ms |
-| 100 | 20,000 | 1,000 ms | 759 ms |
+| 1 | 200 | 740 ms | 385 ms |
+| 2 | 400 | 843 ms | 488 ms |
+| 5 | 1,000 | 830 ms | 475 ms |
+| 10 | 2,000 | 901 ms | 546 ms |
+| 25 | 5,000 | 973 ms | 618 ms |
+| 50 | 10,000 | 1,183 ms | 828 ms |
+| 100 | 20,000 | 1,335 ms | 980 ms |
 
-**A hundred sites holding twenty thousand signed activations between them audit in one second.**
-A hundredfold increase in entries costs about 400 ms, putting the marginal cost near 0.02 ms per
-entry — and the two widest steps, 5,000 → 10,000 → 20,000, put it nearer 0.01. The remaining
-~350 ms is fixed process setup above the bare JVM: Jackson and the gate's classes loading, paid
-once whether there is one site or a hundred.
+**A hundred sites holding twenty thousand signed activations between them audit in about 1.3 seconds.**
+The hundredfold increase in entries costs about 600 ms (385 → 980), about 0.03 ms per entry. The
+remaining ~380 ms is fixed process setup above the bare JVM: Jackson and the gate's classes loading,
+paid once whether there is one site or a hundred.
 
 That fixed cost is worth carrying back to the verification table above. `verify-chain` on 2,000
-entries measured 537 ms over bare JVM; this audit on the same 2,000 entries measured 482 ms doing
-the same read and parse *without* the hashing. The gap is ~55 ms, so the chain hashing itself is
-nearer 0.03 ms per entry and **the 0.27 ms/entry in that table is mostly startup, not per-entry
+entries measured 737 ms over bare JVM; this audit on the same 2,000 entries measured 546 ms doing
+the same read and parse *without* the hashing. The gap is ~190 ms, so the chain hashing itself is
+nearer 0.1 ms per entry and **the 0.37 ms/entry in that table is mostly startup, not per-entry
 work.** Those are two separate runs, so take it as an order of magnitude, not a figure. The
-signature row is not affected the same way: 350 ms of setup spread over 2,000 entries is 0.18 ms
-against a measured 2.18, so **2 ms per entry to verify two Ed25519 signatures stands**, and the
-eight-to-one ratio between signed and plain was understating the gap, not overstating it.
+signature row is not affected the same way: ~380 ms of setup spread over 2,000 entries is 0.19 ms
+against a measured 3.34, so **about 3 ms per entry to verify two Ed25519 signatures stands**, and
+the nine-to-one ratio between signed and plain was understating the gap, not overstating it.
 
-Sweep B was meant to test whether the *split* matters — same totals, different site counts — and
-it failed to. At a fixed 25 sites, depths of 25/50/100/200 gave 435/468/918/492 ms. The
-2,500-entry point is higher than sweep A's 20,000-entry point, which is impossible, and the
-5,000-entry point is the identical configuration to sweep A's 25-site row: 492 ms against 616 ms.
-**The repeat spread on one identical configuration is 124 ms, with one 400 ms outlier**, so sweep B
-resolves nothing. Sweep A survives only because its total change is three times that noise.
+Sweep B was meant to test whether the *split* matters — same totals, different site counts. At a
+fixed 25 sites, depths of 25/50/100/200 (625/1,250/2,500/5,000 entries) gave 818/898/919/999 ms,
+minus JVM 463/543/564/644. This time it rises with total entries, and its 5,000-entry point is the
+same configuration as sweep A's 25-site row: 644 ms against 618 ms, a 26 ms repeat spread. Sweep B
+is consistent with total entries being what matters, though the steps (80, 21, 80 ms) are small
+against the first run's noise.
 
 ### The audit is fast because it trusts the sites
 
@@ -450,16 +451,16 @@ site say is active*, not *is each site telling the truth*. The second question i
 per site at bind time against that site's own ledger, head and anchor.
 
 A cross-site view that re-verified what each site reports would pay the per-entry costs above. For
-20,000 entries the chain walk is between half a second and five seconds — the two chain figures
-disagree by that much and the smaller one is the better-founded — and checking every signature is
-about forty seconds at the 2 ms/entry that does hold. Neither is prohibitive for a nightly
+20,000 entries the chain walk is between 2 and 7 seconds (0.1 to 0.37 ms per entry; the smaller is
+the better-founded) — the two chain figures disagree by that much — and checking every signature is
+about a minute at the 3.3 ms/entry that does hold. Neither is prohibitive for a nightly
 enterprise audit. Neither is implemented.
 
 ### The operational reading
 
 This is not the binding constraint. An entry is created by a governed activation, not by traffic.
 A site performing ten governed activations a day reaches 2,000 entries in about seven months, at
-which point the signed ledger is 1.3 MB and verifying every signature in it takes five seconds.
+which point the signed ledger is 1.8 MB and verifying every signature in it takes seven seconds.
 Something else will hurt first.
 
 **Not measured:** how the git anchor repository grows once git repacks it, and any of this on

@@ -250,7 +250,7 @@ set -e
 [ "$rc" -eq 0 ] || { cat "$WORK/k5-act.txt"; fail "K5 pre-rotation activation returned $rc"; }
 cp "$AKF_ROT" "$BREG/identity/authorized-keys.jsonl"
 
-start_edge() {  # $1 = log file; $2 = signed|anchored; $3 = extra env assignments (may be empty)
+start_edge() {  # $1 = log file; $2 = signed|anchored; $3.. = extra env assignments, one per argument
   : > "$1"
   local anchored="off"
   [ "$2" = "anchored" ] && anchored="on"
@@ -261,7 +261,7 @@ start_edge() {  # $1 = log file; $2 = signed|anchored; $3 = extra env assignment
       POLICY_PATH="$POLICY_WIN" REGISTRY_PATH="$reg_win" CONFORMANCE_PATH="$CONF_RECIPE_WIN" \
       ACTIVATION_PATH="$reg_win" ACTIVATION_TARGET="Line1" \
       REQUIRE_SIGNED_ACTIVATION="on" REQUIRE_ANCHORED_ACTIVATION="$anchored" \
-      ${3:-} \
+      "${@:3}" \
       java "-Dheimdall.gate=KR" -jar "$HEIMDALL_JAR_WIN" >"$1" 2>&1 &
   BRIDGE_PID=$!
 }
@@ -394,7 +394,7 @@ reg="$BREG"; reg_win="$(cygpath -m "$(pwd)/$BREG")"
 CONF_RECIPE_WIN="$(cygpath -m "$(pwd)/$BREG/conformance/Line1-Mixer/recipe.json")"
 POLICY_WIN="$(cygpath -m "$(pwd)/$BREG/policy.json")"
 ELOG10="$WORK/edge-k10.log"
-start_edge "$ELOG10" signed "HEIMDALL_IDENTITY_DIR=$PKI_WIN HEIMDALL_CERT_WARN_DAYS=99999"
+start_edge "$ELOG10" signed "HEIMDALL_IDENTITY_DIR=$PKI_WIN" "HEIMDALL_CERT_WARN_DAYS=99999"
 ok=0
 for i in $(seq 1 20); do
   grep -q "identity.cert.expiring" "$ELOG10" 2>/dev/null && { ok=1; break; }
