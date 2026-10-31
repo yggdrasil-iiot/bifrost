@@ -1,0 +1,56 @@
+{
+  "kind": "equipment-hierarchy",
+  "schemaVersion": "2.23.0",
+  "id": "synthetic-plant",
+  "version": "1.0.0",
+  "label": "Synthetic plant",
+  "levelVocabulary": "opc-10030-1.00-isa95-equipment-element-level-enum",
+  "nodes": [
+    {
+      "equipmentInstanceId": "synthetic-site",
+      "label": "Synthetic site",
+      "equipmentLevel": "SITE_1",
+      "parentEquipmentInstanceId": null,
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-mixed-plc-pressure",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    },
+    {
+      "equipmentInstanceId": "record-line-a",
+      "label": "Line A",
+      "equipmentLevel": "PRODUCTIONLINE_5",
+      "parentEquipmentInstanceId": "synthetic-site",
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-mixed-plc-pressure",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    },
+    {
+      "equipmentInstanceId": "record-line-b",
+      "label": "Line B",
+      "equipmentLevel": "PRODUCTIONLINE_5",
+      "parentEquipmentInstanceId": "synthetic-site",
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-mixed-plc-pressure",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ]
+    }
+  ],
+  "evidenceRefs": []
+}

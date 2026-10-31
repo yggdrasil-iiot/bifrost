@@ -1,0 +1,36 @@
+{
+  "kind": "mapping-submission",
+  "schemaVersion": "2.9.0",
+  "id": "hierarchy-fixture",
+  "streamId": "hierarchy-line",
+  "version": "1.0.0",
+  "workspaceSha256": "0305c7a159d0bfc1bac788d70cedd60418ee4f46c114df963012fd184ac26ea5",
+  "proposalSha256": "b5b51c639d97521ababd5feb6bcde9b9a7c4805c76a1718dadcf85287cd293d0",
+  "baseRelease": null,
+  "proposedBy": "proposer",
+  "execution": "excluded",
+  "context": {
+    "equipment": [
+      {
+        "id": "synthetic-site",
+        "label": "Synthetic site"
+      },
+      {
+        "id": "record-line-a",
+        "label": "합성 설비 A"
+      },
+      {
+        "id": "record-line-b",
+        "label": "합성 설비 B"
+      }
+    ],
+    "connections": [
+      {
+        "id": "mixed-melsec",
+        "label": "MELSEC metadata only",
+        "equipmentInstanceId": "record-line-b",
+        "accessProfileRef": "melsec-device-v1"
+      }
+    ]
+  }
+}

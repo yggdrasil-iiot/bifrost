@@ -1,0 +1,37 @@
+{
+  "kind": "source-definition",
+  "schemaVersion": "2.7.0",
+  "id": "mixed-baseline",
+  "version": "1.0.0",
+  "sourceKind": "constant",
+  "accessMode": "read",
+  "equipmentInstanceId": "record-line-b",
+  "connectionProfileRef": null,
+  "accessProfileRef": "constant-v1",
+  "status": "ready",
+  "rawAddressText": "constant:mixed-baseline",
+  "addressRadix": null,
+  "access": {
+    "kind": "constant",
+    "value": "100"
+  },
+  "rawRepresentation": {
+    "mode": "typed",
+    "valueType": "Double"
+  },
+  "inputStage": "already-engineered",
+  "unit": {
+    "status": "known",
+    "code": "kPa"
+  },
+  "evidenceRefs": [
+    {
+      "artifactId": "manual-mixed-baseline",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    }
+  ],
+  "viewOf": null
+}
