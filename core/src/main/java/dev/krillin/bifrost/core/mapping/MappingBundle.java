@@ -35,7 +35,7 @@ public final class MappingBundle {
         root=folder;JsonNode p=null,s=null;
         try{
             p=read(safe(root,"proposal.json"));schema(p,"mapping-proposal");
-            require(Set.of("2.0.0","2.6.0","2.7.0","2.18.0","2.19.0","2.20.0","2.21.0","2.22.0").contains(text(p,"schemaVersion")),"capability.proposal-version");
+            require(Set.of("2.0.0","2.6.0","2.7.0","2.18.0","2.19.0","2.20.0","2.21.0","2.22.0","2.23.0").contains(text(p,"schemaVersion")),"capability.proposal-version");
             files.put("proposal.json",sha(root.resolve("proposal.json")));
             s=read(safe(root,"submission.json"));schema(s,"mapping-submission");
             require(text(s,"proposalSha256").equals(files.get("proposal.json")),"submission.proposal-digest");
@@ -45,7 +45,7 @@ public final class MappingBundle {
             for(JsonNode e:p.path("files")){
                 String path=text(e,"path");pin(path,text(e,"sha256"));JsonNode d=read(root.resolve(path));
                 require(text(d,"kind").equals(text(e,"kind"))&&text(d,"id").equals(text(e,"id"))&&text(d,"version").equals(text(e,"version")),"bundle.identity");
-                require(Set.of("source-definition","semantic-definition","target-instance","value-graph","mapping-set","write-definition","evidence-artifact","source-observation","import-batch","semantic-lifecycle","mapping-template","template-application","record-mapping").contains(text(d,"kind")),"capability.document-kind");
+                require(Set.of("source-definition","semantic-definition","target-instance","value-graph","mapping-set","write-definition","evidence-artifact","source-observation","import-batch","semantic-lifecycle","mapping-template","template-application","record-mapping",EquipmentHierarchy.KIND).contains(text(d,"kind")),"capability.document-kind");
                 schema(d,text(d,"kind"));require(docs.putIfAbsent(key(d),d)==null,"bundle.duplicate-id");
             }
             for(JsonNode d:docs.values())if(text(d,"kind").equals("evidence-artifact")){
@@ -60,12 +60,13 @@ public final class MappingBundle {
                     require(files.containsKey(rel),"bundle.unlisted-file:"+rel);
                 }
             }
-            require(docs.values().stream().anyMatch(d->Set.of("mapping-set","record-mapping").contains(text(d,"kind")))||Set.of("2.18.0","2.19.0","2.20.0","2.21.0","2.22.0").contains(text(p,"schemaVersion"))&&docs.values().stream().anyMatch(d->text(d,"kind").equals("semantic-lifecycle")),"mapping.required");
+            require(docs.values().stream().anyMatch(d->Set.of("mapping-set","record-mapping").contains(text(d,"kind")))||Set.of("2.18.0","2.19.0","2.20.0","2.21.0","2.22.0","2.23.0").contains(text(p,"schemaVersion"))&&docs.values().stream().anyMatch(d->text(d,"kind").equals("semantic-lifecycle")),"mapping.required");
             for(JsonNode d:docs.values()){
                 String path=key(d);evidence(d.path("evidenceRefs"),path);
                 switch(text(d,"kind")){
                     case "source-definition" -> source(d);
                     case "semantic-definition" -> semantic(d);
+                    case EquipmentHierarchy.KIND -> {for(JsonNode n:d.path("nodes"))evidence(n.path("evidenceRefs"),path+"/"+text(n,"equipmentInstanceId"));}
                     case "import-batch" -> {
                         // Retain raw provenance. No template/alias re-interpretation is delegated to Tyr.
                         try{
@@ -96,10 +97,11 @@ public final class MappingBundle {
                     check(connection!=null&&text(connection,"equipmentInstanceId").equals(text(d,"equipmentInstanceId"))&&text(connection,"accessProfileRef").equals(text(d,"accessProfileRef")),"context.connection",key(d));
                 }
             }
+            EquipmentHierarchy.validate(docs.values(),equipment);
             if(docs.values().stream().anyMatch(d->MappingTemplates.KINDS.contains(text(d,"kind"))))MappingTemplates.validate(docs.values(),List.of());
             if(docs.values().stream().anyMatch(d->text(d,"kind").equals("record-mapping")))RecordMappings.validate(docs.values(),List.of(),this::validateDerived);
-            if(docs.values().stream().anyMatch(d->text(d,"schemaVersion").equals("2.22.0")))require(text(p,"schemaVersion").equals("2.22.0"),"broadcast.envelope");
-            if(docs.values().stream().anyMatch(d->text(d,"schemaVersion").equals("2.21.0"))){require(Set.of("2.21.0","2.22.0").contains(text(p,"schemaVersion")),"record-field.envelope");RecordFields.validate(docs.values());}
+            if(docs.values().stream().anyMatch(d->text(d,"schemaVersion").equals("2.22.0")))require(Set.of("2.22.0","2.23.0").contains(text(p,"schemaVersion")),"broadcast.envelope");
+            if(docs.values().stream().anyMatch(d->text(d,"schemaVersion").equals("2.21.0"))){require(Set.of("2.21.0","2.22.0","2.23.0").contains(text(p,"schemaVersion")),"record-field.envelope");RecordFields.validate(docs.values());}
             concepts();
             if(docs.values().stream().anyMatch(d->text(d,"kind").equals("semantic-lifecycle")))SemanticLifecycle.validate(governanceDocuments(docs.values()),List.of(),Map.of());
             for(JsonNode g:GraphDependencies.order(docs.values()))graph(g);

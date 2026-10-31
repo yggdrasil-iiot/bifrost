@@ -1,0 +1,309 @@
+{
+  "kind": "record-mapping",
+  "schemaVersion": "2.22.0",
+  "id": "broadcast-pumps",
+  "version": "1.0.0",
+  "label": "레코드별 목표 + 공통 PLC·상수·외부 값",
+  "equipmentInstanceId": "record-line-b",
+  "templateRef": {
+    "id": "broadcast-pump-kit",
+    "version": "1.0.0",
+    "sha256": "2e2de6173904906de30cccc707bf6683c9feb67e4289c60dce949fce37585a02"
+  },
+  "semanticDefinitionRef": {
+    "id": "broadcast-model-a5718f5500986242f75268c0",
+    "version": "1.0.0"
+  },
+  "previousMappingRef": null,
+  "resultSchema": {
+    "id": "pressure-result",
+    "version": "1.0.0",
+    "providerRef": "virtual-db",
+    "valueKey": "asset-pressure",
+    "query": {
+      "language": "sql",
+      "text": "SELECT asset, pressure, target, running FROM declared_view"
+    },
+    "fields": [
+      {
+        "fieldId": "asset",
+        "name": "asset",
+        "valueType": "String",
+        "unit": {
+          "status": "not-applicable"
+        },
+        "inputStage": "already-engineered",
+        "nullable": false
+      },
+      {
+        "fieldId": "pressure",
+        "name": "pressure",
+        "valueType": "Double",
+        "unit": {
+          "status": "known",
+          "code": "Pa"
+        },
+        "inputStage": "raw",
+        "nullable": true
+      },
+      {
+        "fieldId": "target",
+        "name": "target",
+        "valueType": "Int32",
+        "unit": {
+          "status": "known",
+          "code": "kPa"
+        },
+        "inputStage": "raw",
+        "nullable": false
+      },
+      {
+        "fieldId": "running",
+        "name": "running",
+        "valueType": "Boolean",
+        "unit": {
+          "status": "not-applicable"
+        },
+        "inputStage": "already-engineered",
+        "nullable": false
+      }
+    ],
+    "keyFields": [
+      "asset"
+    ],
+    "unknownFields": "preserve"
+  },
+  "bindings": [
+    {
+      "slotId": "input-2",
+      "fieldId": "target",
+      "nullPolicy": "reject",
+      "defaultValue": null
+    }
+  ],
+  "commonBindings": [
+    {
+      "slotId": "input-1",
+      "sourceRef": {
+        "id": "mixed-plc-pressure",
+        "version": "1.0.0",
+        "sha256": "27c78e80e9330e8fd05ebedfa0aa9ed308721911f7a73b4171eda355f1b52a8c"
+      }
+    },
+    {
+      "slotId": "input-3",
+      "sourceRef": {
+        "id": "mixed-baseline",
+        "version": "1.0.0",
+        "sha256": "f254782f987a92aaedf98ffa22c5dc02b15224b881ea4deeb6680bec65bfb7ef"
+      }
+    },
+    {
+      "slotId": "input-4",
+      "sourceRef": {
+        "id": "mixed-external-reference",
+        "version": "1.0.0",
+        "sha256": "4a4c76971d88215470840560df9a2d01d9c1609945c2369afc5669b4e0202cc7"
+      }
+    },
+    {
+      "slotId": "input-5",
+      "sourceRef": {
+        "id": "mixed-line-code",
+        "version": "1.0.0",
+        "sha256": "2ad34d29326da15e50335d72de7f3cca3eb5c427242cc8a91c13eca7ad64057e"
+      }
+    }
+  ],
+  "commonSources": [
+    {
+      "kind": "source-definition",
+      "schemaVersion": "2.2.0",
+      "id": "mixed-plc-pressure",
+      "version": "1.0.0",
+      "equipmentInstanceId": "record-line-b",
+      "connectionProfileRef": "mixed-melsec",
+      "accessProfileRef": "melsec-device-v1",
+      "status": "ready",
+      "rawAddressText": "D1000",
+      "addressRadix": 10,
+      "access": {
+        "kind": "device-register",
+        "deviceArea": "D",
+        "addressIndex": 1000,
+        "addressUnit": "word16",
+        "wordCount": 1,
+        "bitOffset": null
+      },
+      "rawRepresentation": {
+        "mode": "bytes",
+        "valueType": "UInt16",
+        "byteOrder": "little",
+        "wordOrder": "low-first"
+      },
+      "inputStage": "raw",
+      "unit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-mixed-plc-pressure",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ],
+      "viewOf": null
+    },
+    {
+      "kind": "source-definition",
+      "schemaVersion": "2.7.0",
+      "id": "mixed-baseline",
+      "version": "1.0.0",
+      "sourceKind": "constant",
+      "accessMode": "read",
+      "equipmentInstanceId": "record-line-b",
+      "connectionProfileRef": null,
+      "accessProfileRef": "constant-v1",
+      "status": "ready",
+      "rawAddressText": "constant:mixed-baseline",
+      "addressRadix": null,
+      "access": {
+        "kind": "constant",
+        "value": "100"
+      },
+      "rawRepresentation": {
+        "mode": "typed",
+        "valueType": "Double"
+      },
+      "inputStage": "already-engineered",
+      "unit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-mixed-baseline",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ],
+      "viewOf": null
+    },
+    {
+      "kind": "source-definition",
+      "schemaVersion": "2.7.0",
+      "id": "mixed-external-reference",
+      "version": "1.0.0",
+      "sourceKind": "external-value",
+      "accessMode": "read",
+      "equipmentInstanceId": "record-line-b",
+      "connectionProfileRef": null,
+      "accessProfileRef": "external-value-v1",
+      "status": "ready",
+      "rawAddressText": "external-value:mixed-external-reference",
+      "addressRadix": null,
+      "access": {
+        "kind": "external-value",
+        "providerRef": "reference-provider",
+        "valueKey": "reference.pressure",
+        "expressionLanguage": "sql",
+        "expression": "SELECT reference_pressure FROM process_reference WHERE equipment_id = :equipment_id;\n-- Preserve exactly; do not execute"
+      },
+      "rawRepresentation": {
+        "mode": "typed",
+        "valueType": "Double"
+      },
+      "inputStage": "already-engineered",
+      "unit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-mixed-external-reference",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ],
+      "viewOf": null
+    },
+    {
+      "kind": "source-definition",
+      "schemaVersion": "2.7.0",
+      "id": "mixed-line-code",
+      "version": "1.0.0",
+      "sourceKind": "constant",
+      "accessMode": "read",
+      "equipmentInstanceId": "record-line-b",
+      "connectionProfileRef": null,
+      "accessProfileRef": "constant-v1",
+      "status": "ready",
+      "rawAddressText": "constant:mixed-line-code",
+      "addressRadix": null,
+      "access": {
+        "kind": "constant",
+        "value": "LINE-A"
+      },
+      "rawRepresentation": {
+        "mode": "typed",
+        "valueType": "String"
+      },
+      "inputStage": "already-engineered",
+      "unit": {
+        "status": "not-applicable"
+      },
+      "evidenceRefs": [
+        {
+          "artifactId": "manual-mixed-line-code",
+          "locator": {
+            "kind": "text-line",
+            "line": 1
+          }
+        }
+      ],
+      "viewOf": null
+    }
+  ],
+  "commonPolicy": {
+    "mode": "single-virtual-frame",
+    "maxAgeMs": 1000,
+    "maxSkewMs": 500,
+    "uncertainInput": "propagate"
+  },
+  "rowErrorPolicy": "reject-all",
+  "output": {
+    "mode": "array",
+    "zeroPolicy": "empty",
+    "manyPolicy": "all",
+    "maxRows": 16,
+    "order": "canonical-key-utf8"
+  },
+  "selection": {
+    "kind": "all",
+    "key": []
+  },
+  "authoredBy": "fixture-author",
+  "authoredAt": "2026-10-18T00:00:00Z",
+  "reason": "Synthetic bounded broadcast",
+  "provenance": {
+    "origin": "synthetic",
+    "capturedAt": "2026-10-18T00:00:00Z",
+    "note": "Offline only; common values supplied once"
+  },
+  "evidenceRefs": [
+    {
+      "artifactId": "record-broadcast-pumps-1-0-0",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    }
+  ]
+}

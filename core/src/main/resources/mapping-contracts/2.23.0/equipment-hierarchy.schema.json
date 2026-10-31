@@ -1,0 +1,135 @@
+{
+  "type": "object",
+  "properties": {
+    "kind": {
+      "const": "equipment-hierarchy"
+    },
+    "schemaVersion": {
+      "const": "2.23.0"
+    },
+    "id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "version": {
+      "$ref": "common.schema.json#/$defs/version"
+    },
+    "label": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "levelVocabulary": {
+      "const": "opc-10030-1.00-isa95-equipment-element-level-enum"
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "equipmentInstanceId": {
+            "$ref": "common.schema.json#/$defs/id"
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "equipmentLevel": {
+            "enum": [
+              "ENTERPRISE_0",
+              "SITE_1",
+              "AREA_2",
+              "PROCESSCELL_3",
+              "UNIT_4",
+              "PRODUCTIONLINE_5",
+              "WORKCELL_6",
+              "PRODUCTIONUINT_7",
+              "STORAGEZONE_8",
+              "STORAGEUNIT_9",
+              "WORKCENTER_10",
+              "WORKUNIT_11",
+              "EQUIPMENTMODULE_12",
+              "CONTROLMODULE_13",
+              "OTHER_14"
+            ]
+          },
+          "otherLevel": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "parentEquipmentInstanceId": {
+            "anyOf": [
+              {
+                "$ref": "common.schema.json#/$defs/id"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "evidenceRefs": {
+            "type": "array",
+            "items": {
+              "$ref": "common.schema.json#/$defs/evidenceRef"
+            },
+            "maxItems": 64,
+            "minItems": 1
+          }
+        },
+        "required": [
+          "equipmentInstanceId",
+          "label",
+          "equipmentLevel",
+          "parentEquipmentInstanceId",
+          "evidenceRefs"
+        ],
+        "if": {
+          "properties": {
+            "equipmentLevel": {
+              "const": "OTHER_14"
+            }
+          },
+          "required": [
+            "equipmentLevel"
+          ]
+        },
+        "then": {
+          "required": [
+            "otherLevel"
+          ]
+        },
+        "else": {
+          "not": {
+            "required": [
+              "otherLevel"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "minItems": 1,
+      "maxItems": 2048
+    },
+    "evidenceRefs": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/evidenceRef"
+      },
+      "maxItems": 64
+    }
+  },
+  "required": [
+    "kind",
+    "schemaVersion",
+    "id",
+    "version",
+    "label",
+    "levelVocabulary",
+    "nodes",
+    "evidenceRefs"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:tyr:contract:2.23.0:equipment-hierarchy"
+}
