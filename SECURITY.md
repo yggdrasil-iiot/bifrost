@@ -44,6 +44,11 @@ each is stated in the README's *Honest scope & limitations* or in `docs/ENTERPRI
 - **Anchor rollback resistance is topological, not cryptographic.** A `FileAnchorStore` is an
   on-box projection that a co-rollback can rewrite; the `GitAnchorStore` only helps if the anchor
   repository is genuinely off-box. The gate says so itself.
+- **Head freshness timing is local, not authoritative.** Bifrost stores no
+  time state and provides no third-party record of publication time. A verifier clock
+  more than 24 hours behind `signedAt` is refused with `mapping.head-clock-behind`,
+  and a fast clock fails as `mapping.head-expired`. Nothing fixes a wrong clock;
+  it refuses when the clock makes the decision impossible.
 - **Authorization is direct principal grants**, not roles or attributes.
 - **Rotation exists; revocation does not.** `identity rotate-key` retires a signing key by stamping
   `notAfter`, which stops it signing anything new. It goes on authenticating everything it already

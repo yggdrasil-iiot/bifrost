@@ -6,7 +6,7 @@ The gates jar dispatches mapping validate/diff/approve/publish/status. Approval 
 
 Immutable submission IDs identify snapshots; stable stream IDs identify release sequences. Approval binds exact proposal and bundle hashes, identities and base release. Publication revalidates these and current key/policy state under a registry lock, stages and verifies complete bytes, then uses atomic directory and HEAD moves. Unsupported atomic operations refuse.
 
-Identity/policy files and the filesystem are operator-controlled trust roots. This path does not write the activation ledger or claim external-anchor rollback evidence. Failed staging or unreferenced complete directories may remain for investigation; recovery/GC and power-loss durability are deferred.
+Identity/policy files and the filesystem are operator-controlled trust roots. This path still does not write the activation ledger. A stream head signed with two keys is now checked against a witness of its highest version (the same strength as the activation anchor; see [Head freshness](#head-freshness-tuf-rules)). Failed staging or unreferenced complete directories may remain for investigation; recovery/GC and power-loss durability are deferred.
 
 The receiver rejects draft/unresolved/unsupported definitions and requires confirmed units. XLSX locator validation does not claim vendor parser completeness. MappingPublicationTest uses real temporary keys and shared wire data to exercise stale approval/base, tampering and prior-head preservation. Device access, external SQL, writes and operational activation remain excluded.
 
@@ -28,6 +28,33 @@ The attestation is written before the receipt. A process stopped between the two
 4. Check that the `subject` set equals `files[]` and that each file's raw SHA-256 matches.
 
 A key retired later still verifies the attestations it signed, as it does for receipts. The activation policy and key validity windows were checked by Bifrost at approval; the envelope does not carry them. A recipe publication can be signed by a single publisher with an in-toto `Statement` whose predicate is SLSA Provenance v1, described in [RECIPE-PUBLICATION.md](RECIPE-PUBLICATION.md).
+
+## Head freshness (TUF rules)
+
+A stream head at `mappings/heads/<stream>.json` records `{id, version, sha256}` without an internal counter or expiry. To detect rolled-back heads and stale copies of the registry, Bifrost applies two TUF rules (spec 1.0.x): a head version never goes down, and a head past its expiry is not trusted.
+
+The head file, `release.json`, approval receipts, and the approval attestation stay byte-identical. The counter and expiry live in a sibling file, `mappings/head-attestations/<stream>.dsse.json`: a DSSE envelope (`payloadType` `application/vnd.in-toto+json`) holding an in-toto Statement v1. It resides in its own directory because `heads/` is read as one file per stream.
+
+The statement `subject` contains exactly two entries, `heads/<stream>.json` and `releases/<id>/<version>/release.json`, each with `digest.sha256` over the file's raw bytes. The `predicateType` is `https://github.com/yggdrasil-iiot/bifrost/attestation/mapping-head/v1`. The `predicate` contains: `streamId`, `headVersion` (integer, starts at 1, increments by 1 on every write), `signedAt` and `expires` (UTC, second precision), `cause` (`publish`, `renew`, or `migrate`), `release` (equal to the head file's content), `previous` (`null` for version 1; otherwise `{headVersion, release}` of the version it replaced), `approvalId` (the release's approval), `publishedBy`, and `approvedBy`.
+
+Two distinct principals sign PAE with their registered Ed25519 keys, where `keyid` is the principal. The first must hold PUBLISH and the second APPROVE on target `mapping-publication`, kind `mapping-release`, ref the stream (the same policy as approval). They need not be the approval's own pair.
+
+`mapping publish ... --approval <id> --by <id> --by-key <path> --approved-by <id> --approved-by-key <path> [--expires-in <ISO-8601 duration>]` signs the new head as part of publication. `mapping sign-head <registry> <stream>` with the same four flags renews an attested head (same release, version + 1, new expiry; it works on an expired head) or attests an unsigned head as version 1 (`cause` `migrate`). On a stream whose head was never signed, the next signed publish is also version 1. `mapping publish` without keys continues to work for Tyr's acceptance scripts, but is refused with `mapping.head-signers-required` on any stream that has ever had a signed head. Expiry defaults to 90 days (`P90D`) and allows 1 day to 366 days; values outside this range fail with `mapping.head-expiry-bounds`. The 90-day default accommodates air-gapped sites where renewals require two people and follow maintenance schedules rather than online signing services.
+
+The highest version reached is witnessed in an `AnchorStore` (the same port used by the activation ledger at T7) under target `mapping-head-<stream>`, with `seq` = `headVersion` and tail = SHA-256 of the head file bytes. Default `FileAnchorStore` writes to `registry/anchor/`, outside `mappings/`; `--anchor-store git --anchor-dir <dir>` uses `GitAnchorStore`. As with T7, an on-box witness is restored alongside a restored registry; only an off-box witness catches a full restore.
+
+During publication, the envelope is signed and written as a `.pending` file before the intent journal; journal version 2 (9 fields) names it. After the head moves, the envelope moves into place and the witness is recorded; the journal is deleted last. `mapping recover` signs nothing: it places the envelope the publication already signed, then records the witness. A version-1 journal still recovers as before and reports `headAttestation` `unsigned`. `gc` counts `head-attestations/` in `rootsSha256` and quarantines stale `.pending` files there.
+
+`mapping verify-head <registry> <stream> [--anchor-store file|git --anchor-dir <dir>]` checks, in order: the head's release verifies; the envelope exists (`mapping.head-attestation-missing`); both signatures verify with two different registered keys (`mapping.head-attestation-signature:<rule>`); the statement shape, fields, and chain (`mapping.head-attestation-statement`); subject digests and `release` match the head (`mapping.head-attestation-subject`); both principals hold PUBLISH and APPROVE; witness checks: lower version fails with `mapping.head-rollback`, higher version fails with `mapping.head-anchor-behind`, missing witness fails with `mapping.head-anchor-missing`, tail mismatch on the same version fails with `mapping.head-anchor-tail-mismatch`, and a removed envelope while a witness remains fails with `mapping.head-rollback`; clock checks: `signedAt` more than 24 hours after the verifier clock fails with `mapping.head-clock-behind`, and current time at or after `expires` fails with `mapping.head-expired`. Bifrost stores no time state and cannot fix a wrong clock; it refuses when clock drift makes the decision impossible.
+
+An outside verifier checks head freshness without Bifrost code:
+1. Read the envelope.
+2. Verify both signatures over PAE with the keys registered for `publishedBy` and `approvedBy` in `identity/authorized-keys.jsonl`, requiring two different keys.
+3. Check both subject digests against the raw bytes of the head file and `release.json`.
+4. Compare `headVersion` with the highest version it has itself trusted for that stream and refuse a lower one.
+5. Check `expires`.
+
+TUF root rotation (trust remains in `identity/authorized-keys.jsonl`), third-party records of publication time, and Eidos's own envelope verification are out of scope.
 
 ## Explicit integer-word views (2026-10-18)
 
