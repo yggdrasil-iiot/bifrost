@@ -19,5 +19,11 @@ final class EquipmentHierarchy {
   }
   require(equipment.containsAll(by.keySet()),"hierarchy.context-equipment");
   for(JsonNode d:docs)if(!text(d,"kind").equals(KIND)&&d.has("equipmentInstanceId"))require(by.containsKey(text(d,"equipmentInstanceId")),"hierarchy.unresolved-instance");
+  Map<String,Set<String>> scope=new HashMap<>();
+  for(JsonNode d:docs)if(text(d,"kind").equals("evidence-artifact")){Set<String> s=new HashSet<>();d.path("scope").forEach(x->s.add(x.asText()));scope.put(text(d,"id"),s);}
+  for(JsonNode n:by.values()){
+   boolean covered=false;for(JsonNode r:n.path("evidenceRefs"))covered|=scope.getOrDefault(text(r,"artifactId"),Set.of()).contains(text(n,"equipmentInstanceId"));
+   require(covered,"hierarchy.evidence-scope");
+  }
  }
 }

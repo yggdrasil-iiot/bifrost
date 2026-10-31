@@ -1,0 +1,19 @@
+{
+  "kind": "evidence-artifact",
+  "schemaVersion": "1.1.0",
+  "id": "hierarchy-plant-register",
+  "version": "1.0.0",
+  "origin": "synthetic",
+  "file": {
+    "path": "data/hierarchy-0.csv",
+    "sha256": "68b22bf73c87a56f13225aa1b4bd612fee3d303fd95c9328bb81c0bf7335bacd",
+    "mediaType": "text/csv"
+  },
+  "capturedAt": "2026-10-31T00:00:00Z",
+  "product": null,
+  "scope": [
+    "synthetic-site",
+    "record-line-a",
+    "record-line-b"
+  ]
+}

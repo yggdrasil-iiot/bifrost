@@ -10,7 +10,14 @@
       "kind": "equipment-hierarchy",
       "id": "synthetic-plant",
       "version": "1.0.0",
-      "sha256": "af3e6d82076cfde9f5fc087eb012dd1e325dcec072b5fbd15b2b6f7385c47faf"
+      "sha256": "cecb1673669d6d149c565bd9c73e5a448ad2b2bcbcefafc0ed9f8dbafcf0b1b7"
+    },
+    {
+      "path": "evidence/hierarchy-0.json",
+      "kind": "evidence-artifact",
+      "id": "hierarchy-plant-register",
+      "version": "1.0.0",
+      "sha256": "8b67e7d51e7e67b5fd597cfa23168d68f19f1a047385b775a3ceb0e62a80d47c"
     },
     {
       "path": "evidence/1.json",
