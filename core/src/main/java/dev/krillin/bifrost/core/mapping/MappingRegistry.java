@@ -22,8 +22,15 @@ public final class MappingRegistry {
     private java.util.function.Consumer<String> fault = point -> {};
     // Package-private deterministic interruption seam; never exposed by CLI or HTTP.
     MappingRegistry faults(java.util.function.Consumer<String> hook){fault=hook;return this;}
+    private final AnchorStore anchors;
     public MappingRegistry(Path registry){this(registry,Clock.systemUTC(),()->{});}
-    public MappingRegistry(Path registry,Clock clock,Runnable beforeCommit){this.registry=registry.toAbsolutePath().normalize();this.clock=clock;this.beforeCommit=beforeCommit;}
+    public MappingRegistry(Path registry,Clock clock,Runnable beforeCommit){this(registry,clock,beforeCommit,null);}
+    /** anchors keeps the highest head version reached per stream, outside mappings/; null means registry/anchor/. */
+    public MappingRegistry(Path registry,Clock clock,Runnable beforeCommit,AnchorStore anchors){this.registry=registry.toAbsolutePath().normalize();this.clock=clock;this.beforeCommit=beforeCommit;this.anchors=anchors==null?new FileAnchorStore(this.registry):anchors;}
+    /** The two principals who sign a head version, and how long it stays fresh. */
+    public record HeadSigners(String by,Path byKey,String approvedBy,Path approvedKey,Duration lifetime){}
+    public static final Duration DEFAULT_HEAD_LIFETIME=Duration.ofDays(90);
+    private static final Duration CLOCK_SKEW=Duration.ofHours(24);
     private Path mappings(){return registry.resolve("mappings");}
     private static void id(String s){require(s!=null&&s.matches("[a-z][a-z0-9._-]{0,127}"),"mapping.id");}
     private static void version(String s){require(s!=null&&s.matches("(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)"),"mapping.version");}
@@ -191,13 +198,93 @@ public final class MappingRegistry {
             authorize(by,approved,text(p,"streamId"));
         }
     }
-    public JsonNode publish(Path bundle,String releaseId,String ver,String approvalId) throws Exception {
+    private Path headAttestationPath(String stream){id(stream);return mappings().resolve("head-attestations").resolve(stream+".dsse.json");}
+    /** The verified freshness state of a stream: version 0 is a head that was never signed (or no head at all). */
+    private record Fresh(MappingHeadAttestation.Head head,JsonNode release,long version,JsonNode predicate){}
+    private JsonNode headPredicate(JsonNode envelope,MappingHeadAttestation.Head h,JsonNode release) throws Exception {
+        JsonNode claimed;
+        try{claimed=JSON.readTree(Base64.getDecoder().decode(text(envelope,"payload"))).path("predicate");}catch(Exception e){throw new IllegalArgumentException("mapping.head-attestation-statement");}
+        String by=text(claimed,"publishedBy"),approved=text(claimed,"approvedBy");
+        require(!by.isEmpty()&&!approved.isEmpty()&&!by.equals(approved),"mapping.head-attestation-statement");
+        byte[] body;
+        try{body=Dsse.verify(envelope,Dsse.IN_TOTO,AuthorizedKeys.load(registry),List.of(by,approved));}
+        catch(IdentityException e){throw new IllegalArgumentException("mapping.head-attestation-signature:"+e.rule());}
+        JsonNode p=MappingHeadAttestation.matches(JSON.readTree(body),h,release);
+        // A retired key keeps verifying what it signed; the two principals must still hold the stream now.
+        authorize(text(p,"publishedBy"),text(p,"approvedBy"),h.stream());return p;
+    }
+    /** finish: a writer may record the witness for a signed version one above it (a crash between the two writes). */
+    private Fresh fresh(String stream,boolean finish) throws Exception {
+        Optional<AnchorRecord> anchor=anchors.latest(MappingHeadAttestation.anchorTarget(stream));Path file=headAttestationPath(stream);
+        if(!Files.exists(headPath(stream))){require(!Files.exists(file)&&anchor.isEmpty(),"mapping.head-rollback");return new Fresh(null,null,0,null);}
+        String rel="heads/"+stream+".json";JsonNode node=read(safe(mappings(),rel));
+        var h=new MappingHeadAttestation.Head(stream,node,Files.readAllBytes(safe(mappings(),rel)));
+        JsonNode release=verifyRelease(text(node,"id"),text(node,"version"),text(node,"sha256"));require(text(release,"streamId").equals(stream),"mapping.head-stream");
+        if(!Files.exists(file)){require(anchor.isEmpty(),"mapping.head-rollback");return new Fresh(h,release,0,null);}
+        JsonNode p=headPredicate(read(safe(mappings(),"head-attestations/"+stream+".dsse.json")),h,release);long v=p.path("headVersion").asLong();
+        long seq=anchor.map(AnchorRecord::seq).orElse(0L);
+        if(finish&&v==seq+1){recordAnchor(stream,v,h.headBytes());seq=v;}
+        require(anchor.isPresent()||seq==v,"mapping.head-anchor-missing");
+        require(v>=seq,"mapping.head-rollback");require(v<=seq,"mapping.head-anchor-behind");
+        require(anchors.latest(MappingHeadAttestation.anchorTarget(stream)).get().tailEntryHash().equals(sha(h.headBytes())),"mapping.head-anchor-tail-mismatch");
+        return new Fresh(h,release,v,p);
+    }
+    private void recordAnchor(String stream,long version,byte[] headBytes) throws Exception {
+        try{anchors.record(new AnchorRecord(MappingHeadAttestation.anchorTarget(stream),version,sha(headBytes)));}
+        catch(IllegalStateException e){throw new IllegalArgumentException(String.valueOf(e.getMessage()).startsWith("anchor.seq-regression")?"mapping.head-rollback":"mapping.head-anchor-tail-mismatch");}
+    }
+    private KeyFileLedgerSigner headSigner(HeadSigners s,String stream){
+        id(s.by());id(s.approvedBy());Duration l=s.lifetime();
+        require(l!=null&&l.compareTo(Duration.ofDays(1))>=0&&l.compareTo(Duration.ofDays(366))<=0,"mapping.head-expiry-bounds");
+        authorize(s.by(),s.approvedBy(),stream);
+        var signer=KeyFileLedgerSigner.create(s.by(),s.byKey(),s.approvedBy(),s.approvedKey(),AuthorizedKeys.load(registry),clock);
+        require(signer.preflight().isEmpty(),"mapping.identity-refused:"+signer.preflight());return signer;
+    }
+    private Path stageHeadAttestation(MappingHeadAttestation.Head h,String approvalId,Fresh before,String cause,HeadSigners s,KeyFileLedgerSigner signer) throws Exception {
+        Instant now=clock.instant().truncatedTo(java.time.temporal.ChronoUnit.SECONDS);
+        JsonNode previous=before.version()==0?null:object().put("headVersion",before.version()).set("release",before.head().head());
+        byte[] statement=MappingHeadAttestation.statement(h,before.version()+1,now,now.plus(s.lifetime()),cause,previous,approvalId,s.by(),s.approvedBy());
+        Signatures sig=signer.signRaw(Dsse.pae(Dsse.IN_TOTO,statement));
+        JsonNode envelope=Dsse.envelope(Dsse.IN_TOTO,statement,List.of(new Dsse.Signature(s.by(),sig.activatorSig()),new Dsse.Signature(s.approvedBy(),sig.approverSig())));
+        Path pending=mappings().resolve("head-attestations").resolve("."+UUID.randomUUID()+".pending");save(pending,envelope);force(pending);
+        fault.accept("head-attestation-staged");return pending;
+    }
+    private void commitHeadAttestation(Path pending,String stream,long version,byte[] headBytes) throws Exception {
+        Files.move(pending,headAttestationPath(stream),StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING);
+        fault.accept("head-attestation-moved");recordAnchor(stream,version,headBytes);fault.accept("head-anchored");
+    }
+    private ObjectNode headReport(String kind,Fresh f){
+        ObjectNode r=object().put("kind",kind).put("streamId",f.head().stream()).put("headVersion",f.version());
+        for(String k:List.of("cause","signedAt","expires","publishedBy","approvedBy"))r.put(k,text(f.predicate(),k));
+        r.set("head",f.head().head());r.put("activation","not-performed").put("execution","excluded");return r;
+    }
+    /** TUF rules for one stream head: signed by two current principals, not below the witness, not expired. */
+    public JsonNode verifyHead(String stream) throws Exception {return locked(()->{
+        requireNoTransactions();Fresh f=fresh(stream,false);require(f.head()!=null,"mapping.head-missing");require(f.version()>0,"mapping.head-attestation-missing");
+        Instant now=clock.instant(),signed=MappingHeadAttestation.instant(f.predicate(),"signedAt"),expires=MappingHeadAttestation.instant(f.predicate(),"expires");
+        // A verifier clock far behind the signer cannot judge expiry honestly; a fast one fails as expired.
+        require(!signed.isAfter(now.plus(CLOCK_SKEW)),"mapping.head-clock-behind");require(now.isBefore(expires),"mapping.head-expired");
+        return headReport("mapping-head-verification",f).put("now",now.toString());
+    });}
+    /** Renews an attested head (same release, version + 1, new expiry) or attests a legacy one as version 1. */
+    public JsonNode signHead(String stream,HeadSigners s) throws Exception {return locked(()->{
+        requireNoTransactions();var signer=headSigner(s,stream);Fresh f=fresh(stream,true);require(f.head()!=null,"mapping.head-missing");
+        Path pending=stageHeadAttestation(f.head(),text(f.release().path("approval").path("payload"),"approvalId"),f,f.version()==0?"migrate":"renew",s,signer);
+        commitHeadAttestation(pending,stream,f.version()+1,f.head().headBytes());
+        return headReport("mapping-head-signature",fresh(stream,false));
+    });}
+    public JsonNode publish(Path bundle,String releaseId,String ver,String approvalId) throws Exception {return publish(bundle,releaseId,ver,approvalId,null);}
+    /** signers null keeps the unsigned publication, allowed only on a stream that never had a signed head. */
+    public JsonNode publish(Path bundle,String releaseId,String ver,String approvalId,HeadSigners signers) throws Exception {
         id(releaseId);id(approvalId);version(ver);
         return locked(()->{
-            requireNoTransactions();var c=checked(bundle);base(c.submission());
+            requireNoTransactions();var c=checked(bundle);base(c.submission());String stream=text(c.submission(),"streamId");
             JsonNode receipt=read(safe(mappings(),"approvals/"+approvalId+".json"));verifyApproval(receipt,true);JsonNode a=receipt.path("payload");
             require(text(a,"streamId").equals(text(c.submission(),"streamId"))&&text(a,"submissionId").equals(text(c.submission(),"id"))&&text(a,"proposedBy").equals(text(c.submission(),"proposedBy"))&&text(a,"proposalId").equals(text(c.proposal(),"id"))&&text(a,"proposalSha256").equals(text(c.report(),"proposalSha256"))&&text(a,"bundleSha256").equals(text(c.report(),"bundleSha256"))&&a.get("baseRelease").equals(c.submission().get("baseRelease")),"mapping.approval-stale");
             require(text(a,"changeSha256").equals(sha(bytes(changes(c)))),"mapping.approval-change-stale");
+            KeyFileLedgerSigner signer=null;Fresh before=null;
+            if(signers==null)require(!Files.exists(headAttestationPath(stream))&&anchors.latest(MappingHeadAttestation.anchorTarget(stream)).isEmpty(),"mapping.head-signers-required");
+            else{signer=headSigner(signers,stream);before=fresh(stream,false);}
             Path dest=mappings().resolve("releases").resolve(releaseId).resolve(ver);
             require(!Files.exists(dest),"mapping.release-id-conflict");Files.createDirectories(dest.getParent());
             Path staging=Files.createTempDirectory(mappings(),".staging-");Path payload=staging.resolve("payload");Files.createDirectories(payload);
@@ -211,18 +298,23 @@ public final class MappingRegistry {
             release.put("publishedBy","bifrost");release.put("at",clock.instant().toString());release.put("activation","not-performed");release.put("execution","excluded");schema(release,"mapping-release");require(bytes(release).length<=4*1024*1024,"mapping.release-limit");save(staging.resolve("release.json"),release);
             beforeCommit.run();
             String tx=UUID.randomUUID().toString();
-            ObjectNode intent=object().put("kind","mapping-publication-intent").put("version",1).put("streamId",text(c.submission(),"streamId"))
+            ObjectNode head=object().put("id",releaseId).put("version",ver).put("sha256",sha(staging.resolve("release.json")));
+            Path pendingHead=signers==null?null:stageHeadAttestation(new MappingHeadAttestation.Head(stream,head,bytes(head)),approvalId,before,"publish",signers,signer);
+            ObjectNode intent=object().put("kind","mapping-publication-intent").put("version",signers==null?1:2).put("streamId",text(c.submission(),"streamId"))
                 .put("id",releaseId).put("releaseVersion",ver).put("sha256",sha(staging.resolve("release.json"))).put("staging",staging.getFileName().toString());
             intent.set("baseRelease",c.submission().get("baseRelease"));
+            if(pendingHead!=null)intent.put("headAttestation",pendingHead.getFileName().toString());
             Path journal=mappings().resolve("transactions").resolve(tx+".json");save(journal,intent);force(journal);
             fault.accept("intent-written");
             // No non-atomic fallback: on unsupported FS, refuse with the previous head intact.
             Files.move(staging,dest,StandardCopyOption.ATOMIC_MOVE);
             fault.accept("release-moved");
-            ObjectNode head=object().put("id",releaseId).put("version",ver).put("sha256",sha(dest.resolve("release.json")));
+            require(text(head,"sha256").equals(sha(dest.resolve("release.json"))),"mapping.staging-digest");
             Path current=headPath(text(c.submission(),"streamId"));Files.createDirectories(current.getParent());
             Path temp=current.resolveSibling("."+UUID.randomUUID()+".json");save(temp,head);Files.move(temp,current,StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING);
-            fault.accept("head-moved");Files.delete(journal);
+            fault.accept("head-moved");
+            if(pendingHead!=null)commitHeadAttestation(pendingHead,stream,before.version()+1,bytes(head));
+            Files.delete(journal);
             return release;
         });
     }
@@ -272,9 +364,11 @@ public final class MappingRegistry {
         for(Path journal:transactions()){
             require(journal.getFileName().toString().matches("[0-9a-f-]{36}\\.json"),"mapping.journal-name");
             JsonNode j=read(safe(mappings(),"transactions/"+journal.getFileName()));
-            require(j.size()==8&&text(j,"kind").equals("mapping-publication-intent")&&j.path("version").asInt()==1,"mapping.journal-format");
-            String rid=text(j,"id"),ver=text(j,"releaseVersion"),stream=text(j,"streamId"),hash=text(j,"sha256"),stage=text(j,"staging");
-            id(rid);id(stream);version(ver);require(hash.matches("[0-9a-f]{64}")&&stage.matches("\\.staging-[a-zA-Z0-9-]+"),"mapping.journal-path");
+            // Version 2 also names the head attestation the publication signed before its intent was written.
+            int jv=j.path("version").asInt();
+            require((j.size()==8&&jv==1||j.size()==9&&jv==2)&&j.path("version").isInt()&&text(j,"kind").equals("mapping-publication-intent"),"mapping.journal-format");
+            String rid=text(j,"id"),ver=text(j,"releaseVersion"),stream=text(j,"streamId"),hash=text(j,"sha256"),stage=text(j,"staging"),signed=jv==2?text(j,"headAttestation"):null;
+            id(rid);id(stream);version(ver);require(hash.matches("[0-9a-f]{64}")&&stage.matches("\\.staging-[a-zA-Z0-9-]+")&&(signed==null||signed.matches("\\.[0-9a-f-]{36}\\.pending")),"mapping.journal-path");
             Path dest=mappings().resolve("releases").resolve(rid).resolve(ver),staging=mappings().resolve(stage);
             Path root=Files.exists(dest)?dest:staging;
             JsonNode r=verifyRoot(root,rid,ver,hash);
@@ -289,7 +383,16 @@ public final class MappingRegistry {
                 Path h=headPath(stream);Files.createDirectories(h.getParent());Path temp=h.resolveSibling("."+UUID.randomUUID()+".json");
                 save(temp,target);force(temp);Files.move(temp,h,StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING);
             }
-            Files.delete(journal);actions.add(object().put("releaseId",rid).put("state","recovered"));
+            if(signed!=null){
+                // Recovery signs nothing: it places the envelope the publication already signed, then its witness.
+                Path pending=mappings().resolve("head-attestations").resolve(signed);
+                if(Files.exists(pending)){
+                    var head=new MappingHeadAttestation.Head(stream,target,bytes(target));
+                    JsonNode p=headPredicate(read(safe(mappings(),"head-attestations/"+signed)),head,verifyRelease(rid,ver,hash));
+                    commitHeadAttestation(pending,stream,p.path("headVersion").asLong(),head.headBytes());
+                }else fresh(stream,true);
+            }
+            Files.delete(journal);actions.add(object().put("releaseId",rid).put("state","recovered").put("headAttestation",signed==null?"unsigned":"placed"));
         }
         return object().put("kind","mapping-maintenance").put("operation","recover").put("execution","excluded").put("activation","not-performed").set("actions",actions);
     });}
@@ -320,8 +423,8 @@ public final class MappingRegistry {
         Path heads=mappings().resolve("heads");if(Files.exists(heads))try(var files=Files.list(heads)){
             for(Path p:files.filter(x->x.getFileName().toString().matches("[a-z][a-z0-9._-]*\\.json")).toList())statusLocked(p.getFileName().toString().replaceFirst("\\.json$",""));
         }
-        ArrayNode candidates=JSON.createArrayNode();Path attestations=mappings().resolve("attestations");
-        for(Path dir:List.of(mappings(),approvals,heads,attestations))if(Files.exists(dir)){
+        ArrayNode candidates=JSON.createArrayNode();Path attestations=mappings().resolve("attestations"),headAttestations=mappings().resolve("head-attestations");
+        for(Path dir:List.of(mappings(),approvals,heads,attestations,headAttestations))if(Files.exists(dir)){
             require(!Files.isSymbolicLink(dir),"mapping.gc-symlink");
             try(var files=Files.list(dir)){for(Path p:files.sorted().toList()){
                 String name=p.getFileName().toString();boolean recognized=dir.equals(mappings())?name.matches("\\.staging-[a-zA-Z0-9-]+"):
@@ -332,7 +435,7 @@ public final class MappingRegistry {
                 candidates.add(object().put("path",mappings().relativize(p).toString().replace('\\','/')).put("sha256",treeDigest(p)));
             }}
         }
-        Map<String,String> roots=new TreeMap<>();for(Path dir:List.of(releases,approvals,heads,attestations))if(Files.exists(dir))try(var walk=Files.walk(dir)){
+        Map<String,String> roots=new TreeMap<>();for(Path dir:List.of(releases,approvals,heads,attestations,headAttestations))if(Files.exists(dir))try(var walk=Files.walk(dir)){
             for(Path p:walk.filter(Files::isRegularFile).toList())roots.put(mappings().relativize(p).toString().replace('\\','/'),sha(p));
         }
         ObjectNode plan=object().put("rootsSha256",manifestDigest(roots)).put("kind","mapping-maintenance").put("operation","gc").put("graceSeconds",graceSeconds).put("execution","excluded").put("activation","not-performed");
