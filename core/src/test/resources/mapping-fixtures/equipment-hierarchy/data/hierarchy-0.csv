@@ -1,0 +1,4 @@
+equipment_id,label,level,parent
+synthetic-site,Synthetic site,SITE_1,
+record-line-a,Line A,PRODUCTIONLINE_5,synthetic-site
+record-line-b,Line B,PRODUCTIONLINE_5,synthetic-site

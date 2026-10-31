@@ -58,14 +58,20 @@ class MappingEquipmentHierarchyTest {
     @Test void nodeOutsideSubmissionContext() throws Exception {refused("hierarchy.context-equipment",h->((ArrayNode)h.path("nodes")).add(node(h,1).deepCopy().put("equipmentInstanceId","record-line-z")));}
     @Test void unresolvedInstance() throws Exception {refused("hierarchy.unresolved-instance",h->((ArrayNode)h.path("nodes")).remove(2));}
     @Test void nodeEvidenceResolves() throws Exception {refused("evidence.locator",h->((ObjectNode)node(h,2).path("evidenceRefs").get(0)).put("artifactId","manual-missing"));}
+    @Test void nodeEvidenceMustCoverTheNode() throws Exception {refused("hierarchy.evidence-scope",h->((ObjectNode)node(h,0).path("evidenceRefs").get(0)).put("artifactId","manual-mixed-plc-pressure"));}
+    @Test void oneCoveringCitationIsEnough() throws Exception {
+        hierarchy(h->((ArrayNode)node(h,0).path("evidenceRefs")).insert(0,JSON.createObjectNode().put("artifactId","manual-mixed-plc-pressure").set("locator",JSON.createObjectNode().put("kind","text-line").put("line",1))));
+        assertEquals(List.of(),codes());
+    }
     @Test void otherLevelNeedsItsName() throws Exception {refused("mapping.schema:2.23.0/equipment-hierarchy",h->node(h,0).put("equipmentLevel","OTHER_14"));}
     @Test void publishedTokenSpellingOnly() throws Exception {
         hierarchy(h->node(h,1).put("equipmentLevel","PRODUCTIONUINT_7"));assertEquals(List.of(),codes());
         refused("mapping.schema:2.23.0/equipment-hierarchy",h->node(h,1).put("equipmentLevel","PRODUCTIONUNIT_7"));
     }
     @Test void depthLimit() {
-        java.util.function.IntFunction<List<JsonNode>> chain=n->{ArrayNode nodes=JSON.createArrayNode();for(int i=0;i<n;i++){ObjectNode x=nodes.addObject().put("equipmentInstanceId","n"+i);if(i==0)x.putNull("parentEquipmentInstanceId");else x.put("parentEquipmentInstanceId","n"+(i-1));}
-            ObjectNode h=object().put("kind","equipment-hierarchy");h.set("nodes",nodes);return List.of(h);};
+        java.util.function.IntFunction<List<JsonNode>> chain=n->{ArrayNode nodes=JSON.createArrayNode();for(int i=0;i<n;i++){ObjectNode x=nodes.addObject().put("equipmentInstanceId","n"+i);x.putArray("evidenceRefs").addObject().put("artifactId","chain");if(i==0)x.putNull("parentEquipmentInstanceId");else x.put("parentEquipmentInstanceId","n"+(i-1));}
+            ObjectNode h=object().put("kind","equipment-hierarchy");h.set("nodes",nodes);
+            ObjectNode e=object().put("kind","evidence-artifact").put("id","chain");ArrayNode s=e.putArray("scope");for(int i=0;i<n;i++)s.add("n"+i);return List.of(h,e);};
         Set<String> all=new HashSet<>();for(int i=0;i<=EquipmentHierarchy.MAX_DEPTH;i++)all.add("n"+i);
         EquipmentHierarchy.validate(chain.apply(EquipmentHierarchy.MAX_DEPTH),all);
         assertEquals("hierarchy.depth",assertThrows(IllegalArgumentException.class,()->EquipmentHierarchy.validate(chain.apply(EquipmentHierarchy.MAX_DEPTH+1),all)).getMessage());

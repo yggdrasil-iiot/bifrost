@@ -13,10 +13,10 @@
       "parentEquipmentInstanceId": null,
       "evidenceRefs": [
         {
-          "artifactId": "manual-mixed-plc-pressure",
+          "artifactId": "hierarchy-plant-register",
           "locator": {
             "kind": "text-line",
-            "line": 1
+            "line": 2
           }
         }
       ]
@@ -28,10 +28,10 @@
       "parentEquipmentInstanceId": "synthetic-site",
       "evidenceRefs": [
         {
-          "artifactId": "manual-mixed-plc-pressure",
+          "artifactId": "hierarchy-plant-register",
           "locator": {
             "kind": "text-line",
-            "line": 1
+            "line": 3
           }
         }
       ]
@@ -43,10 +43,10 @@
       "parentEquipmentInstanceId": "synthetic-site",
       "evidenceRefs": [
         {
-          "artifactId": "manual-mixed-plc-pressure",
+          "artifactId": "hierarchy-plant-register",
           "locator": {
             "kind": "text-line",
-            "line": 1
+            "line": 4
           }
         }
       ]
