@@ -95,8 +95,9 @@ MES that wants a setpoint changed publishes to a topic — it never routes into 
 
 ## The actual topics
 
-Verified against the code rather than a design note. `<group>` carries the ISA-95 hierarchy
-(`Plant/Area/Line`), `<edge>` is the Sparkplug edge node id.
+Verified against the code rather than a design note. `<group>` is the configured Sparkplug group_id,
+which groups edge nodes logically; Sparkplug 3.0 forbids `/`, `+` and `#` in it, and the gates use
+`Bifrost:Line1`. `<edge>` is the Sparkplug edge node id.
 
 | Topic | Who publishes | Who subscribes | What it is |
 |---|---|---|---|
