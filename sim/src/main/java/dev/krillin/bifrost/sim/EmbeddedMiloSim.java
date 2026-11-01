@@ -39,7 +39,9 @@ import org.eclipse.milo.opcua.stack.core.types.builtin.DateTime;
 import org.eclipse.milo.opcua.stack.core.types.builtin.ExtensionObject;
 import org.eclipse.milo.opcua.stack.core.types.builtin.LocalizedText;
 import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
+import org.eclipse.milo.opcua.stack.core.types.builtin.StatusCode;
 import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
+import org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.UInteger;
 import org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.Unsigned;
 import org.eclipse.milo.opcua.stack.core.types.enumerated.MessageSecurityMode;
 import org.eclipse.milo.opcua.stack.core.types.enumerated.UserTokenType;
@@ -262,6 +264,9 @@ final class EmbeddedMiloSim implements AutoCloseable {
      */
     static final class SimNamespace extends ManagedNamespaceWithLifecycle {
 
+        static final String STATUS_PREFIX = "Sim/";
+        static final String STATUS_SUFFIX = ".StatusCode";
+
         /** Null when identity is not required, in which case the nodes keep UserAccessLevel 3. */
         private final GovernedWriteFilter writeFilter;
 
@@ -363,8 +368,52 @@ final class EmbeddedMiloSim implements AutoCloseable {
         private void transferToInstance(String instanceIdentifier, Object value) {
             getNodeManager().getNode(newNodeId(instanceIdentifier)).ifPresent(n -> {
                 if (n instanceof UaVariableNode v) {
-                    v.setValue(new DataValue(new Variant(value)));
+                    v.setValue(stamped(instanceIdentifier, new Variant(value)));
                     System.out.println("[SIM] transfer " + instanceIdentifier + " = " + value);
+                }
+            });
+        }
+
+        /**
+         * A member value carrying the StatusCode its status-control node currently holds (Good when
+         * the member has none) and fresh source and server timestamps. A forced Bad survives a
+         * setpoint transfer: the code says what the sensor is, not what was last written.
+         */
+        private DataValue stamped(String instanceIdentifier, Variant value) {
+            long code = getNodeManager().getNode(newNodeId(STATUS_PREFIX + instanceIdentifier + STATUS_SUFFIX))
+                    .filter(UaVariableNode.class::isInstance)
+                    .map(c -> ((UaVariableNode) c).getValue().getValue().getValue())
+                    .map(o -> ((UInteger) o).longValue())
+                    .orElse(0L);
+            DateTime now = DateTime.now();
+            return new DataValue(value, new StatusCode(code), now, now);
+        }
+
+        /**
+         * Sim-only fault injection for a governed member: a writable UInt32
+         * {@code Sim/<member>.StatusCode} (default 0 = Good). Writing it re-sets the member with that
+         * raw 32-bit StatusCode and fresh timestamps, so a downstream reader can be shown a Bad or
+         * Uncertain sample on demand. Deliberately NOT a component of the instance: a client browsing
+         * Mixer1 (Muninn) must still see exactly its four members, and NOT behind the governed-write
+         * filter, because it models the sensor, not a governed setpoint.
+         */
+        private void addStatusControl(UaVariableNode member) {
+            String memberId = member.getNodeId().getIdentifier().toString();
+            UaVariableNode control = new UaVariableNode.UaVariableNodeBuilder(getNodeContext())
+                    .setNodeId(newNodeId(STATUS_PREFIX + memberId + STATUS_SUFFIX))
+                    .setBrowseName(newQualifiedName(memberId + STATUS_SUFFIX))
+                    .setDisplayName(LocalizedText.english(memberId + STATUS_SUFFIX))
+                    .setDataType(NodeIds.UInt32)
+                    .setTypeDefinition(NodeIds.BaseDataVariableType)
+                    .setAccessLevel(Unsigned.ubyte(3))
+                    .setUserAccessLevel(Unsigned.ubyte(3))
+                    .setValue(new DataValue(new Variant(Unsigned.uint(0))))
+                    .buildAndAdd();
+            control.addAttributeObserver((node, attributeId, value) -> {
+                if (attributeId == AttributeId.Value) {
+                    member.setValue(stamped(memberId, member.getValue().getValue()));
+                    System.out.println("[SIM] status " + memberId + " = "
+                            + member.getValue().getStatusCode());
                 }
             });
         }
@@ -447,6 +496,9 @@ final class EmbeddedMiloSim implements AutoCloseable {
             mixer1.addComponent(iTemp);
             mixer1.addComponent(iRun);
             mixer1.addComponent(iSec);
+            for (UaVariableNode member : List.of(iRpm, iTemp, iRun, iSec)) {
+                addStatusControl(member);
+            }
         }
 
         /**
