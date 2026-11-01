@@ -28,6 +28,7 @@ import org.junit.jupiter.api.Test;
  * {@code ns=2;s=Sim/Line1/Mixer1.Temp.StatusCode} re-sets {@code Line1/Mixer1.Temp} with that code and
  * fresh source and server timestamps; the value itself is untouched. The control nodes are not
  * components of Mixer1, so a client browsing the instance (Muninn) still sees exactly its four members.
+ * A scan re-stamps a steady value every {@code SCAN_MS}, keeping its StatusCode.
  */
 class SimStatusControlTest {
 
@@ -87,6 +88,28 @@ class SimStatusControlTest {
                 DataValue v = read(client, TEMP);
                 assertEquals(210.0, v.getValue().getValue());
                 assertEquals(BAD_SENSOR_FAILURE, v.getStatusCode().getValue());
+            } finally {
+                client.disconnect();
+            }
+        }
+    }
+
+    @Test
+    void scanRestampsASteadyValueAndKeepsItsStatus() throws Exception {
+        try (EmbeddedMiloSim sim = new EmbeddedMiloSim().start()) {
+            OpcUaClient client = connect();
+            try {
+                write(client, TEMP_STATUS, BAD_SENSOR_FAILURE);
+                long first = read(client, TEMP).getSourceTime().getJavaTime();
+                long deadline = System.currentTimeMillis() + 3 * EmbeddedMiloSim.SimNamespace.SCAN_MS;
+                DataValue later = read(client, TEMP);
+                while (later.getSourceTime().getJavaTime() <= first && System.currentTimeMillis() < deadline) {
+                    Thread.sleep(50);
+                    later = read(client, TEMP);
+                }
+                assertTrue(later.getSourceTime().getJavaTime() > first, "a scan re-stamped the member");
+                assertEquals(200.0, later.getValue().getValue());
+                assertEquals(BAD_SENSOR_FAILURE, later.getStatusCode().getValue());
             } finally {
                 client.disconnect();
             }

@@ -3,9 +3,12 @@ package dev.krillin.bifrost.sim;
 import java.security.KeyPair;
 import java.security.cert.X509Certificate;
 import java.time.Period;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import org.eclipse.milo.opcua.sdk.core.Reference;
@@ -55,9 +58,9 @@ import org.eclipse.milo.opcua.stack.transport.server.tcp.OpcTcpServerTransportCo
  * In-JVM embedded Milo OPC-UA server for the bifrost-local runtime gate: a minimal stand-in for
  * the D3/PLC endpoint Heimdall's {@code OpcUaApplier} writes to. Minimal by design — it exposes
  * writable Double setpoint nodes plus a single rising-edge activate handshake (a writable Boolean
- * trigger + a sim-owned done flag) matching {@code OpcUaApplier.call()}; no polling thread or
- * broader equipment model. Targets Milo <b>1.0.0</b>'s server API directly (package
- * layout, mandatory {@code OpcServerTransportFactory}, no bare {@code addUri} — a substantial
+ * trigger + a sim-owned done flag) matching {@code OpcUaApplier.call()}; no broader equipment model.
+ * One scan thread re-stamps the Mixer1 members (see {@link SimNamespace#SCAN_MS}). Targets Milo
+ * <b>1.0.0</b>'s server API directly (package layout, mandatory {@code OpcServerTransportFactory}, no bare {@code addUri} — a substantial
  * departure from the 0.6.12 server API), verified against the actual 1.0.0 jars.
  *
  * <p>Endpoint is configurable (default {@code opc.tcp://localhost:48400}), anonymous identity, {@code SecurityPolicy.None} —
@@ -267,6 +270,21 @@ final class EmbeddedMiloSim implements AutoCloseable {
         static final String STATUS_PREFIX = "Sim/";
         static final String STATUS_SUFFIX = ".StatusCode";
 
+        /**
+         * Scan period. Every SCAN_MS the Mixer1 members are re-set with their current value and
+         * StatusCode and fresh timestamps, as a PLC re-samples a sensor whose reading has not
+         * changed. Without it a member's source timestamp would stay at the last write, and a
+         * reader with a max-age policy on source time would refuse a steady value as stale.
+         */
+        static final long SCAN_MS = 1000;
+
+        private final List<UaVariableNode> scanned = new ArrayList<>();
+        private final ScheduledExecutorService scanner = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "bifrost-sim-scan");
+            t.setDaemon(true);
+            return t;
+        });
+
         /** Null when identity is not required, in which case the nodes keep UserAccessLevel 3. */
         private final GovernedWriteFilter writeFilter;
 
@@ -274,6 +292,9 @@ final class EmbeddedMiloSim implements AutoCloseable {
             super(server, NAMESPACE_URI);
             this.writeFilter = writeFilter;
             getLifecycleManager().addStartupTask(this::createNodes);
+            getLifecycleManager().addStartupTask(() -> scanner.scheduleAtFixedRate(
+                    this::scan, SCAN_MS, SCAN_MS, TimeUnit.MILLISECONDS));
+            getLifecycleManager().addShutdownTask(scanner::shutdownNow);
         }
 
         /**
@@ -368,10 +389,24 @@ final class EmbeddedMiloSim implements AutoCloseable {
         private void transferToInstance(String instanceIdentifier, Object value) {
             getNodeManager().getNode(newNodeId(instanceIdentifier)).ifPresent(n -> {
                 if (n instanceof UaVariableNode v) {
-                    v.setValue(stamped(instanceIdentifier, new Variant(value)));
+                    synchronized (this) {
+                        v.setValue(stamped(instanceIdentifier, new Variant(value)));
+                    }
                     System.out.println("[SIM] transfer " + instanceIdentifier + " = " + value);
                 }
             });
+        }
+
+        /**
+         * One scan: re-set each member with its current value and StatusCode. Read and set happen
+         * under the same lock as a transfer or a status write, so a scan never puts back a value
+         * that a concurrent write has just replaced.
+         */
+        private synchronized void scan() {
+            for (UaVariableNode member : scanned) {
+                member.setValue(stamped(member.getNodeId().getIdentifier().toString(),
+                        member.getValue().getValue()));
+            }
         }
 
         /**
@@ -411,7 +446,9 @@ final class EmbeddedMiloSim implements AutoCloseable {
                     .buildAndAdd();
             control.addAttributeObserver((node, attributeId, value) -> {
                 if (attributeId == AttributeId.Value) {
-                    member.setValue(stamped(memberId, member.getValue().getValue()));
+                    synchronized (this) {
+                        member.setValue(stamped(memberId, member.getValue().getValue()));
+                    }
                     System.out.println("[SIM] status " + memberId + " = "
                             + member.getValue().getStatusCode());
                 }
@@ -498,6 +535,7 @@ final class EmbeddedMiloSim implements AutoCloseable {
             mixer1.addComponent(iSec);
             for (UaVariableNode member : List.of(iRpm, iTemp, iRun, iSec)) {
                 addStatusControl(member);
+                scanned.add(member);
             }
         }
 
