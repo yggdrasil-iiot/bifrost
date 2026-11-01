@@ -15,7 +15,7 @@
   "governedDefinitionRef": {
     "templateRef": "Line1-Mixer",
     "version": "1.0.0",
-    "sha256": "6959939acdefb13806caa0f9cfeea8d4b8144b48c96518c8d9a03bc08fac510c"
+    "sha256": "a3025cc23ea4c8d584a693d21c84b63a92bc4523dd6a31383c973df4dfa60e2b"
   },
   "projection": "identity"
 }
