@@ -1,0 +1,72 @@
+{
+  "kind": "semantic-definition",
+  "schemaVersion": "2.2.0",
+  "id": "broadcast-model-a5718f5500986242f75268c0",
+  "version": "1.0.0",
+  "members": [
+    {
+      "memberId": "actual",
+      "name": "actual",
+      "semanticId": "urn:tyr:concept:combined.actual",
+      "description": "Synthetic combined object actual",
+      "valueType": "Double",
+      "unit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "role": "measurement",
+      "range": null
+    },
+    {
+      "memberId": "target",
+      "name": "target",
+      "semanticId": "urn:tyr:concept:combined.target",
+      "description": "Synthetic combined object target",
+      "valueType": "Double",
+      "unit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "role": "setpoint",
+      "range": null
+    },
+    {
+      "memberId": "baseline",
+      "name": "baseline",
+      "semanticId": "urn:tyr:concept:combined.baseline",
+      "description": "Synthetic combined object baseline",
+      "valueType": "Double",
+      "unit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "role": "setpoint",
+      "range": null
+    },
+    {
+      "memberId": "external",
+      "name": "external",
+      "semanticId": "urn:tyr:concept:combined.external",
+      "description": "Synthetic combined object external",
+      "valueType": "Double",
+      "unit": {
+        "status": "known",
+        "code": "kPa"
+      },
+      "role": "measurement",
+      "range": null
+    },
+    {
+      "memberId": "line_code",
+      "name": "line_code",
+      "semanticId": "urn:tyr:concept:combined.line_code",
+      "description": "Synthetic combined object line_code",
+      "valueType": "String",
+      "unit": {
+        "status": "not-applicable"
+      },
+      "role": "status",
+      "range": null
+    }
+  ]
+}

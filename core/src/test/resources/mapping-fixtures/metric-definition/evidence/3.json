@@ -1,0 +1,17 @@
+{
+  "kind": "evidence-artifact",
+  "schemaVersion": "1.0.0",
+  "id": "manual-mixed-line-code",
+  "version": "1.0.0",
+  "origin": "synthetic",
+  "file": {
+    "path": "data/manual-3.txt",
+    "sha256": "344140b2d1474bd2a747033849d3ef1b64afe626d6ec32c40031c8803498884a",
+    "mediaType": "text/plain"
+  },
+  "capturedAt": "2026-10-17T00:00:00Z",
+  "product": null,
+  "scope": [
+    "record-line-b"
+  ]
+}

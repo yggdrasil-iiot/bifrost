@@ -1,0 +1,40 @@
+{
+  "kind": "source-definition",
+  "schemaVersion": "2.7.0",
+  "id": "mixed-external-reference",
+  "version": "1.0.0",
+  "sourceKind": "external-value",
+  "accessMode": "read",
+  "equipmentInstanceId": "record-line-b",
+  "connectionProfileRef": null,
+  "accessProfileRef": "external-value-v1",
+  "status": "ready",
+  "rawAddressText": "external-value:mixed-external-reference",
+  "addressRadix": null,
+  "access": {
+    "kind": "external-value",
+    "providerRef": "reference-provider",
+    "valueKey": "reference.pressure",
+    "expressionLanguage": "sql",
+    "expression": "SELECT reference_pressure FROM process_reference WHERE equipment_id = :equipment_id;\n-- Preserve exactly; do not execute"
+  },
+  "rawRepresentation": {
+    "mode": "typed",
+    "valueType": "Double"
+  },
+  "inputStage": "already-engineered",
+  "unit": {
+    "status": "known",
+    "code": "kPa"
+  },
+  "evidenceRefs": [
+    {
+      "artifactId": "manual-mixed-external-reference",
+      "locator": {
+        "kind": "text-line",
+        "line": 1
+      }
+    }
+  ],
+  "viewOf": null
+}

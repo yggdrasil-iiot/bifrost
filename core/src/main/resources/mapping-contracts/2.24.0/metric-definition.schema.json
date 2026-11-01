@@ -1,0 +1,164 @@
+{
+  "type": "object",
+  "properties": {
+    "kind": {
+      "const": "metric-definition"
+    },
+    "schemaVersion": {
+      "const": "2.24.0"
+    },
+    "id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "version": {
+      "$ref": "common.schema.json#/$defs/version"
+    },
+    "label": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "semanticId": {
+      "type": "string",
+      "format": "uri",
+      "maxLength": 2048
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "dataset": {
+      "type": "object",
+      "properties": {
+        "recordMappingRef": {
+          "$ref": "common.schema.json#/$defs/documentRef"
+        }
+      },
+      "required": [
+        "recordMappingRef"
+      ],
+      "additionalProperties": false
+    },
+    "inputs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_]{0,63}$"
+      },
+      "minItems": 1,
+      "maxItems": 32,
+      "uniqueItems": true
+    },
+    "grain": {
+      "type": "object",
+      "properties": {
+        "groupBy": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,63}$"
+          },
+          "maxItems": 4,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "groupBy"
+      ],
+      "additionalProperties": false
+    },
+    "result": {
+      "type": "object",
+      "properties": {
+        "valueType": {
+          "const": "Double"
+        },
+        "unit": {
+          "$ref": "common.schema.json#/$defs/unit"
+        }
+      },
+      "required": [
+        "valueType",
+        "unit"
+      ],
+      "additionalProperties": false
+    },
+    "ossie": {
+      "type": "object",
+      "properties": {
+        "specVersion": {
+          "const": "0.2.0.dev0"
+        },
+        "metric": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{0,63}$"
+            },
+            "expression": {
+              "type": "object",
+              "properties": {
+                "sql": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4096
+                }
+              },
+              "required": [
+                "sql"
+              ],
+              "additionalProperties": false
+            },
+            "description": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "ai_context": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "required": [
+            "name",
+            "expression"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "specVersion",
+        "metric"
+      ],
+      "additionalProperties": false
+    },
+    "evidenceRefs": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/evidenceRef"
+      },
+      "maxItems": 64
+    }
+  },
+  "required": [
+    "kind",
+    "schemaVersion",
+    "id",
+    "version",
+    "label",
+    "semanticId",
+    "description",
+    "dataset",
+    "inputs",
+    "grain",
+    "result",
+    "ossie",
+    "evidenceRefs"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:tyr:contract:2.24.0:metric-definition"
+}
