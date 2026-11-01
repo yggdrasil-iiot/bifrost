@@ -2,3 +2,4 @@
 core/src/main/resources/mapping-contracts/** -text
 core/src/test/resources/mapping-fixtures/** -text
 core/src/test/resources/legacy-ledger/** -text
+scripts/fixtures/activation/udt-Line1-Mixer.json -text
