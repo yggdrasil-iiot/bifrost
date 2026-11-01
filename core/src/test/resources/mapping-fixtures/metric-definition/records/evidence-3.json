@@ -1,0 +1,17 @@
+{
+  "kind": "evidence-artifact",
+  "schemaVersion": "1.0.0",
+  "id": "record-availability-samples-1-0-0",
+  "version": "1.0.0",
+  "origin": "synthetic",
+  "file": {
+    "path": "record-evidence/availability-samples-1.0.0.txt",
+    "sha256": "508b920fef832966465b6788d5d8c11127228e88938546d56e3135de3d06a72e",
+    "mediaType": "text/plain"
+  },
+  "capturedAt": "2026-10-18T00:00:00Z",
+  "product": null,
+  "scope": [
+    "record-line-b"
+  ]
+}

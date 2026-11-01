@@ -1,0 +1,36 @@
+{
+  "kind": "mapping-submission",
+  "schemaVersion": "2.9.0",
+  "id": "metric-sub",
+  "streamId": "metric-line",
+  "version": "1.0.0",
+  "workspaceSha256": "e1deeb05f8f8042b7a3d0dff719922ac62d7305200e6d1d7d0d4fe7242168613",
+  "proposalSha256": "4014187280e2266461d854f20d76ab41e2a4c463ca0942ff09ec2234bd91dc8b",
+  "baseRelease": null,
+  "proposedBy": "proposer",
+  "execution": "excluded",
+  "context": {
+    "equipment": [
+      {
+        "id": "synthetic-site",
+        "label": "Synthetic site"
+      },
+      {
+        "id": "record-line-a",
+        "label": "합성 설비 A"
+      },
+      {
+        "id": "record-line-b",
+        "label": "합성 설비 B"
+      }
+    ],
+    "connections": [
+      {
+        "id": "mixed-melsec",
+        "label": "MELSEC metadata only",
+        "equipmentInstanceId": "record-line-b",
+        "accessProfileRef": "melsec-device-v1"
+      }
+    ]
+  }
+}

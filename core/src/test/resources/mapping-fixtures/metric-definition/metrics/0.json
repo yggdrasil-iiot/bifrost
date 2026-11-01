@@ -1,0 +1,44 @@
+{
+  "kind": "metric-definition",
+  "schemaVersion": "2.24.0",
+  "id": "running-availability",
+  "version": "1.0.0",
+  "label": "Running availability by asset and hour",
+  "semanticId": "urn:yggdrasil:metric:running-availability",
+  "description": "Share of samples in which the asset reported running, per asset and hour bucket. Samples are assumed evenly spaced within a bucket.",
+  "dataset": {
+    "recordMappingRef": {
+      "id": "availability-samples",
+      "version": "1.0.0"
+    }
+  },
+  "inputs": [
+    "asset",
+    "bucket",
+    "running"
+  ],
+  "grain": {
+    "groupBy": [
+      "asset",
+      "bucket"
+    ]
+  },
+  "result": {
+    "valueType": "Double",
+    "unit": {
+      "status": "known",
+      "code": "%"
+    }
+  },
+  "ossie": {
+    "specVersion": "0.2.0.dev0",
+    "metric": {
+      "name": "availability_pct",
+      "expression": {
+        "sql": "100.0 * COUNT(*) FILTER (WHERE running) / COUNT(*)"
+      },
+      "description": "Percentage of samples with running = true."
+    }
+  },
+  "evidenceRefs": []
+}
