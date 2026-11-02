@@ -12,7 +12,10 @@ import com.fasterxml.jackson.annotation.JsonValue;
  * authorize one. A request flag could have been omitted; a missing grant cannot.
  */
 public enum ActivationAction {
-    ACTIVATE, APPROVE, BREAK_GLASS_APPROVE, PUBLISH;
+    ACTIVATE, APPROVE, BREAK_GLASS_APPROVE, PUBLISH,
+    /** A command proposal (core.command.CommandProposal): the agent signs it, the approver co-signs it. Neither is
+     *  implied by ACTIVATE or APPROVE. */
+    PROPOSE_COMMAND, APPROVE_COMMAND;
 
     @JsonValue public String json() { return name().toLowerCase(); }
 
