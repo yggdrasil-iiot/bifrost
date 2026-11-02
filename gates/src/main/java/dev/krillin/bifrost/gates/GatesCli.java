@@ -12,7 +12,7 @@ public final class GatesCli {
 
     public static int run(String[] args) {
         if (args.length == 0) {
-            System.err.println("Usage: gates <schema|spec|template|adapt-template|policy|provenance|activate|active|activation-log|activation|identity|federation|acl-project|command-log|model-reconcile|conduit-project> <args...>");
+            System.err.println("Usage: gates <mapping|command|schema|spec|template|adapt-template|policy|provenance|activate|active|activation-log|activation|identity|federation|acl-project|command-log|model-reconcile|conduit-project> <args...>");
             return 2;
         }
         String sub = args[0];
@@ -20,6 +20,8 @@ public final class GatesCli {
         switch (sub) {
             case "mapping":
                 return MappingGate.run(rest);
+            case "command":
+                return CommandGate.run(rest);
             case "schema":
                 return SchemaGate.run(rest);
             case "spec":
