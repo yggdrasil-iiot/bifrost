@@ -18,6 +18,7 @@ import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
 import org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.UInteger;
 import org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.Unsigned;
 import org.eclipse.milo.opcua.stack.core.types.enumerated.BrowseDirection;
+import org.eclipse.milo.opcua.stack.core.types.enumerated.NodeClass;
 import org.eclipse.milo.opcua.stack.core.types.enumerated.TimestampsToReturn;
 import org.eclipse.milo.opcua.stack.core.types.structured.BrowseDescription;
 import org.eclipse.milo.opcua.stack.core.types.structured.ReferenceDescription;
@@ -126,7 +127,9 @@ class SimStatusControlTest {
                         true, Unsigned.uint(0xFF), Unsigned.uint(0x3F))).getReferences();
                 Set<String> names = new LinkedHashSet<>();
                 for (ReferenceDescription r : refs) {
-                    names.add(r.getBrowseName().getName());
+                    if (r.getNodeClass() == NodeClass.Variable) {
+                        names.add(r.getBrowseName().getName());
+                    }
                 }
                 assertEquals(Set.of("Rpm", "Temp", "Running", "Secret"), names);
                 for (ReferenceDescription r : refs) {

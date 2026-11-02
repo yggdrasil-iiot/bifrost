@@ -83,4 +83,19 @@ class GovernedWriteFilterTest {
         assertFalse(GovernedWriteFilter.isTrusted("aabb", null));
         assertFalse(GovernedWriteFilter.isTrusted(null, "aabb"));
     }
+
+    // ----- M2: a Method call is gated by the same decision as a write -----
+
+    @Test void only_the_governed_thumbprint_may_execute() {
+        assertTrue(GovernedWriteFilter.userExecutableFor("aabb", "aabb"));
+        assertTrue(GovernedWriteFilter.userExecutableFor("CCDD", "aabb, ccdd"));
+        assertFalse(GovernedWriteFilter.userExecutableFor("eeff", "aabb,ccdd"));
+        assertFalse(GovernedWriteFilter.userExecutableFor(null, "aabb"), "anonymous may not execute");
+    }
+
+    @Test void execute_fails_closed_on_an_unconfigured_list() {
+        assertFalse(GovernedWriteFilter.userExecutableFor("aabb", null));
+        assertFalse(GovernedWriteFilter.userExecutableFor("aabb", ""));
+        assertFalse(GovernedWriteFilter.userExecutableFor(null, null));
+    }
 }

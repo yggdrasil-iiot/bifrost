@@ -18,6 +18,7 @@ import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
 import org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.UInteger;
 import org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.Unsigned;
 import org.eclipse.milo.opcua.stack.core.types.enumerated.BrowseDirection;
+import org.eclipse.milo.opcua.stack.core.types.enumerated.NodeClass;
 import org.eclipse.milo.opcua.stack.core.types.enumerated.TimestampsToReturn;
 import org.eclipse.milo.opcua.stack.core.types.structured.BrowseDescription;
 import org.eclipse.milo.opcua.stack.core.types.structured.BrowseResult;
@@ -110,11 +111,18 @@ class MixerTypeNodeTest {
                 BrowseResult membersResult = client.browse(new BrowseDescription(
                         NodeId.parse("ns=2;s=Line1/Mixer1"), BrowseDirection.Forward,
                         NodeIds.HasComponent, false, NODECLASS_ALL, RESULT_ALL));
+                // Variables are the members; the one Method component is the governed write path's.
                 Set<String> memberNames = new LinkedHashSet<>();
+                Set<String> methodNames = new LinkedHashSet<>();
                 for (ReferenceDescription ref : safeRefs(membersResult)) {
-                    memberNames.add(ref.getBrowseName().getName());
+                    if (ref.getNodeClass() == NodeClass.Variable) {
+                        memberNames.add(ref.getBrowseName().getName());
+                    } else if (ref.getNodeClass() == NodeClass.Method) {
+                        methodNames.add(ref.getBrowseName().getName());
+                    }
                 }
                 assertEquals(Set.of("Rpm", "Temp", "Running", "Secret"), memberNames);
+                assertEquals(Set.of("SetTemperature"), methodNames);
             } finally {
                 client.disconnect();
             }
