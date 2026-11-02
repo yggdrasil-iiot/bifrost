@@ -21,6 +21,7 @@ import org.eclipse.milo.opcua.sdk.server.identity.CompositeValidator;
 import org.eclipse.milo.opcua.sdk.server.identity.X509IdentityValidator;
 import org.eclipse.milo.opcua.sdk.server.items.DataItem;
 import org.eclipse.milo.opcua.sdk.server.items.MonitoredItem;
+import org.eclipse.milo.opcua.sdk.server.nodes.UaMethodNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaObjectNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaObjectTypeNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaVariableNode;
@@ -48,6 +49,7 @@ import org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.UInteger;
 import org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.Unsigned;
 import org.eclipse.milo.opcua.stack.core.types.enumerated.MessageSecurityMode;
 import org.eclipse.milo.opcua.stack.core.types.enumerated.UserTokenType;
+import org.eclipse.milo.opcua.stack.core.types.structured.Argument;
 import org.eclipse.milo.opcua.stack.core.types.structured.BuildInfo;
 import org.eclipse.milo.opcua.stack.core.types.structured.Range;
 import org.eclipse.milo.opcua.stack.core.types.structured.UserTokenPolicy;
@@ -537,6 +539,36 @@ final class EmbeddedMiloSim implements AutoCloseable {
                 addStatusControl(member);
                 scanned.add(member);
             }
+            mixer1.addComponent(setTemperatureMethod());
+        }
+
+        /**
+         * {@code Line1/Mixer1.SetTemperature}, the governed write path's OPC UA Method. It is a
+         * component of the instance only, not of MixerType, so a browser that derives definitions
+         * from the type (Mimir) is unaffected; Muninn takes Variable members only.
+         *
+         * <p>It sits behind the same filter as the setpoints, through {@code UserExecutable} instead
+         * of {@code UserAccessLevel}: Milo's default access controller reads {@code UserExecutable}
+         * per session before a Call, so without the filter any anonymous session could invoke a
+         * Method that changes the plant, while a write to the same member is refused.
+         */
+        private UaMethodNode setTemperatureMethod() {
+            UaMethodNode.UaMethodNodeBuilder builder = new UaMethodNode.UaMethodNodeBuilder(getNodeContext())
+                    .setNodeId(newNodeId(SetTemperatureMethod.IDENTIFIER))
+                    .setBrowseName(newQualifiedName("SetTemperature"))
+                    .setDisplayName(LocalizedText.english("SetTemperature"))
+                    .setExecutable(true)
+                    .setUserExecutable(true);
+            if (writeFilter != null) {
+                builder.addAttributeFilter(writeFilter);
+            }
+            UaMethodNode method = builder.build();
+            method.setInputArguments(new Argument[] {SetTemperatureMethod.INPUT});
+            method.setOutputArguments(new Argument[] {SetTemperatureMethod.OUTPUT});
+            method.setInvocationHandler(new SetTemperatureMethod(method,
+                    v -> transferToInstance("Line1/Mixer1.Temp", v)));
+            getNodeManager().addNode(method);
+            return method;
         }
 
         /**

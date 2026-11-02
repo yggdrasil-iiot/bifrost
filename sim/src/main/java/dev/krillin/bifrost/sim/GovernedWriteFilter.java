@@ -29,6 +29,11 @@ import org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.Unsigned;
  *
  * <p><b>Read stays open to everyone, deliberately.</b> A plant needs read-only clients — historians,
  * HMIs — and locking them out is not what write-path exclusivity means. Only the write bit moves.
+ *
+ * <p><b>Method calls are gated the same way, through {@code UserExecutable}.</b> The default
+ * controller's Call check reads a Method node's {@code UserExecutable} through the same
+ * session-scoped chain, so on a Method node this filter answers that attribute with the same
+ * trust-list decision it uses for the write bit.
  */
 public final class GovernedWriteFilter implements AttributeFilter {
 
@@ -44,15 +49,27 @@ public final class GovernedWriteFilter implements AttributeFilter {
 
     @Override
     public Object getAttribute(AttributeFilterContext ctx, AttributeId attributeId) {
-        if (attributeId != AttributeId.UserAccessLevel) {
+        if (attributeId != AttributeId.UserAccessLevel && attributeId != AttributeId.UserExecutable) {
             return ctx.getAttribute(attributeId);
         }
         // Empty session => an internal read by the sim itself, which must keep its own write access.
         if (ctx.getSession().isEmpty()) {
             return ctx.getAttribute(attributeId);
         }
-        return Unsigned.ubyte(userAccessLevelFor(sessionThumbprint(ctx.getSession().get()),
-                governedThumbprint));
+        String presented = sessionThumbprint(ctx.getSession().get());
+        if (attributeId == AttributeId.UserExecutable) {
+            return userExecutableFor(presented, governedThumbprint);
+        }
+        return Unsigned.ubyte(userAccessLevelFor(presented, governedThumbprint));
+    }
+
+    /**
+     * The Method-call twin of {@link #userAccessLevelFor}: only the governed identity may execute.
+     * Same trust list, same fail-closed rule — a Method that changes the plant is a write by another
+     * service, and gating one but not the other would leave the claim with a side door.
+     */
+    static boolean userExecutableFor(String sessionThumbprint, String governedThumbprint) {
+        return isTrusted(sessionThumbprint, governedThumbprint);
     }
 
     /**
