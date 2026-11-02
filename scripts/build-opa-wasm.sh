@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Builds the OPA policies under core/src/main/resources/opa into the WASM modules OpaPolicy loads.
+# Builds the OPA policies under core/src/main/resources/opa into the WASM modules OpaPolicy loads, after
+# running their Rego tests.
 # The Rego sources are Rego v1 and the build is pinned to one OPA release: the same sources and the
 # same OPA give byte-identical policy.wasm (line endings of the source do not change it), so the
 # committed modules can be checked against a rebuild.
@@ -15,8 +16,9 @@ cd "$(dirname "$0")/.."
 OPA_VERSION="1.21.4"
 OPA="${OPA:-opa}"
 DIR="core/src/main/resources/opa"
+TESTS="core/src/test/opa"
 # <source>:<entrypoint>
-POLICIES=("command_authz:acl/command_authz/decision" "spike:spike/decision")
+POLICIES=("command_authz:acl/command_authz/decision" "spike:spike/decision" "command_method:command/method/decision")
 
 fail() { echo "[OPA] FAIL: $*"; exit 1; }
 
@@ -25,7 +27,9 @@ have=$("$OPA" version | sed -n 's/^Version: //p')
 
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
-"$OPA" check --strict "$DIR"/*.rego || fail "opa check --strict"
+"$OPA" check --strict "$DIR"/*.rego "$TESTS"/*.rego || fail "opa check --strict"
+# The decision tables live under $TESTS, outside the jar; they are never built into a module.
+"$OPA" test "$DIR" "$TESTS" || fail "opa test"
 
 for p in "${POLICIES[@]}"; do
   name=${p%%:*}; entry=${p#*:}
