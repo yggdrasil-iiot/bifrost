@@ -1,11 +1,14 @@
 package dev.krillin.bifrost.core.command;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.Clock;
+import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -33,11 +36,20 @@ import dev.krillin.bifrost.core.schema.JsonMapperFactory;
  * <p><b>The clock is injected</b> because a segment boundary that only the wall clock can cross is a
  * boundary no test can drive.
  *
+ * <p><b>A Method command's intent is also its replay reservation.</b> {@link #reserve} checks for an
+ * earlier reservation of the same {@code cmdId} and appends the new one under the same lock, then
+ * forces it to disk before returning, so a reservation the edge acted on survives a crash or a
+ * restart. Only an intent whose outcome is {@link #RESERVED} reserves; a refusal recorded for audit
+ * does not.
+ *
  * <p>What this does not do: sign anything, and therefore detect truncation. See {@link CommandChain}.
  */
 public final class CommandLedger {
 
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+    /** The intent outcome that reserves a Method command's {@code cmdId}. */
+    public static final String RESERVED = "reserved";
 
     private final Path root;
     private final Clock clock;
@@ -62,13 +74,92 @@ public final class CommandLedger {
      *                     the plant unrecorded.
      */
     public synchronized void append(CommandEvent e) throws IOException {
+        write(e, false);
+    }
+
+    /**
+     * Reserve a Method command's {@code cmdId}: refuse when this edge already holds a reservation for
+     * it in any segment from {@code from}'s day through today, otherwise append the intent and force
+     * it to disk. The check and the append share this object's lock, so two deliveries of one command
+     * cannot both reserve it.
+     *
+     * @param e    an intent whose outcome is {@link #RESERVED}
+     * @param from the earliest instant a reservation for this command could carry - the start of its
+     *             validity window
+     * @return false when the {@code cmdId} was already reserved; nothing is written then
+     * @throws IOException when the segments cannot be read or the entry cannot be made durable
+     */
+    public synchronized boolean reserve(CommandEvent e, Instant from) throws IOException {
+        if (!CommandEvent.INTENT.equals(e.phase()) || !RESERVED.equals(e.outcome()) || e.cmdId() == null) {
+            throw new IllegalArgumentException("a reservation is an intent with outcome " + RESERVED + " and a cmdId");
+        }
+        if (reserved(e.group(), e.edge(), e.cmdId(), from)) {
+            return false;
+        }
+        write(e, true);
+        return true;
+    }
+
+    /**
+     * Whether this edge holds a reservation for {@code cmdId} in any segment from {@code from}'s day
+     * through today. An unparseable line is an IOException rather than the end of the scan: a
+     * reservation hidden behind it must not read as absent.
+     */
+    public synchronized boolean reserved(String group, String edge, String cmdId, Instant from) throws IOException {
+        Path seg = segment(group, edge);
+        Path dir = seg.getParent();
+        if (dir == null || !Files.isDirectory(dir)) {
+            return false;
+        }
+        String first = DAY.format(from.atZone(ZoneOffset.UTC)) + ".jsonl";
+        String last = seg.getFileName().toString();
+        List<Path> segments;
+        try (var stream = Files.list(dir)) {
+            segments = stream.filter(p -> {
+                String n = p.getFileName().toString();
+                return n.endsWith(".jsonl") && n.compareTo(first) >= 0 && n.compareTo(last) <= 0;
+            }).sorted().toList();
+        }
+        for (Path p : segments) {
+            List<String> lines = Files.readAllLines(p, StandardCharsets.UTF_8);
+            for (int i = 0; i < lines.size(); i++) {
+                if (lines.get(i).isBlank()) {
+                    continue;
+                }
+                CommandEvent ev;
+                try {
+                    ev = mapper.readValue(lines.get(i), CommandLedgerEntry.class).event();
+                } catch (Exception malformed) {
+                    throw new IOException("unparseable entry at " + p.getFileName() + ":" + i, malformed);
+                }
+                if (CommandEvent.INTENT.equals(ev.phase()) && RESERVED.equals(ev.outcome()) && cmdId.equals(ev.cmdId())) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /** One linked entry; {@code durable} forces the segment to disk before returning. */
+    private void write(CommandEvent e, boolean durable) throws IOException {
         Path seg = segment(e.group(), e.edge());
         Files.createDirectories(seg.getParent());
         String prev = tailHash(e.group(), e.edge());
         String hash = CommandChain.entryHash(e, prev);
         CommandLedgerEntry entry = new CommandLedgerEntry(e, prev, hash);
-        Files.writeString(seg, mapper.writeValueAsString(entry) + "\n", StandardCharsets.UTF_8,
-                StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+        byte[] line = (mapper.writeValueAsString(entry) + "\n").getBytes(StandardCharsets.UTF_8);
+        if (!durable) {
+            Files.write(seg, line, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+            return;
+        }
+        try (FileChannel ch = FileChannel.open(seg, StandardOpenOption.CREATE, StandardOpenOption.WRITE,
+                StandardOpenOption.APPEND)) {
+            ByteBuffer buf = ByteBuffer.wrap(line);
+            while (buf.hasRemaining()) {
+                ch.write(buf);
+            }
+            ch.force(true);
+        }
     }
 
     /**

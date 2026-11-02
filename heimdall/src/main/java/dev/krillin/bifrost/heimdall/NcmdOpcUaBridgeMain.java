@@ -498,7 +498,11 @@ public final class NcmdOpcUaBridgeMain {
                 conformance.def(), conformance.policy(), conformance.recipe(), config.enforcementLogOnly(),
                 health, config.applyThreads(), 64,
                 config.requireSignedCommand(), config.replayWindow(), trustAnchor,
-                commandLedger, config.requireCommandLedger());
+                commandLedger, config.requireCommandLedger(),
+                // The governed Method path admits against the same registry, on the system clock. It
+                // refuses every Method command while no command ledger is configured.
+                new NcmdOpcUaBridge.MethodPath(Path.of(config.registryPath()),
+                        new dev.krillin.bifrost.core.acl.opa.OpaMethodAuthorizer(), java.time.Clock.systemUTC()));
         health.startHttp(config.healthPort());
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             try {

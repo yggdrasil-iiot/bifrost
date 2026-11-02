@@ -34,6 +34,28 @@ public interface Applier {
      */
     Result call(String triggerNodeId, String doneNodeId, long timeoutMs) throws Exception;
 
+    /**
+     * Read a node with its source timestamp, for the Method path's live precondition. A default so
+     * the write/call fakes need not implement a path they never drive.
+     */
+    default Sample sample(String nodeId) throws Exception {
+        throw new UnsupportedOperationException("sample");
+    }
+
+    /**
+     * Call an OPC UA Method with one Double input. {@code ok} only when the call's StatusCode and
+     * every input argument's result are Good; {@code output} is the first output argument.
+     */
+    default MethodResult method(String objectNodeId, String methodNodeId, double input) throws Exception {
+        throw new UnsupportedOperationException("method");
+    }
+
+    /** A sample: its value, whether its StatusCode was Good, and its source timestamp (null if absent). */
+    record Sample(Object value, boolean good, java.time.Instant sourceTime) {}
+
+    /** A Method call's outcome. */
+    record MethodResult(boolean ok, String output, String detail) {}
+
     /** Read outcome: the stringified value + whether the OPC-UA StatusCode was Good. */
     record ReadBack(String value, boolean good) {}
 

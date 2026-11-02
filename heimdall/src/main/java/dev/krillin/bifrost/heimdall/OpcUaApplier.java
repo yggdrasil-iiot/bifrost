@@ -9,11 +9,14 @@ import org.eclipse.milo.opcua.stack.core.StatusCodes;
 import org.eclipse.milo.opcua.stack.core.UaException;
 import org.eclipse.milo.opcua.stack.core.security.SecurityPolicy;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DataValue;
+import org.eclipse.milo.opcua.stack.core.types.builtin.ExpandedNodeId;
 import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
 import org.eclipse.milo.opcua.stack.core.types.builtin.StatusCode;
 import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
 import org.eclipse.milo.opcua.stack.core.types.enumerated.MessageSecurityMode;
 import org.eclipse.milo.opcua.stack.core.types.enumerated.TimestampsToReturn;
+import org.eclipse.milo.opcua.stack.core.types.structured.CallMethodRequest;
+import org.eclipse.milo.opcua.stack.core.types.structured.CallMethodResult;
 import org.eclipse.milo.opcua.stack.core.types.structured.EndpointDescription;
 
 /**
@@ -391,6 +394,66 @@ public final class OpcUaApplier implements Applier {
             }
         }
         return new Result(false, "timeout (" + timeoutMs + "ms) waiting for rising edge on " + doneNodeId);
+    }
+
+    /**
+     * A node id in either form: {@code ns=<index>;...} or {@code nsu=<uri>;...}. The governed write
+     * path names nodes by namespace URI, because an index is the server's to assign.
+     */
+    private NodeId node(String id) throws UaException {
+        if (!id.startsWith("nsu=")) {
+            return NodeId.parse(id);
+        }
+        return ExpandedNodeId.parse(id).toNodeId(client.getNamespaceTable())
+                .orElseThrow(() -> new UaException(StatusCodes.Bad_NodeIdUnknown, "namespace not on server: " + id));
+    }
+
+    @Override
+    public Sample sample(String nodeId) throws Exception {
+        ensureConnected();
+        DataValue dv;
+        try {
+            dv = client.readValue(0.0, TimestampsToReturn.Both, node(nodeId));
+        } catch (Exception e) {
+            if (isUnreachable(e)) {
+                throw fault("read " + nodeId + ": " + e.getMessage(), e);
+            }
+            throw e;
+        }
+        if (isConnectionFault(dv.getStatusCode())) {
+            throw fault("read " + nodeId + ": " + dv.getStatusCode(), null);
+        }
+        boolean good = dv.getStatusCode() != null && dv.getStatusCode().isGood();
+        java.time.Instant source = dv.getSourceTime() == null || dv.getSourceTime().isNull()
+                ? null : dv.getSourceTime().getJavaInstant();
+        return new Sample(dv.getValue() != null ? dv.getValue().getValue() : null, good, source);
+    }
+
+    @Override
+    public MethodResult method(String objectNodeId, String methodNodeId, double input) throws Exception {
+        ensureConnected();
+        CallMethodResult r;
+        try {
+            r = client.call(List.of(new CallMethodRequest(node(objectNodeId), node(methodNodeId),
+                    new Variant[] {new Variant(input)}))).getResults()[0];
+        } catch (Exception e) {
+            if (isUnreachable(e)) {
+                throw fault("call " + methodNodeId + ": " + e.getMessage(), e);
+            }
+            throw e;
+        }
+        if (isConnectionFault(r.getStatusCode())) {
+            throw fault("call " + methodNodeId + ": " + r.getStatusCode(), null);
+        }
+        StatusCode[] args = r.getInputArgumentResults();
+        boolean argsGood = args == null || java.util.Arrays.stream(args).allMatch(StatusCode::isGood);
+        Variant[] out = r.getOutputArguments();
+        String output = out != null && out.length > 0 && out[0].getValue() != null ? out[0].getValue().toString() : null;
+        boolean ok = r.getStatusCode().isGood() && argsGood;
+        return new MethodResult(ok, output, ok
+                ? "called " + methodNodeId + "(" + input + ") -> " + output
+                : "call " + methodNodeId + " failed: " + r.getStatusCode()
+                        + (args == null ? "" : " inputs=" + java.util.Arrays.toString(args)));
     }
 
     public void close() {

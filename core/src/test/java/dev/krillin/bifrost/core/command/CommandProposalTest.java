@@ -72,7 +72,8 @@ class CommandProposalTest {
     /** What Vor's read_governed returns for Line1/Mixer1.Temp on this release; only the fields approval reads matter. */
     ObjectNode answer(){
         ObjectNode a=object();
-        a.putObject("answer").putObject("pin").put("stream_id","line1").put("release_id",text(head,"id")).put("version",text(head,"version")).put("release_sha256",text(head,"sha256"));
+        a.putObject("answer").putObject("pin").put("stream_id","line1").put("release_id",text(head,"id")).put("version",text(head,"version")).put("release_sha256",text(head,"sha256"))
+            .put("file","payload/mappings/0.json").put("field_id","temp");
         a.putObject("verdict").put("usable",true).put("status","usable");
         return a;
     }
@@ -226,5 +227,68 @@ class CommandProposalTest {
         assertEquals("command.malformed",approveRefusal(proposal(s->((ObjectNode)predicate(s).get("method").get("inputs").get(0)).put("value","42"))));
         assertEquals("command.malformed",approveRefusal(proposal(s->((ObjectNode)predicate(s).get("method")).put("methodNodeId","ns=2;s=Line1/Mixer1.SetTemperature"))));
         assertEquals("command.malformed",approveRefusal(proposal(s->((ObjectNode)predicate(s).get("validity")).put("notAfter","2026-11-01T00:15:00.5Z"))));
+    }
+
+    /** The edge's admission: the same checks at the edge's clock, and the precondition the pinned release names. */
+    CommandProposal.Admitted admit(JsonNode env) throws Exception {return CommandProposal.admit(registry,env,clock);}
+    String admitRefusal(JsonNode env){return refusal(()->admit(env));}
+
+    JsonNode coSign(JsonNode env) throws Exception {
+        byte[] payload=Base64.getDecoder().decode(text(env,"payload"));
+        PrivateKey op=Ed25519Keys.privateKey(Files.readString(operatorKey).trim());
+        return Dsse.envelope(Dsse.IN_TOTO,payload,List.of(new Dsse.Signature("agent",text(env.path("signatures").get(0),"sig")),
+            new Dsse.Signature("operator",Ed25519Keys.sign(Dsse.pae(Dsse.IN_TOTO,payload),op))));
+    }
+
+    @Test void admissionNamesThePreconditionFromThePinnedRelease() throws Exception {
+        var a=admit(approve(proposal()).envelope());
+        assertEquals(CMD,a.proposal().cmdId());
+        assertEquals("nsu=urn:bifrost:opcua:sim;s=Line1/Mixer1.Temp",a.preconditionNodeId(),"the source behind the evidence field, from the release");
+        assertEquals(5000,a.maxAgeMs(),"that mapping's temporalPolicy, not a constant");
+        assertEquals(head,a.head());
+    }
+
+    @Test void admissionNeedsBothSignatures() throws Exception {
+        assertEquals("command.signature",admitRefusal(proposal()),"the agent's signature alone executes nothing");
+    }
+
+    @Test void admissionIsInsideTheWindowOnTheEdgeClock() throws Exception {
+        JsonNode approved=approve(proposal()).envelope();
+        clock.now=Instant.parse("2026-11-01T00:14:59Z");admit(approved);
+        clock.now=Instant.parse("2026-11-01T00:15:00Z");
+        assertEquals("command.window",admitRefusal(approved),"notAfter is exclusive");
+        clock.now=Instant.parse("2026-10-31T23:59:59Z");
+        assertEquals("command.window",admitRefusal(approved),"not before notBefore");
+    }
+
+    @Test void aCoSignatureByAnotherRegisteredPrincipalIsTheWrongApprover() throws Exception {
+        JsonNode env=proposal();
+        byte[] payload=Base64.getDecoder().decode(text(env,"payload"));
+        PrivateKey other=Ed25519Keys.privateKey(Files.readString(otherKey).trim());
+        List<Dsse.Signature> sigs=new ArrayList<>();
+        sigs.add(new Dsse.Signature("agent",text(env.path("signatures").get(0),"sig")));
+        sigs.add(new Dsse.Signature("other",Ed25519Keys.sign(Dsse.pae(Dsse.IN_TOTO,payload),other)));
+        assertEquals("command.approver.mismatch",admitRefusal(Dsse.envelope(Dsse.IN_TOTO,payload,sigs)));
+        sigs.set(1,new Dsse.Signature("operator",Base64.getEncoder().encodeToString(new byte[64])));
+        assertEquals("command.signature",admitRefusal(Dsse.envelope(Dsse.IN_TOTO,payload,sigs)),"a broken co-signature is not a person");
+    }
+
+    @Test void thePreconditionMustBeAMemberOfTheCalledObject() throws Exception {
+        ObjectNode a=answer();((ObjectNode)a.get("answer").get("pin")).put("field_id","rpm");
+        assertEquals("command.precondition",admitRefusal(approve(proposal(JSON.writeValueAsBytes(a),s->{})).envelope()),"no such mapping in the release");
+        ObjectNode b=answer();((ObjectNode)b.get("answer").get("pin")).put("file","payload/mappings/9.json");
+        assertEquals("command.precondition",admitRefusal(approve(proposal(JSON.writeValueAsBytes(b),s->{})).envelope()),"not a file of the release");
+        // Co-signed directly: approval would refuse Mixer2 at the command policy before the precondition is reached.
+        JsonNode elsewhere=coSign(proposal(s->((ObjectNode)predicate(s).get("method")).put("objectNodeId","nsu=urn:bifrost:opcua:sim;s=Line1/Mixer2")
+            .put("methodNodeId","nsu=urn:bifrost:opcua:sim;s=Line1/Mixer2.SetTemperature")));
+        assertEquals("command.precondition",admitRefusal(elsewhere),"Mixer1.Temp says nothing about Mixer2");
+    }
+
+    @Test void aChangedReleaseFileIsNotRead() throws Exception {
+        JsonNode approved=approve(proposal()).envelope();
+        Path f=registry.resolve("mappings/releases/vor-read/1.0.0/payload/mappings/0.json");
+        f.toFile().setWritable(true);
+        Files.writeString(f,Files.readString(f).replace("5000","50000"));
+        assertEquals("mapping.release-file",admitRefusal(approved),"the registry's own release check refuses it before the edge reads it");
     }
 }

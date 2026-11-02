@@ -3,6 +3,7 @@ package dev.krillin.bifrost.core.command;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
@@ -110,5 +111,59 @@ class CommandLedgerTest {
         CommandLedger ledger = new CommandLedger(dir, at("2026-09-08T12:00:00Z"));
         ledger.append(ev("c-1", "1500.0"));
         assertEquals(CommandChain.GENESIS, ledger.readCurrent(GROUP, EDGE).get(0).prevHash());
+    }
+
+    private static CommandEvent reservation(String cmdId) {
+        return new CommandEvent(GROUP, EDGE, cmdId, "agent", "nsu=urn:bifrost:opcua:sim;s=Line1/Mixer1.SetTemperature",
+                "42.0", "Double", CommandEvent.INTENT, CommandLedger.RESERVED, null, "2026-11-02T10:00:00Z");
+    }
+
+    @Test
+    void a_cmdId_is_reserved_once_and_the_reservation_outlives_the_instance(@TempDir Path dir) throws Exception {
+        Instant from = Instant.parse("2026-11-02T09:55:00Z");
+        CommandLedger ledger = new CommandLedger(dir, at("2026-11-02T10:00:00Z"));
+        assertTrue(ledger.reserve(reservation("c1"), from));
+        assertFalse(ledger.reserve(reservation("c1"), from), "the same cmdId again");
+        assertEquals(1, ledger.readCurrent(GROUP, EDGE).size(), "a refused reservation writes nothing");
+        // A new instance is what a restarted edge has: only the file carries the reservation over.
+        CommandLedger restarted = new CommandLedger(dir, at("2026-11-02T10:05:00Z"));
+        assertTrue(restarted.reserved(GROUP, EDGE, "c1", from));
+        assertFalse(restarted.reserve(reservation("c1"), from));
+        assertTrue(restarted.reserve(reservation("c2"), from));
+        assertTrue(restarted.verifyCurrent(GROUP, EDGE, CommandChain.GENESIS).intact(), "reservations are chain entries");
+    }
+
+    @Test
+    void only_a_reservation_reserves(@TempDir Path dir) throws Exception {
+        Instant from = Instant.parse("2026-11-02T09:55:00Z");
+        CommandLedger ledger = new CommandLedger(dir, at("2026-11-02T10:00:00Z"));
+        ledger.append(new CommandEvent(GROUP, EDGE, "c1", null, "bifrost/command/v1", null, null,
+                CommandEvent.INTENT, "denied", "command.window", "2026-11-02T10:00:00Z"));
+        ledger.append(new CommandEvent(GROUP, EDGE, "c1", "agent", "x", "1", "Double",
+                CommandEvent.INTENT, "pending", null, "2026-11-02T10:00:00Z"));
+        assertFalse(ledger.reserved(GROUP, EDGE, "c1", from), "an audit refusal or a write intent does not consume the cmdId");
+        assertTrue(ledger.reserve(reservation("c1"), from));
+        assertThrows(IllegalArgumentException.class, () -> ledger.reserve(ev("c3", "1"), from), "an outcome is not a reservation");
+    }
+
+    @Test
+    void the_scan_covers_every_segment_the_window_spans(@TempDir Path dir) throws Exception {
+        new CommandLedger(dir, at("2026-11-01T23:58:00Z")).reserve(reservation("c1"), Instant.parse("2026-11-01T23:50:00Z"));
+        CommandLedger nextDay = new CommandLedger(dir, at("2026-11-02T00:03:00Z"));
+        assertTrue(nextDay.reserved(GROUP, EDGE, "c1", Instant.parse("2026-11-01T23:50:00Z")),
+                "a window that started yesterday reads yesterday's segment");
+        assertFalse(nextDay.reserved(GROUP, EDGE, "c1", Instant.parse("2026-11-02T00:00:00Z")),
+                "a segment before the window's first day is not a reservation for it");
+    }
+
+    @Test
+    void an_unparseable_segment_is_an_error_not_an_absence(@TempDir Path dir) throws Exception {
+        Instant from = Instant.parse("2026-11-02T09:55:00Z");
+        CommandLedger ledger = new CommandLedger(dir, at("2026-11-02T10:00:00Z"));
+        ledger.reserve(reservation("c1"), from);
+        Path seg = ledger.segment(GROUP, EDGE);
+        Files.writeString(seg, "{not json\n" + Files.readString(seg));
+        assertThrows(java.io.IOException.class, () -> ledger.reserved(GROUP, EDGE, "c1", from));
+        assertThrows(java.io.IOException.class, () -> ledger.reserve(reservation("c2"), from));
     }
 }

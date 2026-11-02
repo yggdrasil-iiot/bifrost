@@ -29,6 +29,14 @@ import dev.krillin.bifrost.core.acl.CommandPolicy;
 import dev.krillin.bifrost.core.acl.CommandRequest;
 import dev.krillin.bifrost.core.acl.Decision;
 import dev.krillin.bifrost.core.acl.Target;
+import dev.krillin.bifrost.core.acl.opa.OpaMethodAuthorizer;
+import dev.krillin.bifrost.core.activation.ActivationAction;
+import dev.krillin.bifrost.core.activation.ActivationAuthorizer;
+import dev.krillin.bifrost.core.activation.ActivationPolicy;
+import dev.krillin.bifrost.core.activation.ActivationPolicyStore;
+import dev.krillin.bifrost.core.command.CommandEvent;
+import dev.krillin.bifrost.core.command.CommandLedger;
+import dev.krillin.bifrost.core.command.CommandProposal;
 import dev.krillin.bifrost.core.conformance.ConformanceEvaluator;
 import dev.krillin.bifrost.core.conformance.ConformancePolicy;
 import dev.krillin.bifrost.core.conformance.ConformanceVerdict;
@@ -140,6 +148,19 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
      */
     private final boolean requireCommandLedger;
 
+    /** The metric an approved Method proposal arrives on, as the whole DSSE envelope in one String. */
+    public static final String METHOD_METRIC = "bifrost/command/v1";
+
+    /**
+     * What the governed Method path needs beyond the bridge's own fields: the registry it admits
+     * proposals against (keys, grants, mapping heads and releases), the compiled OPA policy, and the
+     * clock both the validity window and the precondition's age are measured on.
+     */
+    public record MethodPath(java.nio.file.Path registry, OpaMethodAuthorizer opa, java.time.Clock clock) {}
+
+    /** Null refuses every Method command; the write and call paths do not depend on it. */
+    private final MethodPath methodPath;
+
     /** Exposed so {@code NcmdOpcUaBridgeMain} can start the HTTP endpoint over the same instance. */
     public EdgeHealth health() {
         return health;
@@ -201,6 +222,23 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
                            java.util.function.Function<String, java.util.List<java.security.PublicKey>> trustAnchor,
                            dev.krillin.bifrost.core.command.CommandLedger commandLedger,
                            boolean requireCommandLedger) {
+        this(group, edge, policy, applier, conformanceDef, conformancePolicy, activeRecipe, logOnly,
+                health, applyThreads, applyQueueDepth, requireSignedCommand, replayWindow, trustAnchor,
+                commandLedger, requireCommandLedger, null);
+    }
+
+    /**
+     * The widest constructor. {@code methodPath} enables {@code op=method}; null refuses it, which
+     * leaves every pre-M2 caller exactly as it was.
+     */
+    public NcmdOpcUaBridge(String group, String edge, CommandPolicy policy, Applier applier,
+                           UdtDefinition conformanceDef, ConformancePolicy conformancePolicy, MasterSpec activeRecipe,
+                           boolean logOnly, EdgeHealth health, int applyThreads, int applyQueueDepth,
+                           boolean requireSignedCommand, int replayWindow,
+                           java.util.function.Function<String, java.util.List<java.security.PublicKey>> trustAnchor,
+                           dev.krillin.bifrost.core.command.CommandLedger commandLedger,
+                           boolean requireCommandLedger, MethodPath methodPath) {
+        this.methodPath = methodPath;
         this.commandLedger = commandLedger;
         this.requireCommandLedger = requireCommandLedger;
         this.requireSignedCommand = requireSignedCommand;
@@ -250,6 +288,11 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
         String op = propString(props, "op");
         String doneNode = propString(props, "doneNode");
         long timeoutMs = propLong(props, "timeoutMs", 30_000L);
+
+        // Routed before the read check: a Method command on the QUERY topic is malformed, not a read.
+        if (METHOD_METRIC.equals(name) || "method".equals(op)) {
+            return handleMethod(topic, req);
+        }
 
         boolean isRead = topic.equals(queryTopic) || "read".equals(op);
         if (isRead) {
@@ -413,6 +456,177 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
             System.out.println("[BRIDGE] APPLY cmd=" + name + " ok=false");
             return NcmdResponse.apply(cmdId, false, detail(shadowed, "apply error: " + e.getMessage()));
         }
+    }
+
+    /**
+     * The governed Method path: an approved two-signature proposal, checked in the spec's order and
+     * executed at most once. Every refusal here returns directly and is never shadowed by log-only:
+     * {@code ENFORCEMENT_LOG_ONLY} and {@code REQUIRE_SIGNED_COMMAND} do not apply to {@code op=method}.
+     *
+     * <ol>
+     *   <li>transport: exactly one {@link #METHOD_METRIC} String metric with {@code op=method} on this
+     *       edge's NCMD topic, naming this group and edge as its target, and a command ledger;</li>
+     *   <li>both signatures, on distinct keys, by {@code proposedBy} and {@code approvedBy};</li>
+     *   <li>{@code notBefore <= now < notAfter} on this edge's clock;</li>
+     *   <li>the head and release this registry serves now, usable evidence, and the precondition
+     *       node and freshness bound the pinned release names for it;</li>
+     *   <li>no earlier reservation of the {@code cmdId};</li>
+     *   <li>{@link CommandAuthorizer}, then the OPA Method policy;</li>
+     *   <li>a live read of the precondition node: Good, and no older than its binding's maxAgeMs;</li>
+     *   <li>the reservation, forced to disk;</li>
+     *   <li>the Method call, then its outcome.</li>
+     * </ol>
+     *
+     * Nothing before step 8 consumes the {@code cmdId}. After it, the command is never retried: a
+     * failed or unconfirmed call needs a new proposal with a new {@code cmdId}.
+     */
+    private NcmdResponse handleMethod(String topic, SparkplugBPayload req) {
+        String cmdId = req.getUuid();
+        if (!topic.equals(ncmdTopic) || req.getMetrics().size() != 1) {
+            return refuseMethod(cmdId, null, null, null, "command.malformed");
+        }
+        Metric m = req.getMetrics().get(0);
+        if (!METHOD_METRIC.equals(m.getName()) || !"method".equals(propString(m.getProperties(), "op"))
+                || m.getDataType() != MetricDataType.String || !(m.getValue() instanceof String body)) {
+            return refuseMethod(cmdId, null, null, null, "command.malformed");
+        }
+        com.fasterxml.jackson.databind.JsonNode envelope;
+        CommandProposal.Proposal claimed;
+        try {
+            envelope = new com.fasterxml.jackson.databind.ObjectMapper().readTree(body);
+            claimed = CommandProposal.parse(java.util.Base64.getDecoder().decode(envelope.path("payload").asText()));
+        } catch (IllegalArgumentException refusal) {
+            String code = refusal.getMessage();
+            return refuseMethod(cmdId, null, null, null,
+                    code != null && (code.startsWith("command.") || code.startsWith("identity.")) ? code : "command.malformed");
+        } catch (Exception malformed) {
+            return refuseMethod(cmdId, null, null, null, "command.malformed");
+        }
+        cmdId = claimed.cmdId();
+        if (!group.equals(claimed.target().group()) || !edge.equals(claimed.target().edge())) {
+            return refuseMethod(cmdId, null, claimed, "target " + claimed.target().group() + "/" + claimed.target().edge(),
+                    "command.malformed");
+        }
+        if (commandLedger == null) {
+            return refuseMethod(cmdId, null, claimed, null, "command.ledger.required");
+        }
+        if (methodPath == null) {
+            return refuseMethod(cmdId, null, claimed, null, "command.method.unconfigured");
+        }
+
+        // (2)-(4): signatures, window, head and release, evidence, and the precondition the release binds.
+        java.time.Clock clock = methodPath.clock();
+        CommandProposal.Admitted admitted;
+        try {
+            admitted = CommandProposal.admit(methodPath.registry(), envelope, clock);
+        } catch (IllegalArgumentException refusal) {
+            return refuseMethod(cmdId, null, claimed, null, refusal.getMessage());
+        } catch (Exception e) {
+            return refuseMethod(cmdId, null, claimed, e.getMessage(), "command.malformed");
+        }
+        CommandProposal.Proposal p = admitted.proposal();
+        String subject = p.proposedBy();
+
+        // (5) replay. The reservation at (8) checks again under the ledger's lock.
+        try {
+            if (commandLedger.reserved(group, edge, cmdId, p.notBefore())) {
+                return refuseMethod(cmdId, subject, p, null, "command.replay");
+            }
+        } catch (Exception e) {
+            return refuseMethod(cmdId, subject, p, e.getMessage(), "command.ledger.required");
+        }
+
+        // (6) both policies; either one denies.
+        Decision d = authorizer.authorize(policy, new CommandRequest(p.target(), p.methodNodeId(), p.value(), "Double", subject));
+        if (!d.allowed()) {
+            return refuseMethod(cmdId, subject, p, d.reason(), "command.policy.denied");
+        }
+        Decision opa;
+        try {
+            ActivationPolicy grants = ActivationPolicyStore.load(methodPath.registry());
+            opa = methodPath.opa().authorize(new OpaMethodAuthorizer.MethodFacts(
+                    p.proposedBy(), grants(grants, p.proposedBy(), p.streamId()),
+                    p.approvedBy(), grants(grants, p.approvedBy(), p.streamId()),
+                    true, p.notBefore(), p.notAfter(), clock.instant(), true, true,
+                    p.target(), p.methodNodeId(), p.input(), "Double", p.value()));
+        } catch (Exception e) {
+            opa = Decision.deny("opa-input-error: " + e.getMessage());
+        }
+        if (!opa.allowed()) {
+            return refuseMethod(cmdId, subject, p, opa.reason(), "command.opa.denied");
+        }
+
+        // (7) the live precondition, over this edge's own session.
+        try {
+            Applier.Sample s = applier.sample(admitted.preconditionNodeId());
+            long age = s.sourceTime() == null ? -1 : java.time.Duration.between(s.sourceTime(), clock.instant()).toMillis();
+            if (!s.good() || s.sourceTime() == null || age < 0 || age > admitted.maxAgeMs()) {
+                return refuseMethod(cmdId, subject, p, admitted.preconditionNodeId() + " good=" + s.good() + " ageMs=" + age
+                        + " maxAgeMs=" + admitted.maxAgeMs(), "command.precondition");
+            }
+        } catch (Exception e) {
+            return refuseMethod(cmdId, subject, p, admitted.preconditionNodeId() + ": " + e.getMessage(), "command.precondition");
+        }
+
+        // (8) the reservation. From here on the cmdId is consumed whatever happens.
+        try {
+            if (!commandLedger.reserve(new CommandEvent(group, edge, cmdId, subject, p.methodNodeId(),
+                    String.valueOf(p.value()), "Double", CommandEvent.INTENT, CommandLedger.RESERVED, null,
+                    clock.instant().toString()), p.notBefore())) {
+                return refuseMethod(cmdId, subject, p, null, "command.replay");
+            }
+        } catch (Exception e) {
+            // Not recorded: the ledger is what just failed.
+            health.denied();
+            System.out.println("[BRIDGE] DENY cmd=" + METHOD_METRIC + " cmdId=" + cmdId + " reason=command.ledger.required (" + e + ")");
+            return NcmdResponse.apply(cmdId, false, "denied: command.ledger.required");
+        }
+
+        // (9) the call.
+        String outcome;
+        String detail;
+        Applier.MethodResult r = null;
+        try {
+            r = applier.method(p.objectNodeId(), p.methodNodeId(), p.value());
+            outcome = r.ok() ? "applied" : "method-failed";
+            detail = r.detail();
+        } catch (Exception e) {
+            // The call may or may not have reached the plant. The reservation stands either way.
+            outcome = "unknown";
+            detail = e.getMessage();
+        }
+        boolean ok = r != null && r.ok();
+        record(cmdId, subject, p.methodNodeId(), String.valueOf(p.value()), "Double", CommandEvent.OUTCOME, outcome, ok ? null : detail);
+        if (ok) {
+            health.applied();
+        }
+        System.out.println("[BRIDGE] METHOD cmdId=" + cmdId + " " + p.methodNodeId() + "(" + p.value() + ") ok=" + ok
+                + (ok ? "" : " reason=command.method.failed outcome=" + outcome));
+        return new NcmdResponse(cmdId, ok, ok ? r.output() : null, null,
+                ok ? detail : "failed: command.method.failed (" + outcome + "): " + detail);
+    }
+
+    /** The command grants a principal holds on this stream, by their JSON names, for the OPA input. */
+    private static List<String> grants(ActivationPolicy policy, String principal, String stream) {
+        List<String> held = new ArrayList<>();
+        ActivationAuthorizer authz = new ActivationAuthorizer();
+        for (ActivationAction a : List.of(ActivationAction.PROPOSE_COMMAND, ActivationAction.APPROVE_COMMAND)) {
+            if (authz.authorize(policy, principal, a, CommandProposal.GRANT_TARGET, CommandProposal.GRANT_KIND, stream).allowed()) {
+                held.add(a.json());
+            }
+        }
+        return held;
+    }
+
+    /** A Method refusal before the reservation: one audit entry, outcome denied, and the cmdId stays unreserved. */
+    private NcmdResponse refuseMethod(String cmdId, String subject, CommandProposal.Proposal p, String why, String reason) {
+        String full = why == null ? reason : reason + ": " + why;
+        record(cmdId, subject, p == null ? METHOD_METRIC : p.methodNodeId(), p == null ? null : String.valueOf(p.value()),
+                p == null ? null : "Double", CommandEvent.INTENT, "denied", full);
+        health.denied();
+        System.out.println("[BRIDGE] DENY cmd=" + METHOD_METRIC + " cmdId=" + cmdId + " reason=" + reason
+                + (why == null ? "" : " (" + why + ")"));
+        return NcmdResponse.apply(cmdId, false, "denied: " + full);
     }
 
     /**
