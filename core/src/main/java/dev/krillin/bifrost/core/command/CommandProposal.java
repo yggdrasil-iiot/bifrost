@@ -119,6 +119,71 @@ public final class CommandProposal {
         return new Approval(approved, report);
     }
 
+    /** An approved proposal the edge may act on: admitted at the edge's own clock, with the live precondition its pinned
+     *  release names - the OPC UA node behind the evidence field and that binding's freshness bound. */
+    public record Admitted(Proposal proposal, JsonNode head, String preconditionNodeId, long maxAgeMs) {}
+
+    /** The edge's admission of an approved envelope, in the order the edge checks: exactly two signatures by the proposer
+     *  and the approver on distinct keys, notBefore <= now < notAfter, the head and release this registry serves now, a
+     *  usable evidence answer, and the precondition that answer's pin names. Refusals are IllegalArgumentExceptions whose
+     *  message is the reason code. */
+    public static Admitted admit(Path registry, JsonNode envelope, Clock clock) throws Exception {
+        require(envelope != null && envelope.isObject() && envelope.path("signatures").isArray() && envelope.path("signatures").size() == 2, "command.signature");
+        Proposal p;
+        try {p = signed(registry, envelope, true);}
+        catch (IllegalArgumentException e) {
+            if (e.getMessage().equals("command.signature") && signedByOther(registry, envelope)) throw new IllegalArgumentException("command.approver.mismatch");
+            throw e;
+        }
+        Instant now = clock.instant();
+        require(!now.isBefore(p.notBefore()) && now.isBefore(p.notAfter()), "command.window");
+        JsonNode head = bind(registry, p, clock);
+        JsonNode pin = JSON.readTree(p.evidence()).path("answer").path("pin");
+        Path release = registry.resolve("mappings/releases/" + text(head, "id") + "/" + text(head, "version"));
+        Map<String, String> files = new HashMap<>();
+        for (JsonNode f : JSON.readTree(Files.readAllBytes(release.resolve("release.json"))).path("files")) files.put(text(f, "path"), text(f, "sha256"));
+        JsonNode mappings = releaseFile(release, files, text(pin, "file"));
+        JsonNode mapping = null;
+        for (JsonNode m : mappings.path("mappings")) if (text(m, "mappingId").equals(text(pin, "field_id"))) mapping = m;
+        require(mapping != null && text(mapping.path("valueRef"), "kind").equals("source") && mapping.path("temporalPolicy").path("maxAgeMs").canConvertToLong()
+            && mapping.path("temporalPolicy").path("maxAgeMs").asLong() > 0, "command.precondition");
+        JsonNode ref = mapping.path("valueRef").path("sourceRef");
+        String node = null;
+        for (String path : new TreeSet<>(files.keySet())) {
+            if (!path.startsWith("payload/sources/")) continue;
+            JsonNode src = releaseFile(release, files, path);
+            if (!text(src, "kind").equals("source-definition") || !text(src, "id").equals(text(ref, "id")) || !text(src, "version").equals(text(ref, "version"))) continue;
+            JsonNode a = src.path("access");
+            require(node == null && text(a, "kind").equals("opcua-node") && text(a, "identifierType").equals("string") && nonEmpty(a, "namespaceUri") && nonEmpty(a, "identifier"), "command.precondition");
+            node = "nsu=" + text(a, "namespaceUri") + ";s=" + text(a, "identifier");
+        }
+        // The member the agent read must belong to the object whose Method it asks for.
+        require(node != null && node.startsWith(p.objectNodeId() + "."), "command.precondition");
+        return new Admitted(p, head, node, mapping.path("temporalPolicy").path("maxAgeMs").asLong());
+    }
+
+    /** A file of the pinned release, by its release path, checked against the digest the release records for it. */
+    private static JsonNode releaseFile(Path release, Map<String, String> files, String path) throws Exception {
+        require(files.containsKey(path), "command.precondition");
+        byte[] b = Files.readAllBytes(safe(release, path));
+        require(sha(b).equals(files.get(path)), "command.precondition");
+        return JSON.readTree(b);
+    }
+
+    /** The proposer's signature verifies and another signature verifies under a registered principal other than
+     *  approvedBy: the co-signer is the wrong person, not a broken signature. */
+    private static boolean signedByOther(Path registry, JsonNode envelope) {
+        Proposal p = parse(Base64.getDecoder().decode(text(envelope, "payload")));
+        AuthorizedKeys keys = AuthorizedKeys.load(registry);
+        try {Dsse.verify(envelope, Dsse.IN_TOTO, keys, List.of(p.proposedBy()));} catch (IdentityException e) {return false;}
+        byte[] pae = Dsse.pae(Dsse.IN_TOTO, p.payload());
+        for (JsonNode s : envelope.path("signatures")) {
+            String by = text(s, "keyid");
+            if (!by.isEmpty() && !by.equals(p.proposedBy()) && !by.equals(p.approvedBy()) && keys.verifying(by, pae, text(s, "sig")).isPresent()) return true;
+        }
+        return false;
+    }
+
     /** DSSE verification under the registered keys, then the statement's shape. A wrong key, a changed byte or a
      *  re-serialized payload is command.signature; two principals on one key is identity.four-eyes.same-key. */
     private static Proposal signed(Path registry, JsonNode envelope, boolean approved) {
