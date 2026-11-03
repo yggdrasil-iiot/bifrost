@@ -1,5 +1,7 @@
 package dev.krillin.bifrost.sim;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Map;
 
 /**
@@ -17,6 +19,10 @@ public final class SimMain {
         EmbeddedMiloSim sim = new EmbeddedMiloSim(port, host,
                 resolveRequireIdentity(System.getenv()), resolveGovernedThumbprint(System.getenv())).start();
         Runtime.getRuntime().addShutdownHook(new Thread(sim::close));
+        String certOut = System.getenv("SIM_SERVER_CERT_OUT");
+        if (certOut != null && !certOut.isBlank()) {
+            exportServerCertificate(sim, certOut.trim());
+        }
 
         // The gate waits for the substring "OPC-UA sim listening" — keep this line stable.
         System.out.println("OPC-UA sim listening on opc.tcp://" + host + ":" + port);
@@ -67,6 +73,23 @@ public final class SimMain {
     static String resolveGovernedThumbprint(Map<String, String> env) {
         String v = env.get("SIM_GOVERNED_THUMBPRINT");
         return (v == null || v.isBlank()) ? null : v.trim();
+    }
+
+    /**
+     * {@code SIM_SERVER_CERT_OUT} — write the secured endpoint's certificate (DER) here, before the
+     * ready line. The certificate is minted fresh on every start, so this is how a gate puts exactly
+     * this server, and no other, into the edge's trust list.
+     */
+    static void exportServerCertificate(EmbeddedMiloSim sim, String out) throws Exception {
+        if (sim.serverCertificate() == null) {
+            throw new IllegalStateException("SIM_SERVER_CERT_OUT is set but the sim has no secured endpoint;"
+                    + " set SIM_REQUIRE_IDENTITY=on");
+        }
+        Path path = Path.of(out);
+        if (path.getParent() != null) {
+            Files.createDirectories(path.getParent());
+        }
+        Files.write(path, sim.serverCertificate().getEncoded());
     }
 
     private SimMain() {}

@@ -173,9 +173,12 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
     /**
      * What the governed Method path needs beyond the bridge's own fields: the registry it admits
      * proposals against (keys, grants, mapping heads and releases), the compiled OPA policy, and the
-     * clock both the validity window and the precondition's age are measured on.
+     * clock both the validity window and the precondition's age are measured on. {@code identity}
+     * says whether the OPC-UA session presents the edge's application certificate; without it every
+     * Method command is refused, because an anonymous session cannot be told apart at the server.
      */
-    public record MethodPath(java.nio.file.Path registry, OpaMethodAuthorizer opa, java.time.Clock clock) {}
+    public record MethodPath(java.nio.file.Path registry, OpaMethodAuthorizer opa, java.time.Clock clock,
+                             boolean identity) {}
 
     /** Null refuses every Method command; the write and call paths do not depend on it. */
     private final MethodPath methodPath;
@@ -536,6 +539,9 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
         }
         if (methodPath == null) {
             return refuseMethod(cmdId, null, claimed, null, "command.method.unconfigured");
+        }
+        if (!methodPath.identity()) {
+            return refuseMethod(cmdId, null, claimed, null, "command.identity.required");
         }
 
         // (2)-(4): signatures, window, head and release, evidence, and the precondition the release binds.

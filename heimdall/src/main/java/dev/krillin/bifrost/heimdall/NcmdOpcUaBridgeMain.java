@@ -38,6 +38,8 @@ import dev.krillin.bifrost.core.schema.UdtDefinition;
  *   HEIMDALL_APPLY_THREADS 4         (per-node ordering stripes for the apply path)
  *
  *   HEIMDALL_IDENTITY_DIR  (unset)   (OPC-UA keypair + certificate dir; unset = anonymous/None)
+ *   HEIMDALL_SERVER_TRUST_DIR (unset) (trusted OPC-UA server certificates, PKI layout; required with
+ *                                      an identity, refused without one)
  *
  *   REQUIRE_SIGNED_COMMAND false     (every NCMD must carry a verified sub/sig; not shadowed by log-only)
  *   HEIMDALL_REPLAY_WINDOW 1024      (recently-seen command ids kept for replay refusal)
@@ -70,7 +72,7 @@ public final class NcmdOpcUaBridgeMain {
                   String anchorDir, boolean enforcementLogOnly, int healthPort, int applyThreads, String identityDir,
                   boolean requireSignedCommand, int replayWindow,
                   String commandLedgerPath, boolean requireCommandLedger, int certWarnDays,
-                  boolean requirePublishedActivation) {}
+                  boolean requirePublishedActivation, String serverTrustDir) {}
 
     /**
      * Tri-state flag parse shared by every boolean env toggle. {@code true/on/1} and {@code false/off/0}
@@ -115,6 +117,7 @@ public final class NcmdOpcUaBridgeMain {
         int applyThreads = intEnv(getenv, "HEIMDALL_APPLY_THREADS", 4);
         int certWarnDays = intEnv(getenv, "HEIMDALL_CERT_WARN_DAYS", 30);
         String identityDir = env(getenv, "HEIMDALL_IDENTITY_DIR", null);
+        String serverTrustDir = env(getenv, "HEIMDALL_SERVER_TRUST_DIR", null);
         boolean requireSignedCommand = flag(getenv, "REQUIRE_SIGNED_COMMAND", "");
         int replayWindow = intEnv(getenv, "HEIMDALL_REPLAY_WINDOW", 1024);
         String commandLedgerPath = env(getenv, "COMMAND_LEDGER_PATH", null);
@@ -123,7 +126,29 @@ public final class NcmdOpcUaBridgeMain {
         return new Config(broker, opcua, group, edge, policyPath, registryPath, conformancePath, activationPath,
                 activationTarget, requireSignedEffective, requireAnchored, anchorStore, anchorDir, logOnly,
                 healthPort, applyThreads, identityDir, requireSignedCommand, replayWindow,
-                commandLedgerPath, requireCommandLedger, certWarnDays, requirePublished);
+                commandLedgerPath, requireCommandLedger, certWarnDays, requirePublished, serverTrustDir);
+    }
+
+    /**
+     * The OPC-UA servers the edge will present its identity to, or null on the anonymous path.
+     *
+     * <p>The two settings are all or nothing. An identity without a trust list would sign into any
+     * server answering at {@code OPCUA_URL}, which is Milo's default and the defect this closes; a
+     * trust list without an identity would look applied while the anonymous {@code None} path checks
+     * no server certificate at all. Both refuse to start rather than run with the weaker meaning.
+     */
+    static ServerTrust loadServerTrust(Config config) throws java.io.IOException {
+        boolean identity = config.identityDir() != null;
+        boolean trust = config.serverTrustDir() != null;
+        if (identity && !trust) {
+            throw new IllegalStateException("HEIMDALL_IDENTITY_DIR is set but HEIMDALL_SERVER_TRUST_DIR is not:"
+                    + " the edge would present its identity to any OPC-UA server");
+        }
+        if (trust && !identity) {
+            throw new IllegalStateException("HEIMDALL_SERVER_TRUST_DIR is set but HEIMDALL_IDENTITY_DIR is not:"
+                    + " the anonymous None path checks no server certificate");
+        }
+        return trust ? ServerTrust.load(Path.of(config.serverTrustDir())) : null;
     }
 
     /**
@@ -452,7 +477,12 @@ public final class NcmdOpcUaBridgeMain {
         // The edge's OPC-UA identity, when one is configured. Derived URI, so the certificate's
         // subjectAltName and the announced application URI can never disagree.
         EdgeIdentity identity = null;
-        if (config.identityDir() != null && !config.identityDir().isBlank()) {
+        ServerTrust serverTrust = loadServerTrust(config);
+        if (serverTrust != null) {
+            System.out.println("[BRIDGE] OPC-UA server trust list " + config.serverTrustDir() + " ("
+                    + serverTrust.trustedCount() + " trusted certificate(s); any other server is refused)");
+        }
+        if (config.identityDir() != null) {
             identity = EdgeIdentity.loadOrCreate(Path.of(config.identityDir()),
                     applicationUri(config.group(), config.edge()));
             // Printed so an operator can match this against what the server has been told to trust.
@@ -485,7 +515,7 @@ public final class NcmdOpcUaBridgeMain {
                     + (config.requireCommandLedger() ? " (REQUIRED: an unwritable entry refuses)" : ""));
         }
 
-        OpcUaApplier applier = new OpcUaApplier(config.opcua(), health, identity);
+        OpcUaApplier applier = new OpcUaApplier(config.opcua(), health, identity, serverTrust);
         try {
             applier.connect();
             System.out.println("[BRIDGE] OPC-UA connected " + config.opcua());
@@ -500,9 +530,10 @@ public final class NcmdOpcUaBridgeMain {
                 config.requireSignedCommand(), config.replayWindow(), trustAnchor,
                 commandLedger, config.requireCommandLedger(),
                 // The governed Method path admits against the same registry, on the system clock. It
-                // refuses every Method command while no command ledger is configured.
+                // refuses every Method command while no command ledger or no OPC-UA identity is configured.
                 new NcmdOpcUaBridge.MethodPath(Path.of(config.registryPath()),
-                        new dev.krillin.bifrost.core.acl.opa.OpaMethodAuthorizer(), java.time.Clock.systemUTC()));
+                        new dev.krillin.bifrost.core.acl.opa.OpaMethodAuthorizer(), java.time.Clock.systemUTC(),
+                        identity != null));
         health.startHttp(config.healthPort());
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             try {
@@ -511,6 +542,13 @@ public final class NcmdOpcUaBridgeMain {
                 // best-effort
             }
             applier.close();
+            if (serverTrust != null) {
+                try {
+                    serverTrust.close();
+                } catch (Exception ignore) {
+                    // best-effort
+                }
+            }
             health.stopHttp();
         }));
 

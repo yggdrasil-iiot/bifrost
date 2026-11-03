@@ -272,6 +272,7 @@ are not signed, and the requester gets no receipt.
 **Make the edge the only way in.** Until the controlled nodes are writable *only* by the governed
 identity, the edge governs the clients that choose to use it and nothing else. Both halves of that
 now exist to be turned on: the edge presents an X.509 identity when `HEIMDALL_IDENTITY_DIR` is set,
+authenticates the server against `HEIMDALL_SERVER_TRUST_DIR` at the same time,
 and a server told to require it refuses another client's write while still serving its reads —
 `run-write-exclusivity-gate.sh` proves the pair end to end. **Configuring the site's own server is
 still the site's work**, and it is untested here against anything but this repository's sim; on

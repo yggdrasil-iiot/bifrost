@@ -89,6 +89,8 @@ final class EmbeddedMiloSim implements AutoCloseable {
     private final String governedThumbprint;
 
     private OpcUaServer server;
+    /** The secured endpoint's certificate, minted at start; null on the anonymous-only sim. */
+    private X509Certificate serverCertificate;
     private SimNamespace namespace;
 
     EmbeddedMiloSim() { this(BIND_PORT, DEFAULT_BIND_HOST); }
@@ -103,6 +105,7 @@ final class EmbeddedMiloSim implements AutoCloseable {
     }
 
     int bindPort() { return bindPort; }
+    X509Certificate serverCertificate() { return serverCertificate; }
     String bindHost() { return bindHost; }
 
     /**
@@ -190,7 +193,7 @@ final class EmbeddedMiloSim implements AutoCloseable {
                     .setPath("")
                     .setSecurityPolicy(SecurityPolicy.Basic256Sha256)
                     .setSecurityMode(MessageSecurityMode.SignAndEncrypt)
-                    .setCertificate(serverCertificate(group))
+                    .setCertificate(serverCertificate = serverCertificate(group))
                     // A null securityPolicyUri makes AbstractX509IdentityValidator fall back to the
                     // channel's policy, which is what we want on a Basic256Sha256 endpoint.
                     .addTokenPolicies(new UserTokenPolicy("x509", UserTokenType.Certificate, null, null, null))
