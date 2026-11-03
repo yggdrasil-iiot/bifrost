@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="690" viewBox="0 0 1000 690" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif">
-  <rect x="6" y="6" width="988" height="678" rx="14" fill="#0d1117" stroke="#30363d"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="772" viewBox="0 0 1000 772" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif">
+  <rect x="6" y="6" width="988" height="760" rx="14" fill="#0d1117" stroke="#30363d"/>
 
-  <text x="30" y="44" font-size="18" font-weight="600" fill="#c9d1d9">Enterprise readiness: 13 axes, and where each one stands</text>
+  <text x="30" y="44" font-size="18" font-weight="600" fill="#c9d1d9">Enterprise readiness: 14 axes, and where each one stands</text>
   <text x="30" y="68" font-size="13" fill="#8b949e">Evidence, boundary and trigger per axis are in the table below.</text>
 
   <text x="30" y="112" font-size="13" font-weight="700" fill="#3fb950" letter-spacing="1">BUILT · 5</text>
@@ -24,7 +24,7 @@
   <text x="44" y="502" font-size="12.5" font-weight="600" fill="#c9d1d9">11 · Audit query at scale</text>
   <text x="44" y="536" font-size="10.5" fill="#8b949e">measured: 586 B per entry</text>
 
-  <text x="268" y="112" font-size="13" font-weight="700" fill="#d29922" letter-spacing="1">PARTIAL · 6</text>
+  <text x="268" y="112" font-size="13" font-weight="700" fill="#d29922" letter-spacing="1">PARTIAL · 7</text>
   <text x="268" y="131" font-size="11" fill="#8b949e">built in part, gap named</text>
   <rect x="268" y="150" width="224" height="70" rx="6" fill="#1c2128" stroke="#d29922"/>
   <text x="282" y="174" font-size="12.5" font-weight="600" fill="#c9d1d9">5 · Conduit inventory</text>
@@ -53,6 +53,11 @@
   <text x="282" y="601" font-size="12.5" font-weight="600" fill="#c9d1d9">runtime</text>
   <text x="282" y="618" font-size="10.5" fill="#8b949e">compare built; fetch is not</text>
 
+  <rect x="268" y="642" width="224" height="70" rx="6" fill="#1c2128" stroke="#d29922"/>
+  <text x="282" y="666" font-size="12.5" font-weight="600" fill="#c9d1d9">14 · Governed write path</text>
+  <text x="282" y="683" font-size="12.5" font-weight="600" fill="#c9d1d9">for an agent</text>
+  <text x="282" y="700" font-size="10.5" fill="#8b949e">Method path only; sim only</text>
+
   <text x="506" y="112" font-size="13" font-weight="700" fill="#8b949e" letter-spacing="1">DEFERRED · 2</text>
   <text x="506" y="131" font-size="11" fill="#8b949e">not built, trigger named</text>
   <rect x="506" y="150" width="224" height="70" rx="6" fill="#1c2128" stroke="#30363d"/>
@@ -64,7 +69,7 @@
 
   <text x="744" y="112" font-size="13" font-weight="700" fill="#f85149" letter-spacing="1">OPEN · 0</text>
   <text x="744" y="131" font-size="11" fill="#8b949e">no mechanism at all</text>
-  <text x="744" y="174" font-size="11.5" fill="#8b949e">none. Read the six partial rows</text>
+  <text x="744" y="174" font-size="11.5" fill="#8b949e">none. Read the seven partial rows</text>
   <text x="744" y="191" font-size="11.5" fill="#8b949e">for what is still missing.</text>
-  <text x="30" y="654" font-size="12.5" fill="#c9d1d9">Five of thirteen are answered and six more in part. Nothing is left without a mechanism; each partial row names the half it does not do.</text>
+  <text x="30" y="736" font-size="12.5" fill="#c9d1d9">Five of fourteen are answered and seven more in part. Nothing is left without a mechanism; each partial row names the half it does not do.</text>
 </svg>
