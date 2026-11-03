@@ -88,7 +88,16 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
 
     private final String ncmdTopic;
     private final String queryTopic;
-    private final String ndataTopic;
+
+    /**
+     * Where every correlated response goes: command outcomes, QUERY read-backs and overload
+     * refusals. Not Sparkplug NDATA: Muninn owns this group/edge's Sparkplug session, so a message
+     * from Heimdall under {@code spBv1.0/<group>/.../<edge>} would sit outside that session's
+     * {@code seq} and carry metrics the NBIRTH never declared, and a host that follows the session
+     * (Vor does) drops it. Heimdall publishes nothing under {@code spBv1.0/}; the Sparkplug view of
+     * a successful write is the new value in Muninn's own data.
+     */
+    private final String resultTopic;
 
     /**
      * Bifrost's own liveness topic, carrying a retained "online"/"offline".
@@ -96,15 +105,25 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
      * <p>Deliberately NOT the Sparkplug NDEATH topic. In the spine
      * ({@code scripts/run-yggdrasil-spine-gate.sh}) Muninn is the node that births this
      * group/edge, and two components birthing one edge is a protocol error rather than a detail.
-     * Deciding who owns the Sparkplug node identity for an edge that Heimdall commands and Muninn
-     * feeds is a larger question than this change. This follows the existing
-     * {@code bifrost/.../QUERY/...} convention and needs no ownership decision.
+     * Muninn owns that node; Heimdall subscribes to its NCMD and answers on {@link #resultTopic}.
+     * This follows the existing {@code bifrost/.../QUERY/...} convention.
      */
     private final String statusTopic;
 
     private final SparkplugBPayloadEncoder encoder = new SparkplugBPayloadEncoder();
     private final SparkplugBPayloadDecoder decoder = new SparkplugBPayloadDecoder();
     private MqttClient client;
+
+    /** Every publish goes through here, so a test can see the whole outbound topic set without a broker. */
+    interface Outbound {
+        void publish(String topic, byte[] payload, int qos, boolean retained) throws Exception;
+    }
+
+    private Outbound outbound = (topic, payload, qos, retained) -> client.publish(topic, payload, qos, retained);
+
+    void outbound(Outbound o) {
+        this.outbound = o;
+    }
 
     /** Per-node ordered, bounded dispatch for applies. See {@link CommandExecutor}. */
     private final CommandExecutor executor;
@@ -261,7 +280,7 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
         this.activeRecipe = activeRecipe;
         this.ncmdTopic = "spBv1.0/" + group + "/NCMD/" + edge;
         this.queryTopic = "bifrost/" + group + "/QUERY/" + edge;
-        this.ndataTopic = "spBv1.0/" + group + "/NDATA/" + edge;
+        this.resultTopic = "bifrost/" + group + "/RESULT/" + edge;
         this.statusTopic = "bifrost/" + group + "/STATUS/" + edge;
     }
 
@@ -743,7 +762,7 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
 
     private void publishStatus(String state) {
         try {
-            client.publish(statusTopic, state.getBytes(StandardCharsets.UTF_8), 1, true);
+            outbound.publish(statusTopic, state.getBytes(StandardCharsets.UTF_8), 1, true);
         } catch (Exception e) {
             System.out.println("[BRIDGE] status publish failed (" + state + "): " + e);
         }
@@ -803,12 +822,17 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
             System.out.println("[BRIDGE] DROP undecodable payload on " + topic + ": " + decodeFailure);
             return;
         }
+        if (topic.equals(ncmdTopic) && isNodeControl(req)) {
+            // Addressed to the Sparkplug node, which is Muninn's: not a command, not refused, no answer.
+            System.out.println("[BRIDGE] IGNORE node control " + req.getMetrics().get(0).getName());
+            return;
+        }
         String stripeKey = (req.getMetrics() == null || req.getMetrics().isEmpty())
                 ? "" : String.valueOf(req.getMetrics().get(0).getName());
         boolean accepted = executor.submit(stripeKey, () -> {
             try {
                 NcmdResponse resp = handle(topic, req);
-                client.publish(ndataTopic, encodeResponse(resp), 1, false);
+                outbound.publish(resultTopic, encodeResponse(resp), 1, false);
             } catch (Exception e) {
                 System.out.println("[BRIDGE] response publish failed for " + stripeKey + ": " + e);
             }
@@ -816,11 +840,25 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
         if (!accepted) {
             System.out.println("[BRIDGE] OVERLOAD cmd=" + stripeKey + " - queue full, command refused");
             try {
-                client.publish(ndataTopic, encodeResponse(overloaded(req.getUuid())), 1, false);
+                outbound.publish(resultTopic, encodeResponse(overloaded(req.getUuid())), 1, false);
             } catch (Exception e) {
                 System.out.println("[BRIDGE] overload response publish failed: " + e);
             }
         }
+    }
+
+    /**
+     * True when the NCMD's first metric is a Sparkplug node control or property ({@code Node Control/*},
+     * {@code Properties/*}), e.g. the Rebirth request a host sends after a seq gap. Those belong to
+     * the node owner; authorizing one would answer a host's Rebirth with a refusal, and under
+     * log-only would hand it to the applier as a write to a node named after the control.
+     */
+    static boolean isNodeControl(SparkplugBPayload req) {
+        if (req.getMetrics() == null || req.getMetrics().isEmpty()) {
+            return false;
+        }
+        String name = req.getMetrics().get(0).getName();
+        return name != null && (name.startsWith("Node Control/") || name.startsWith("Properties/"));
     }
 
     /**

@@ -12,7 +12,7 @@
 #                      BROKER to deliver the retained will. The topic is cleared first, so a
 #                      previous run's retained "offline" cannot satisfy this one.
 #   E3 outage != deny: kill the OPC-UA sim, send an AUTHORIZED command, require [BRIDGE] UNREACHABLE,
-#                      NO new [BRIDGE] DENY line, no conformance-error, and an NDATA response detail
+#                      NO new [BRIDGE] DENY line, no conformance-error, and a RESULT response detail
 #                      that says plant-unreachable.
 #   E4 plant recovery: restart the sim, wait out the backoff, send again -> session re-established
 #                      and the APPLY count increases. NO bridge restart in between.
@@ -218,15 +218,15 @@ echo "[GATE] E1 OK: reconnected, resubscribed, and a new command was applied"
 echo "[GATE] ===== E3: an OPC-UA outage is a refusal, never a denial ====="
 kill_by_mainclass "bifrost-sim.jar"
 sleep 3
-java -cp "$HEIMDALL_JAR_WIN" dev.krillin.bifrost.heimdall.TopicWatcher "spBv1.0/$GROUP/NDATA/$EDGE_A" 60 >>"$WATCH_LOG" 2>&1 &
-wait_line "$WATCH_LOG" "\[WATCH\] subscribed spBv1.0/$GROUP/NDATA/$EDGE_A" 10 || fail "E3 the NDATA watcher did not subscribe"
+java -cp "$HEIMDALL_JAR_WIN" dev.krillin.bifrost.heimdall.TopicWatcher "bifrost/$GROUP/RESULT/$EDGE_A" 60 >>"$WATCH_LOG" 2>&1 &
+wait_line "$WATCH_LOG" "\[WATCH\] subscribed bifrost/$GROUP/RESULT/$EDGE_A" 10 || fail "E3 the RESULT watcher did not subscribe"
 DENY_BEFORE="$(count_in "\[BRIDGE\] DENY cmd=" "$A_LOG")"
 pub "$RPM_NODE" 1500.0 Double "$EDGE_A"
 wait_line "$A_LOG" "\[BRIDGE\] UNREACHABLE cmd=$RPM_NODE" 15 || fail "E3 the edge did not report UNREACHABLE"
 [ "$(count_in "\[BRIDGE\] DENY cmd=" "$A_LOG")" = "$DENY_BEFORE" ] \
   || fail "E3 an outage produced a DENY line — unreachable was reported as a denial"
 if grep -q "conformance-error" "$A_LOG"; then fail "E3 an outage was reported as conformance-error"; fi
-wait_line "$WATCH_LOG" "plant-unreachable" 15 || fail "E3 the NDATA response detail did not say plant-unreachable"
+wait_line "$WATCH_LOG" "plant-unreachable" 15 || fail "E3 the RESULT response detail did not say plant-unreachable"
 for _ in $(seq 1 10); do [ "$(health_code 9090)" = "503" ] && break; sleep 2; done
 [ "$(health_code 9090)" = "503" ] || fail "E5 /healthz is not 503 while the plant is unreachable"
 echo "[GATE] E3+E5 OK: UNREACHABLE, no DENY, response says plant-unreachable, /healthz 503"

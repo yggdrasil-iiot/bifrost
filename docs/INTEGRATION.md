@@ -102,19 +102,16 @@ which groups edge nodes logically; Sparkplug 3.0 forbids `/`, `+` and `#` in it,
 | Topic | Who publishes | Who subscribes | What it is |
 |---|---|---|---|
 | `spBv1.0/<group>/NBIRTH/<edge>` | **Muninn** | any consumer | the birth certificate, carrying the **byte-exact governed definition** as a `Bytes` metric |
-| `spBv1.0/<group>/NDATA/<edge>` | **Muninn** (feed) · **Heimdall** (command response) | any consumer | egress-validated samples · correlated command outcomes |
-| `spBv1.0/<group>/NCMD/<edge>` | **any consumer with a command to issue** — MES, SCADA, an operator tool | **Heimdall** | the write request, deny-by-default at the edge |
+| `spBv1.0/<group>/NDATA/<edge>` | **Muninn** only | any consumer | egress-validated samples |
+| `spBv1.0/<group>/NCMD/<edge>` | **any consumer with a command to issue** — MES, SCADA, an operator tool | **Heimdall** (commands) · **Muninn** (`Node Control/Rebirth` only) | the write request, deny-by-default at the edge |
 | `bifrost/<group>/QUERY/<edge>` | any consumer | **Heimdall** | a read-back request. **Not Sparkplug** — this project's own convention |
+| `bifrost/<group>/RESULT/<edge>` | **Heimdall** | the requester | the correlated answer to every command, read and overload refusal (payload uuid = cmdId). **Not Sparkplug** |
 | `bifrost/<group>/STATUS/<edge>` | **Heimdall** | anyone watching the edge | retained `online`/`offline` liveness |
 
 Two deliberate choices are worth reading, because they are the sort of thing a Sparkplug-literate
 reviewer checks first.
 
-**Heimdall does not birth the node, and its liveness topic is not `NDEATH`.** In the spine, Muninn
-is the node that births this group/edge, and two components birthing one edge is a protocol error
-rather than a detail. Deciding who owns the Sparkplug node identity for an edge that Heimdall
-commands and Muninn feeds is a real open question; until it is answered, Heimdall announces itself
-on its own topic rather than forging a second identity.
+**Muninn owns the Sparkplug node for this group/edge: it births it and runs its session (`bdSeq`, `seq`).** Heimdall publishes nothing under `spBv1.0/`. It subscribes to the node's `NCMD` and ignores `Node Control/*` and `Properties/*` metrics without answering, because those address the node owner (a host sends `Node Control/Rebirth` after a `seq` gap). Heimdall answers on `RESULT`, not `NDATA`: a message from a second publisher on the node's `NDATA` sits outside the session's `seq` and carries metrics the `NBIRTH` never declared, and a host following the session drops it. The Sparkplug view of a successful write is the new value in Muninn's own data; `RESULT` carries what Sparkplug has no message for: the `cmdId`, the refusal reason, the call outcome. Heimdall's liveness is the retained `STATUS` topic, not `NDEATH`, so the node can read online while the write path behind it is down; a consumer that issues commands watches `STATUS`. A later step gives Heimdall its own Sparkplug node with its own birth and death.
 
 **Reads bypass authorization, on purpose and with a cost.** `handle()` short-circuits the QUERY
 topic and `op=read` before the authorization check, so every claim about deny-by-default in this

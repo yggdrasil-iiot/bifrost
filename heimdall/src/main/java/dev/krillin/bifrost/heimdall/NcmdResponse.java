@@ -1,7 +1,7 @@
 package dev.krillin.bifrost.heimdall;
 
 /**
- * The correlated response the bridge sends back over NDATA: {@code cmdId} = the request payload
+ * The correlated response the bridge sends back on bifrost/<group>/RESULT/<edge>: {@code cmdId} = the request payload
  * uuid; {@code ok} = applied+confirmed; for a read, {@code value}+{@code good} carry the
  * read-back; {@code detail} is a human-readable explanation. {@code value}/{@code good} are null
  * for write/call responses.
