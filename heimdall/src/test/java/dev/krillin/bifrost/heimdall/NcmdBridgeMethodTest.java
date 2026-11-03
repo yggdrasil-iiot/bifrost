@@ -220,6 +220,12 @@ class NcmdBridgeMethodTest {
         SparkplugBPayload two = ncmd(env);
         two.addMetric(new MetricBuilder("extra", MetricDataType.String, "x").createMetric());
         refused(b.handle(NCMD, two), "command.malformed");
+        SparkplugBPayload otherUuid = ncmd(env);
+        otherUuid.setUuid("00000000-0000-4000-8000-000000000000");
+        refused(b.handle(NCMD, otherUuid), "command.malformed");
+        SparkplugBPayload noUuid = ncmd(env);
+        noUuid.setUuid(null);
+        refused(b.handle(NCMD, noUuid), "command.malformed");
         refused(b.handle(NCMD, ncmd(envelope(42.0, false, p -> {}))), "command.signature");
         refused(b.handle(NCMD, ncmd(envelope(42.0, true, p -> ((ObjectNode) p.get("target")).put("edge", "other-edge")))), "command.malformed");
         plant.good = false;

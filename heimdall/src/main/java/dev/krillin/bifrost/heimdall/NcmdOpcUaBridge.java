@@ -521,7 +521,12 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
         } catch (Exception malformed) {
             return refuseMethod(cmdId, null, null, null, "command.malformed");
         }
+        String outerUuid = cmdId;
         cmdId = claimed.cmdId();
+        // The payload uuid is what the requester correlates the RESULT answer by; it must be the signed cmdId.
+        if (!cmdId.equals(outerUuid)) {
+            return refuseMethod(cmdId, null, claimed, "uuid " + outerUuid, "command.malformed");
+        }
         if (!group.equals(claimed.target().group()) || !edge.equals(claimed.target().edge())) {
             return refuseMethod(cmdId, null, claimed, "target " + claimed.target().group() + "/" + claimed.target().edge(),
                     "command.malformed");

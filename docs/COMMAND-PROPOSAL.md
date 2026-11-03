@@ -89,8 +89,8 @@ Report `kind` is `command-publication` (fields `cmdId`, `topic`, `metric`).
 
 Heimdall executes an approved envelope that arrives on that metric; the checks run in this order, and the first failure refuses with its reason code:
 
-1. Transport: the message arrives on this edge's NCMD topic, carries exactly one metric, it is `bifrost/command/v1`, String, with `op` = `method`, and the statement's `target` names this edge's group and edge. Otherwise `command.malformed`.
-2. A command ledger is configured (`COMMAND_LEDGER_PATH`). Otherwise `command.ledger.required`.
+1. Transport: the message arrives on this edge's NCMD topic, carries exactly one metric, it is `bifrost/command/v1`, String, with `op` = `method`, the payload uuid equals the statement's `cmdId`, and the statement's `target` names this edge's group and edge. Otherwise `command.malformed`. A statement that fails to parse is refused here with its own code where it has one: a span over 900 seconds `command.window`, the same principal as proposer and approver `identity.four-eyes.same-key`, an evidence digest that does not match `command.evidence.digest`.
+2. A command ledger is configured (`COMMAND_LEDGER_PATH`). Otherwise `command.ledger.required`. The bridge must also be wired with the Method path (registry, OPA policy, clock), which Heimdall's main always does; otherwise `command.method.unconfigured`.
 3. Exactly two signatures, by `proposedBy` and `approvedBy`, on distinct keys. A second signature that verifies for a different registered principal is `command.approver.mismatch`.
 4. `notBefore <= now < notAfter` on the edge's clock (`command.window`).
 5. The stream head and the release it names are the ones this edge's registry (`REGISTRY_PATH`) serves now, and the evidence is usable — the same checks as approval steps 7 and 8.
@@ -101,7 +101,7 @@ Heimdall executes an approved envelope that arrives on that metric; the checks r
 10. The reservation: an intent entry with outcome `reserved`, appended to the command ledger and forced to disk (fsync) before the call. The check for an earlier reservation is repeated under the ledger's lock. A ledger that cannot be read or written refuses with `command.ledger.required`.
 11. The Method call with the one input. It counts as applied only when the call's StatusCode and every input argument result are Good. An outcome entry follows: `applied`, `method-failed`, or `unknown` when the call threw (for example, the session was lost).
 
-Every refusal before the reservation writes one audit entry with outcome `denied` and does not consume the `cmdId`: the same envelope can still execute once the cause is gone. After the reservation, the `cmdId` is consumed whatever the call returns; the edge never retries, and a new attempt needs a new proposal with a new `cmdId`. Because the reservation is on disk, a restarted edge refuses a replay just as the running one does.
+With a ledger configured, every refusal before the reservation writes one audit entry with outcome `denied` and does not consume the `cmdId`: the same envelope can still execute once the cause is gone. After the reservation, the `cmdId` is consumed whatever the call returns; the edge never retries, and a new attempt needs a new proposal with a new `cmdId`. Because the reservation is on disk, a restarted edge refuses a replay just as the running one does.
 
 `ENFORCEMENT_LOG_ONLY` and `REQUIRE_SIGNED_COMMAND` do not apply to `op=method`: a policy refusal on this path always refuses.
 
