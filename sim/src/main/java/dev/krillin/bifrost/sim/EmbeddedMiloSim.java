@@ -366,6 +366,7 @@ final class EmbeddedMiloSim implements AutoCloseable {
 
             createMixerType();
             createMixerInstance();
+            createSecondMixer();
 
             UaVariableNode weldCurrent = makeDoubleNode("Weld/WeldCurrent", "WeldCurrent", 0.0);
             // Every client-writable node that matters to the governed model. See govern()'s javadoc
@@ -542,11 +543,32 @@ final class EmbeddedMiloSim implements AutoCloseable {
                 addStatusControl(member);
                 scanned.add(member);
             }
-            mixer1.addComponent(setTemperatureMethod());
+            mixer1.addComponent(setTemperatureMethod("Line1/Mixer1"));
         }
 
         /**
-         * {@code Line1/Mixer1.SetTemperature}, the governed write path's OPC UA Method. It is a
+         * Line1/Mixer2: a second piece of equipment on the same line with its own Temp and its own
+         * SetTemperature Method, so a command bound to one mixer can be shown never to reach the
+         * other. Typed BaseObjectType, not MixerType, so a browser deriving definitions from the type
+         * (Mimir) and Muninn's Mixer1 read path see the namespace they saw before.
+         */
+        private void createSecondMixer() {
+            UaObjectNode mixer2 = new UaObjectNode.UaObjectNodeBuilder(getNodeContext())
+                    .setNodeId(newNodeId("Line1/Mixer2"))
+                    .setBrowseName(newQualifiedName("Mixer2"))
+                    .setDisplayName(LocalizedText.english("Mixer2"))
+                    .setTypeDefinition(NodeIds.BaseObjectType)
+                    .buildAndAdd();
+            mixer2.addReference(new Reference(mixer2.getNodeId(), NodeIds.Organizes,
+                    NodeIds.ObjectsFolder.expanded(), false));
+            UaVariableNode temp = typeMember("Line1/Mixer2.Temp", "Temp", NodeIds.Double, 180.0);
+            mixer2.addComponent(temp);
+            scanned.add(temp);
+            mixer2.addComponent(setTemperatureMethod("Line1/Mixer2"));
+        }
+
+        /**
+         * {@code <instance>.SetTemperature}, the governed write path's OPC UA Method. It is a
          * component of the instance only, not of MixerType, so a browser that derives definitions
          * from the type (Mimir) is unaffected; Muninn takes Variable members only.
          *
@@ -555,9 +577,9 @@ final class EmbeddedMiloSim implements AutoCloseable {
          * per session before a Call, so without the filter any anonymous session could invoke a
          * Method that changes the plant, while a write to the same member is refused.
          */
-        private UaMethodNode setTemperatureMethod() {
+        private UaMethodNode setTemperatureMethod(String instance) {
             UaMethodNode.UaMethodNodeBuilder builder = new UaMethodNode.UaMethodNodeBuilder(getNodeContext())
-                    .setNodeId(newNodeId(SetTemperatureMethod.IDENTIFIER))
+                    .setNodeId(newNodeId(instance + ".SetTemperature"))
                     .setBrowseName(newQualifiedName("SetTemperature"))
                     .setDisplayName(LocalizedText.english("SetTemperature"))
                     .setExecutable(true)
@@ -569,7 +591,7 @@ final class EmbeddedMiloSim implements AutoCloseable {
             method.setInputArguments(new Argument[] {SetTemperatureMethod.INPUT});
             method.setOutputArguments(new Argument[] {SetTemperatureMethod.OUTPUT});
             method.setInvocationHandler(new SetTemperatureMethod(method,
-                    v -> transferToInstance("Line1/Mixer1.Temp", v)));
+                    v -> transferToInstance(instance + ".Temp", v)));
             getNodeManager().addNode(method);
             return method;
         }

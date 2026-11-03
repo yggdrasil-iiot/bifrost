@@ -18,11 +18,16 @@ public final class OpaMethodAuthorizer {
     public OpaMethodAuthorizer() { this.policy = OpaPolicy.fromResource("/opa/command_method.wasm"); }
     OpaMethodAuthorizer(OpaPolicy policy) { this.policy = policy; }   // test seam
 
+    /** One Method the call may reach: its one input, by name and type, and the inclusive bounds on its value. */
+    public record MethodEntry(String input, String type, double min, double max) {}
+
     /** What the policy sees. Grants are the ActivationAction JSON names each principal holds on the stream;
-     *  distinctKeys and headMatch are the caller's own verification results. */
+     *  distinctKeys and headMatch are the caller's own verification results. methods is the table the caller built for
+     *  this call (input.methods); a Method missing from it is denied. */
     public record MethodFacts(String proposer, Collection<String> proposerGrants, String approver, Collection<String> approverGrants,
                               boolean distinctKeys, Instant notBefore, Instant notAfter, Instant now, boolean headMatch,
-                              boolean evidenceUsable, Target target, String methodNodeId, String inputName, String inputType, double value) {}
+                              boolean evidenceUsable, Target target, String methodNodeId, String inputName, String inputType, double value,
+                              Map<String, MethodEntry> methods) {}
 
     public Decision authorize(MethodFacts f) {
         try {
@@ -41,6 +46,8 @@ public final class OpaMethodAuthorizer {
             input.putObject("target").put("group", f.target().group()).put("edge", f.target().edge()).put("device", f.target().device());
             input.put("method", f.methodNodeId());
             input.putArray("inputs").addObject().put("name", f.inputName()).put("type", f.inputType()).put("value", f.value());
+            ObjectNode methods = input.putObject("methods");
+            f.methods().forEach((id, m) -> methods.putObject(id).put("input", m.input()).put("type", m.type()).put("min", m.min()).put("max", m.max()));
 
             JsonNode dec = M.readTree(policy.eval(M.writeValueAsString(input))).path(0).path("result");
             if (dec.isMissingNode()) return Decision.deny("opa: empty result set (deny-by-default)");

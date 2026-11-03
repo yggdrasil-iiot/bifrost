@@ -1,6 +1,7 @@
 package dev.krillin.bifrost.gates;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import dev.krillin.bifrost.core.command.CommandLink;
 import dev.krillin.bifrost.core.command.CommandProposal;
 import java.nio.file.*;
 import java.time.Clock;
@@ -53,7 +54,11 @@ public final class CommandGate {
             MappingGate.emit(result);return 0;
         }catch(Exception e){
             if(a.length>0&&a[0].equals("publish")&&!(e instanceof IllegalArgumentException))e.printStackTrace();
-            try{MappingGate.emit(object().put("kind","command-refusal").put("accepted",false).put("error",String.valueOf(e.getMessage())).put("execution","excluded"));}catch(Exception ignored){}
+            try{
+                var refusal=object().put("kind","command-refusal").put("accepted",false).put("error",String.valueOf(e.getMessage()));
+                if(e instanceof CommandLink.Refusal l)refusal.put("detail",l.detail());
+                MappingGate.emit(refusal.put("execution","excluded"));
+            }catch(Exception ignored){}
             return e.getMessage()!=null&&e.getMessage().startsWith("usage")?2:1;
         }
     }
@@ -61,16 +66,18 @@ public final class CommandGate {
     /** One NCMD to spBv1.0/<group>/NCMD/<edge> of the statement's target: the envelope bytes as the String metric, property
      *  op=method, payload uuid = cmdId so the edge's RESULT answer correlates. */
     static JsonNode publish(byte[] envelope,String broker) throws Exception {
-        var p=CommandProposal.parse(Base64.getDecoder().decode(text(JSON.readTree(envelope),"payload")));
-        String topic="spBv1.0/"+p.target().group()+"/NCMD/"+p.target().edge();
+        // Read, not parsed: publish verifies nothing, so a statement the edge must refuse (a v1 one, say) is still delivered.
+        JsonNode predicate=JSON.readTree(Base64.getDecoder().decode(text(JSON.readTree(envelope),"payload"))).path("predicate");
+        String cmdId=text(predicate,"cmdId");
+        String topic="spBv1.0/"+text(predicate.path("target"),"group")+"/NCMD/"+text(predicate.path("target"),"edge");
         var props=new PropertySetBuilder().addProperty("op",new PropertyValue(PropertyDataType.String,"method")).createPropertySet();
-        var payload=new SparkplugBPayloadBuilder().setUuid(p.cmdId()).setTimestamp(new Date())
+        var payload=new SparkplugBPayloadBuilder().setUuid(cmdId).setTimestamp(new Date())
             .addMetric(new MetricBuilder(METRIC,MetricDataType.String,new String(envelope,java.nio.charset.StandardCharsets.UTF_8)).properties(props).createMetric())
             .createPayload();
-        MqttClient client=new MqttClient(broker,("gates-command-"+p.cmdId()).substring(0,36),new MemoryPersistence());
+        MqttClient client=new MqttClient(broker,("gates-command-"+cmdId).substring(0,36),new MemoryPersistence());
         client.connect();
         try{client.publish(topic,new SparkplugBPayloadEncoder().getBytes(payload,false),1,false);}
         finally{client.disconnect();client.close();}
-        return object().put("kind","command-publication").put("accepted",true).put("cmdId",p.cmdId()).put("topic",topic).put("metric",METRIC);
+        return object().put("kind","command-publication").put("accepted",true).put("cmdId",cmdId).put("topic",topic).put("metric",METRIC);
     }
 }

@@ -14,12 +14,14 @@ import static dev.krillin.bifrost.core.mapping.MappingJson.*;
 /** A governed write proposal: an in-toto Statement v1 in a DSSE envelope, signed first by the proposing agent and then
  *  co-signed by the approver over the same PAE bytes, never a re-serialization. The subjects pin the stream head, the
  *  release it names and the Vor read answer carried as evidence, each by the SHA-256 of its raw bytes; the predicate
- *  names one OPC UA Method call with one Double input and a validity window of at most 15 minutes. Approval re-checks
- *  everything the agent claimed against this registry before it signs. Refusals are IllegalArgumentExceptions whose
- *  message is the reason code. */
+ *  names one OPC UA Method call with one Double input and a validity window of at most 15 minutes. Version 2: target.group
+ *  and target.edge name the command node, target.device the governed equipment by the Sparkplug device id its data edge
+ *  publishes, and the pinned release must carry the one command binding that links that device's read binding to the
+ *  Method (CommandLink). A v1 statement is malformed. Approval re-checks everything the agent claimed against this
+ *  registry before it signs. Refusals are IllegalArgumentExceptions whose message is the reason code. */
 public final class CommandProposal {
     public static final String STATEMENT = "https://in-toto.io/Statement/v1";
-    public static final String PREDICATE = "https://github.com/yggdrasil-iiot/bifrost/attestation/command-proposal/v1";
+    public static final String PREDICATE = "https://github.com/yggdrasil-iiot/bifrost/attestation/command-proposal/v2";
     public static final Duration MAX_WINDOW = Duration.ofMinutes(15);
     /** The activation-policy resource a command grant names; its ref is the stream. */
     public static final String GRANT_TARGET = "command", GRANT_KIND = "method";
@@ -84,6 +86,7 @@ public final class CommandProposal {
         require(envelope.path("signatures").isArray() && envelope.path("signatures").size() == (approved ? 2 : 1), "command.signature");
         Proposal p = signed(registry, envelope, approved);
         JsonNode head = bind(registry, p, clock);
+        link(registry, p, head);
         return summary(approved ? "command-approved-verification" : "command-proposal-verification", p, head);
     }
 
@@ -102,6 +105,7 @@ public final class CommandProposal {
         AuthzDecision approveGrant = authz.authorize(grants, approver, ActivationAction.APPROVE_COMMAND, GRANT_TARGET, GRANT_KIND, p.streamId());
         require(proposeGrant.allowed() && approveGrant.allowed(), "command.grant");
         JsonNode head = bind(registry, p, clock);
+        CommandLink.Link link = link(registry, p, head);
         CommandPolicy policy = AclMapperFactory.create().readValue(commandPolicy.toFile(), CommandPolicy.class);
         require("deny".equals(policy.defaultEffect()), "command.policy.denied");
         Decision bounds = new CommandAuthorizer().authorize(policy, new CommandRequest(p.target(), p.methodNodeId(), p.value(), "Double", p.proposedBy()));
@@ -116,16 +120,18 @@ public final class CommandProposal {
         signed(registry, approved, true);
         ObjectNode report = summary("command-approval", p, head);
         report.put("proposeGrant", proposeGrant.ruleId()).put("approveGrant", approveGrant.ruleId()).put("policyRule", bounds.ruleId());
+        report.putObject("commandBinding").put("id", link.id()).put("version", link.version());
         return new Approval(approved, report);
     }
 
-    /** An approved proposal the edge may act on: admitted at the edge's own clock, with the live precondition its pinned
-     *  release names - the OPC UA node behind the evidence field and that binding's freshness bound. */
-    public record Admitted(Proposal proposal, JsonNode head, String preconditionNodeId, long maxAgeMs) {}
+    /** An approved proposal the edge may act on: admitted at the edge's own clock, with the command binding it resolved and
+     *  the live precondition its pinned release names - the OPC UA node behind the link's read binding and that binding's
+     *  freshness bound. */
+    public record Admitted(Proposal proposal, JsonNode head, CommandLink.Link link, String preconditionNodeId, long maxAgeMs) {}
 
     /** The edge's admission of an approved envelope, in the order the edge checks: exactly two signatures by the proposer
      *  and the approver on distinct keys, notBefore <= now < notAfter, the head and release this registry serves now, a
-     *  usable evidence answer, and the precondition that answer's pin names. Refusals are IllegalArgumentExceptions whose
+     *  usable evidence answer, the command binding for the target, and the precondition that binding's read binding names. Refusals are IllegalArgumentExceptions whose
      *  message is the reason code. */
     public static Admitted admit(Path registry, JsonNode envelope, Clock clock) throws Exception {
         require(envelope != null && envelope.isObject() && envelope.path("signatures").isArray() && envelope.path("signatures").size() == 2, "command.signature");
@@ -138,36 +144,26 @@ public final class CommandProposal {
         Instant now = clock.instant();
         require(!now.isBefore(p.notBefore()) && now.isBefore(p.notAfter()), "command.window");
         JsonNode head = bind(registry, p, clock);
-        JsonNode pin = JSON.readTree(p.evidence()).path("answer").path("pin");
-        Path release = registry.resolve("mappings/releases/" + text(head, "id") + "/" + text(head, "version"));
-        Map<String, String> files = new HashMap<>();
-        for (JsonNode f : JSON.readTree(Files.readAllBytes(release.resolve("release.json"))).path("files")) files.put(text(f, "path"), text(f, "sha256"));
-        JsonNode mappings = releaseFile(release, files, text(pin, "file"));
+        CommandLink.Release release = CommandLink.Release.of(registry, head);
+        CommandLink.Link link = link(release, p);
+        // The precondition is the member the link's read binding names, read from the release, not from the proposal.
+        JsonNode mappings = release.json(link.mappingSetPath(), "command.precondition", "mapping-set");
         JsonNode mapping = null;
-        for (JsonNode m : mappings.path("mappings")) if (text(m, "mappingId").equals(text(pin, "field_id"))) mapping = m;
+        for (JsonNode m : mappings.path("mappings")) if (text(m, "mappingId").equals(link.binding().mappingId())) mapping = m;
         require(mapping != null && text(mapping.path("valueRef"), "kind").equals("source") && mapping.path("temporalPolicy").path("maxAgeMs").canConvertToLong()
             && mapping.path("temporalPolicy").path("maxAgeMs").asLong() > 0, "command.precondition");
         JsonNode ref = mapping.path("valueRef").path("sourceRef");
         String node = null;
-        for (String path : new TreeSet<>(files.keySet())) {
+        for (String path : new TreeSet<>(release.files().keySet())) {
             if (!path.startsWith("payload/sources/")) continue;
-            JsonNode src = releaseFile(release, files, path);
+            JsonNode src = release.json(path, "command.precondition", "source");
             if (!text(src, "kind").equals("source-definition") || !text(src, "id").equals(text(ref, "id")) || !text(src, "version").equals(text(ref, "version"))) continue;
             JsonNode a = src.path("access");
             require(node == null && text(a, "kind").equals("opcua-node") && text(a, "identifierType").equals("string") && nonEmpty(a, "namespaceUri") && nonEmpty(a, "identifier"), "command.precondition");
             node = "nsu=" + text(a, "namespaceUri") + ";s=" + text(a, "identifier");
         }
-        // The member the agent read must belong to the object whose Method it asks for.
-        require(node != null && node.startsWith(p.objectNodeId() + "."), "command.precondition");
-        return new Admitted(p, head, node, mapping.path("temporalPolicy").path("maxAgeMs").asLong());
-    }
-
-    /** A file of the pinned release, by its release path, checked against the digest the release records for it. */
-    private static JsonNode releaseFile(Path release, Map<String, String> files, String path) throws Exception {
-        require(files.containsKey(path), "command.precondition");
-        byte[] b = Files.readAllBytes(safe(release, path));
-        require(sha(b).equals(files.get(path)), "command.precondition");
-        return JSON.readTree(b);
+        require(node != null, "command.precondition");
+        return new Admitted(p, head, link, node, mapping.path("temporalPolicy").path("maxAgeMs").asLong());
     }
 
     /** The proposer's signature verifies and another signature verifies under a registered principal other than
@@ -215,6 +211,17 @@ public final class CommandProposal {
         require(text(pin, "stream_id").equals(p.streamId()) && text(pin, "release_id").equals(text(head, "id"))
             && text(pin, "version").equals(text(head, "version")) && text(pin, "release_sha256").equals(text(head, "sha256")), "command.head.mismatch");
         return head;
+    }
+
+    /** The command binding for the proposal in the release the head names, and the proposal and evidence matching it. */
+    private static CommandLink.Link link(Path registry, Proposal p, JsonNode head) throws Exception {
+        return link(CommandLink.Release.of(registry, head), p);
+    }
+
+    private static CommandLink.Link link(CommandLink.Release release, Proposal p) throws Exception {
+        CommandLink.Link link = CommandLink.resolve(release, p);
+        CommandLink.match(release, link, p, JSON.readTree(p.evidence()).path("answer"));
+        return link;
     }
 
     private static ObjectNode summary(String kind, Proposal p, JsonNode head) {

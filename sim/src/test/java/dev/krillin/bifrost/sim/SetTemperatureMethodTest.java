@@ -61,6 +61,28 @@ class SetTemperatureMethodTest {
     }
 
     @Test
+    void eachMixersMethodSetsOnlyItsOwnTemp() throws Exception {
+        NodeId mixer2 = NodeId.parse("ns=2;s=Line1/Mixer2"), temp2 = NodeId.parse("ns=2;s=Line1/Mixer2.Temp");
+        try (EmbeddedMiloSim sim = new EmbeddedMiloSim().start()) {
+            OpcUaClient client = anonymous();
+            try {
+                CallMethodResult r = client.call(List.of(new CallMethodRequest(mixer2,
+                        NodeId.parse("ns=2;s=Line1/Mixer2.SetTemperature"), new Variant[] {new Variant(61.0)}))).getResults()[0];
+                assertTrue(r.getStatusCode().isGood(), r.getStatusCode().toString());
+                assertEquals(61.0, client.readValue(0, TimestampsToReturn.Both, temp2).getValue().getValue());
+                assertEquals(200.0, temp(client), "Mixer1 is another piece of equipment");
+                // Mixer1's Method is not a component of Mixer2: the server refuses the pairing.
+                CallMethodResult crossed = client.call(List.of(new CallMethodRequest(mixer2, SET_TEMPERATURE,
+                        new Variant[] {new Variant(62.0)}))).getResults()[0];
+                assertTrue(crossed.getStatusCode().isBad(), crossed.getStatusCode().toString());
+                assertEquals(200.0, temp(client));
+            } finally {
+                client.disconnect();
+            }
+        }
+    }
+
+    @Test
     void aBadArgumentIsRefusedAndTheMemberIsUntouched() throws Exception {
         try (EmbeddedMiloSim sim = new EmbeddedMiloSim().start()) {
             OpcUaClient client = anonymous();
