@@ -65,18 +65,25 @@ public final class OpcUaApplier implements Applier {
      */
     private final EdgeIdentity identity;
 
+    /** The servers the identity may be presented to; never null when {@link #identity} is set. */
+    private final ServerTrust serverTrust;
+
     public OpcUaApplier(String endpoint) {
-        this(endpoint, null, null);
+        this(endpoint, null, null, null);
     }
 
     public OpcUaApplier(String endpoint, EdgeHealth health) {
-        this(endpoint, health, null);
+        this(endpoint, health, null, null);
     }
 
-    public OpcUaApplier(String endpoint, EdgeHealth health, EdgeIdentity identity) {
+    public OpcUaApplier(String endpoint, EdgeHealth health, EdgeIdentity identity, ServerTrust serverTrust) {
+        if (identity != null && serverTrust == null) {
+            throw new IllegalArgumentException("an OPC-UA identity needs a server trust list");
+        }
         this.endpoint = endpoint;
         this.health = health;
         this.identity = identity;
+        this.serverTrust = serverTrust;
     }
 
     /** Connect — anonymous on SecurityPolicy.None, or with the edge's certificate if one is set. */
@@ -224,6 +231,9 @@ public final class OpcUaApplier implements Applier {
                     endpoints -> endpoints.stream().filter(OpcUaApplier::isSecure).findFirst(),
                     transport -> { },
                     cfg -> cfg
+                            // Milo's default accepts any server certificate; this refuses every
+                            // server outside the operator's trust list before the session opens.
+                            .setCertificateValidator(serverTrust.validator())
                             .setApplicationUri(identity.applicationUri())
                             .setCertificate(identity.certificate())
                             // The CHAIN as well as the certificate. Milo's UASC handler asks for the

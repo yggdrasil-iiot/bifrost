@@ -17,6 +17,12 @@
 #   M5 one signature   : the agent's proposal without the co-signature is refused command.signature
 #   M6 precondition    : with the sim's Temp StatusCode set Bad, refused command.precondition
 #   M7 stale head      : a release published on the stream after approval refuses command.head.mismatch
+#   M8 rogue server    : (G1) the sim is replaced at the same URL by one with a fresh certificate that
+#                        also trusts the edge's identity, and Heimdall is restarted so its session is new;
+#                        it trusts only the first server, so an approved proposal reaches no Method and
+#                        the rogue certificate lands in rejected/
+#   M9 no identity     : (G1) Heimdall restarted without HEIMDALL_IDENTITY_DIR, against a sim whose
+#                        Method anyone may call, refuses command.identity.required; nothing is called
 #
 #   --negative-control : M3 expects the restarted edge to APPLY the replay. The reservation survives, so
 #                        that expectation fails and the gate exits non-zero - the M3 assertion can fail.
@@ -26,6 +32,12 @@
 #   # expect: [GATE] PASS run-command-method-gate.sh ... exit 0
 #   timeout 900 bash scripts/run-command-method-gate.sh --negative-control
 #   # expect: [GATE] FAIL: NC ... exit 1
+#
+# G1's negative controls are code injections, run by hand and reverted (no switch in Heimdall can
+# weaken it): (NC1) delete the setCertificateValidator line in OpcUaApplier.createGoverned, so Milo's
+# default accepts any server - M8 fails because the rogue is called; (NC2) delete the
+# command.identity.required check in NcmdOpcUaBridge.handleMethod - M9 fails because the anonymous
+# edge calls the Method. Rebuild heimdall/target/bifrost-heimdall.jar after each injection.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -38,6 +50,10 @@ WORK="build/gate"
 mkdir -p "$WORK"
 PKI="$WORK/mg-pki"
 EDGE_PKI="$WORK/mg-edge-pki"
+TRUST="$WORK/mg-server-trust"
+SIM_CERT="$WORK/mg-sim-server.der"
+ROGUE_CERT="$WORK/mg-rogue-server.der"
+ROGUE_LOG="$WORK/mg-rogue.log"
 REG="$WORK/mg-reg"
 LED="$WORK/mg-ledger"
 PROP="$WORK/mg-proposals"
@@ -59,7 +75,7 @@ COMPOSE_WIN="$(cygpath -m "$(pwd)/docker-compose.yml")"
 
 fail() {
   echo "[GATE] FAIL: $*"
-  for f in "$SIM_LOG" "$EDGE_LOG" "$WATCH_LOG" "$SPB_LOG" "$CLI_LOG"; do
+  for f in "$SIM_LOG" "$ROGUE_LOG" "$EDGE_LOG" "$WATCH_LOG" "$SPB_LOG" "$CLI_LOG"; do
     [ -s "$f" ] && { echo "--- $(basename "$f") tail ---"; tail -25 "$f"; } || true
   done
   exit 1
@@ -133,10 +149,11 @@ export REGISTRY_PATH="$REG_WIN"
 export POLICY_PATH="$REG_WIN/policy.json"
 export COMMAND_LEDGER_PATH="$(cygpath -m "$(pwd)/$LED")"
 export HEIMDALL_IDENTITY_DIR="$(cygpath -m "$(pwd)/$EDGE_PKI")"
+export HEIMDALL_SERVER_TRUST_DIR="$(cygpath -m "$(pwd)/$TRUST")"
 export HEALTH_PORT=0
 
 echo "[GATE] step 2: the edge identity, then HiveMQ CE and the sim trusting only that identity"
-rm -rf "$EDGE_PKI"
+rm -rf "$EDGE_PKI" "$TRUST" "$SIM_CERT" "$ROGUE_CERT"
 THUMB="$(java -cp "$H" dev.krillin.bifrost.heimdall.EdgeIdentity --print-thumbprint "$HEIMDALL_IDENTITY_DIR" \
     "urn:bifrost:heimdall:Bifrost-Line1:$EDGE" 2>/dev/null | tr -d '\r')"
 [ -n "$THUMB" ] || fail "could not mint the edge identity"
@@ -146,9 +163,14 @@ B0="$(broker_boots)"
 docker compose -f "$COMPOSE_WIN" up -d hivemq-ce >/dev/null 2>&1 || fail "failed to start hivemq-ce"
 wait_broker "$B0" || fail "HiveMQ CE never reported 'Started HiveMQ'"
 : > "$SIM_LOG"
-SIM_REQUIRE_IDENTITY=on SIM_GOVERNED_THUMBPRINT="$THUMB" java -jar "$S" >"$SIM_LOG" 2>&1 &
+SIM_REQUIRE_IDENTITY=on SIM_GOVERNED_THUMBPRINT="$THUMB" SIM_SERVER_CERT_OUT="$(cygpath -m "$(pwd)/$SIM_CERT")" \
+  java -jar "$S" >"$SIM_LOG" 2>&1 &
 for _ in $(seq 1 30); do grep -q "OPC-UA sim listening" "$SIM_LOG" 2>/dev/null && break; sleep 2; done
 grep -q "OPC-UA sim listening" "$SIM_LOG" || fail "the sim did not start"
+# The edge trusts exactly this server: its certificate, minted at this start, is the whole trust list.
+[ -s "$SIM_CERT" ] || fail "the sim did not export its server certificate"
+mkdir -p "$TRUST/trusted/certs"
+cp "$SIM_CERT" "$TRUST/trusted/certs/sim-server.der"
 
 # The ledger is NOT wiped between edge starts: M3 is about what survives a restart.
 start_edge() {
@@ -178,6 +200,7 @@ transfers() { count_in "[SIM] transfer Line1/Mixer1.Temp = $1" "$SIM_LOG"; }
 : > "$EDGE_LOG"
 start_edge M 1 || fail "Heimdall did not start"
 grep -q "OPC-UA identity $THUMB" "$EDGE_LOG" || fail "Heimdall is not presenting the identity the sim trusts"
+grep -q "OPC-UA server trust list .* (1 trusted certificate" "$EDGE_LOG" || fail "Heimdall did not load the one-entry server trust list"
 
 : > "$WATCH_LOG"
 java -cp "$H" dev.krillin.bifrost.heimdall.TopicWatcher "bifrost/$GROUP/RESULT/$EDGE" 900 >"$WATCH_LOG" 2>&1 &
@@ -276,6 +299,51 @@ denied "$C7" command.head.mismatch || fail "M7 a stale head was not refused comm
 [ "$(transfers 46.0)" = "0" ] || fail "M7 the sim was touched"
 echo "[GATE] M7 OK: refused command.head.mismatch"
 
+echo "[GATE] ===== M8: a rogue server at the same URL ====="
+C8="$(propose m8 47.0 -60 600)"
+approve m8 || fail "M8 approval refused"
+kill_by_mainclass "bifrost-sim.jar"
+sleep 3
+: > "$ROGUE_LOG"
+# The rogue is as permissive as a rogue can be: it trusts the edge's identity, so only the edge's own
+# check of the server certificate stands between the approved proposal and its Method.
+SIM_REQUIRE_IDENTITY=on SIM_GOVERNED_THUMBPRINT="$THUMB" SIM_SERVER_CERT_OUT="$(cygpath -m "$(pwd)/$ROGUE_CERT")" \
+  java -jar "$S" >"$ROGUE_LOG" 2>&1 &
+wait_line "$ROGUE_LOG" "OPC-UA sim listening" 30 || fail "M8 the rogue sim did not start"
+! cmp -s "$SIM_CERT" "$ROGUE_CERT" || fail "M8 the rogue presents the trusted certificate - not a rogue"
+# A new session, not the old one: a session reconnecting to the endpoint it already holds encrypts to
+# the old server's certificate and the rogue fails that on its own, so the validator would go untested.
+# An edge restarting while the rogue answers discovers the rogue's endpoint and certificate afresh.
+stop_edge M3
+start_edge M8 3 || fail "M8 Heimdall did not restart"
+publish m8.approved || fail "M8 publish failed"
+wait_line "$EDGE_LOG" "cmdId=$C8" 30 || fail "M8 Heimdall never answered the proposal"
+sleep 5
+[ "$(count_in "[SIM] transfer Line1/Mixer1.Temp = 47.0" "$ROGUE_LOG")" = "0" ] || fail "M8 the rogue server's Method was called"
+! grep -q "METHOD cmdId=$C8 .* ok=true" "$EDGE_LOG" || fail "M8 Heimdall reports the Method applied"
+[ -n "$(ls "$TRUST/rejected" 2>/dev/null)" ] || fail "M8 the rogue certificate was not quarantined in rejected/"
+echo "[GATE] M8 OK: the rogue server reached no Method, its certificate is in rejected/"
+
+echo "[GATE] ===== M9: no identity ====="
+C9="$(propose m9 48.0 -60 600)"
+approve m9 || fail "M9 approval refused"
+stop_edge M8
+kill_by_mainclass "bifrost-sim.jar"
+sleep 3
+# Without SIM_REQUIRE_IDENTITY the sim lets anyone call the Method: Heimdall's refusal is the only barrier.
+: > "$SIM_LOG"
+java -jar "$S" >"$SIM_LOG" 2>&1 &
+wait_line "$SIM_LOG" "OPC-UA sim listening" 30 || fail "M9 the anonymous sim did not start"
+# The same edge, the same registry and ledger, with only the identity (and so the trust list) unset.
+( unset HEIMDALL_IDENTITY_DIR HEIMDALL_SERVER_TRUST_DIR; exec java "-Dheimdall.gate=M9" -jar "$H" >>"$EDGE_LOG" 2>&1 ) &
+for _ in $(seq 1 45); do [ "$(grep -c "\[BRIDGE\] ready" "$EDGE_LOG" 2>/dev/null || true)" -ge 4 ] && break; sleep 2; done
+[ "$(grep -c "\[BRIDGE\] ready" "$EDGE_LOG" 2>/dev/null || true)" -ge 4 ] || fail "M9 Heimdall did not start without an identity"
+publish m9.approved || fail "M9 publish failed"
+denied "$C9" command.identity.required || fail "M9 the anonymous edge did not refuse command.identity.required"
+sleep 2
+[ "$(transfers 48.0)" = "0" ] || fail "M9 the anonymous edge called the Method"
+echo "[GATE] M9 OK: refused command.identity.required, the sim untouched"
+
 echo ""
-echo "[GATE] PASS run-command-method-gate.sh (M1-M7)"
+echo "[GATE] PASS run-command-method-gate.sh (M1-M9)"
 exit 0

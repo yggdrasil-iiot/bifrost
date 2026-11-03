@@ -42,6 +42,9 @@ ANON_LOG="$WORK/wx-anon.log"
 PUB_LOG="$WORK/wx-pub.log"
 PKI_GOOD="$WORK/wx-pki-good"
 PKI_BAD="$WORK/wx-pki-bad"
+# The OPC-UA servers an edge with an identity trusts. Heimdall refuses to start with an identity and
+# no trust list, so every edge below gets this one.
+TRUST="$WORK/wx-server-trust"
 : > "$PUB_LOG"; : > "$ANON_LOG"
 
 GROUP="Bifrost:Line1"
@@ -122,7 +125,7 @@ wait_broker "$BROKER_BOOTS" || fail "HiveMQ CE never reported 'Started HiveMQ'"
 # thumbprint. --print-thumbprint exists for exactly this ordering. Its POSIX warning goes to stderr,
 # so stdout is the thumbprint and nothing else.
 echo "[GATE] step 2: mint the governed and the untrusted identities"
-rm -rf "$PKI_GOOD" "$PKI_BAD"
+rm -rf "$PKI_GOOD" "$PKI_BAD" "$TRUST"
 APP_URI="urn:bifrost:heimdall:Bifrost-Line1:$EDGE_A"
 GOOD_THUMB="$(java -cp "$HEIMDALL_JAR_WIN" dev.krillin.bifrost.heimdall.EdgeIdentity \
     --print-thumbprint "$PKI_GOOD" "$APP_URI" 2>/dev/null | tr -d '\r')"
@@ -132,6 +135,11 @@ BAD_THUMB="$(java -cp "$HEIMDALL_JAR_WIN" dev.krillin.bifrost.heimdall.EdgeIdent
 [ "$GOOD_THUMB" != "$BAD_THUMB" ] || fail "the two identities share a thumbprint - X4 would prove nothing"
 echo "[GATE] governed thumbprint  = $GOOD_THUMB"
 echo "[GATE] untrusted thumbprint = $BAD_THUMB"
+# X6 runs against the open sim, which presents no server certificate, so its trust list only has to
+# let the edge start: any certificate will do. X1 replaces it with the secured sim's own.
+mkdir -p "$TRUST/trusted/certs"
+cp "$PKI_BAD/edge-cert.der" "$TRUST/trusted/certs/placeholder.der"
+TRUST_WIN="$(cygpath -m "$(pwd)/$TRUST")"
 
 start_sim_open() {
   : > "$SIM_OPEN_LOG"
@@ -141,7 +149,9 @@ start_sim_open() {
 }
 start_sim_secured() {
   : > "$SIM_SEC_LOG"
-  SIM_REQUIRE_IDENTITY=on SIM_GOVERNED_THUMBPRINT="$GOOD_THUMB" \
+  # The certificate is minted at this start; written straight into the edges' trust list.
+  rm -f "$TRUST"/trusted/certs/*
+  SIM_REQUIRE_IDENTITY=on SIM_GOVERNED_THUMBPRINT="$GOOD_THUMB" SIM_SERVER_CERT_OUT="$TRUST_WIN/trusted/certs/sim-server.der" \
     java -jar "$SIM_JAR_WIN" >"$SIM_SEC_LOG" 2>&1 &
   for _ in $(seq 1 30); do grep -q "OPC-UA sim listening" "$SIM_SEC_LOG" 2>/dev/null && return 0; sleep 2; done
   return 1
@@ -150,7 +160,7 @@ start_sim_secured() {
 # $1 = gate tag, $2 = log, $3 = identity dir ("" for none), $4 = health port
 start_edge() {
   : > "$2"
-  HEIMDALL_IDENTITY_DIR="$3" HEALTH_PORT="$4" \
+  HEIMDALL_IDENTITY_DIR="$3" HEIMDALL_SERVER_TRUST_DIR="${3:+$TRUST_WIN}" HEALTH_PORT="$4" \
     java "-Dheimdall.gate=$1" -jar "$HEIMDALL_JAR_WIN" >"$2" 2>&1 &
   for _ in $(seq 1 45); do grep -q "\[BRIDGE\] ready" "$2" 2>/dev/null && return 0; sleep 2; done
   return 1

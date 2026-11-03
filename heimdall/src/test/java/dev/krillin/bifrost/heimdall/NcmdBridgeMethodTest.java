@@ -136,10 +136,11 @@ class NcmdBridgeMethodTest {
                 "{\"version\":\"1.0.0\",\"default\":\"deny\",\"rules\":[" + String.join(",", rules) + "]}");
     }
 
-    NcmdOpcUaBridge bridge(boolean logOnly, CommandLedger ledger) {
+    NcmdOpcUaBridge bridge(boolean logOnly, CommandLedger ledger, boolean identity) {
         return new NcmdOpcUaBridge(GROUP, EDGE, policy, plant, null, null, null, logOnly, new EdgeHealth(), 1, 8,
-                false, 16, null, ledger, false, new NcmdOpcUaBridge.MethodPath(registry, new OpaMethodAuthorizer(), clock));
+                false, 16, null, ledger, false, new NcmdOpcUaBridge.MethodPath(registry, new OpaMethodAuthorizer(), clock, identity));
     }
+    NcmdOpcUaBridge bridge(boolean logOnly, CommandLedger ledger) { return bridge(logOnly, ledger, true); }
     NcmdOpcUaBridge bridge() { return bridge(false, new CommandLedger(ledgerDir, clock)); }
 
     /** An agent-signed statement as vor-propose writes it; {@code coSign} adds the operator's signature over the same bytes. */
@@ -265,6 +266,16 @@ class NcmdBridgeMethodTest {
         Files.writeString(ledgerDir.resolve("commands/Bifrost-Line1/recipe-edge"), "not a directory");
         refused(bridge().handle(NCMD, ncmd(approved(42.0))), "command.ledger.required");
         assertEquals(0, plant.calls);
+    }
+
+    @Test void anAnonymousEdgeRefusesEveryMethodBeforeTheReservation() throws Exception {
+        JsonNode env = approved(42.0);
+        refused(bridge(false, new CommandLedger(ledgerDir, clock), false).handle(NCMD, ncmd(env)), "command.identity.required");
+        assertEquals(0, plant.calls);
+        assertTrue(plant.sampled.isEmpty(), "refused before the precondition reads the plant");
+        assertTrue(entries().stream().allMatch(x -> "denied".equals(x.event().outcome())), "a refusal, not a reservation");
+        assertTrue(bridge().handle(NCMD, ncmd(env)).ok(), "the cmdId is still free for an edge with an identity");
+        assertEquals(1, plant.calls);
     }
 
     @Test void aFailedOrUnconfirmedCallStillConsumesTheCmdId() throws Exception {

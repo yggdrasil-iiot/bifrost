@@ -18,6 +18,34 @@ class NcmdOpcUaBridgeMainConfigTest {
                 k -> "HEIMDALL_IDENTITY_DIR".equals(k) ? "/etc/heimdall/pki" : null).identityDir());
     }
 
+    @Test
+    void serverTrustDirIsReadFromTheEnvironmentAndDefaultsToUnset() {
+        assertNull(NcmdOpcUaBridgeMain.resolve(k -> null).serverTrustDir());
+        assertEquals("/etc/heimdall/server-trust", NcmdOpcUaBridgeMain.resolve(
+                k -> "HEIMDALL_SERVER_TRUST_DIR".equals(k) ? "/etc/heimdall/server-trust" : null).serverTrustDir());
+    }
+
+    /** An identity presented to an unauthenticated server is the defect, so the pair is all or nothing. */
+    @Test
+    void anIdentityWithoutAServerTrustListRefusesToStart() {
+        var cfg = NcmdOpcUaBridgeMain.resolve(Map.of("HEIMDALL_IDENTITY_DIR", "/pki")::get);
+        var e = assertThrows(IllegalStateException.class, () -> NcmdOpcUaBridgeMain.loadServerTrust(cfg));
+        assertTrue(e.getMessage().contains("HEIMDALL_SERVER_TRUST_DIR"), e.getMessage());
+    }
+
+    /** The anonymous None path checks no server certificate, so a trust list there would only look applied. */
+    @Test
+    void aServerTrustListWithoutAnIdentityRefusesToStart() {
+        var cfg = NcmdOpcUaBridgeMain.resolve(Map.of("HEIMDALL_SERVER_TRUST_DIR", "/trust")::get);
+        var e = assertThrows(IllegalStateException.class, () -> NcmdOpcUaBridgeMain.loadServerTrust(cfg));
+        assertTrue(e.getMessage().contains("HEIMDALL_IDENTITY_DIR"), e.getMessage());
+    }
+
+    @Test
+    void neitherIsTheAnonymousPathUnchanged() throws Exception {
+        assertNull(NcmdOpcUaBridgeMain.loadServerTrust(NcmdOpcUaBridgeMain.resolve(k -> null)));
+    }
+
     /**
      * Derived, and per-edge: two edges must be two principals to the server, or a per-edge write
      * permission cannot mean anything.

@@ -394,7 +394,14 @@ reg="$BREG"; reg_win="$(cygpath -m "$(pwd)/$BREG")"
 CONF_RECIPE_WIN="$(cygpath -m "$(pwd)/$BREG/conformance/Line1-Mixer/recipe.json")"
 POLICY_WIN="$(cygpath -m "$(pwd)/$BREG/policy.json")"
 ELOG10="$WORK/edge-k10.log"
-start_edge "$ELOG10" signed "HEIMDALL_IDENTITY_DIR=$PKI_WIN" "HEIMDALL_CERT_WARN_DAYS=99999"
+# An identity needs a server trust list for the edge to start. K10 talks to no OPC-UA server, so any
+# certificate will do; K8 below replaces it with the secured sim's own.
+TRUST="$WORK/server-trust"
+rm -rf "$TRUST"; mkdir -p "$TRUST/trusted/certs"
+cp "$PKI/edge-cert.der" "$TRUST/trusted/certs/placeholder.der"
+TRUST_WIN="$(cygpath -m "$(pwd)/$TRUST")"
+start_edge "$ELOG10" signed "HEIMDALL_IDENTITY_DIR=$PKI_WIN" "HEIMDALL_SERVER_TRUST_DIR=$TRUST_WIN" \
+  "HEIMDALL_CERT_WARN_DAYS=99999"
 ok=0
 for i in $(seq 1 20); do
   grep -q "identity.cert.expiring" "$ELOG10" 2>/dev/null && { ok=1; break; }
@@ -451,7 +458,10 @@ else
 
   echo "[KR] K8: sim trusting BOTH thumbprints"
   : > "$SIM_LOG"
+  # The sim's certificate is minted at this start; it becomes the edges' whole trust list.
+  rm -f "$TRUST"/trusted/certs/*
   SIM_REQUIRE_IDENTITY=on SIM_GOVERNED_THUMBPRINT="$THUMB1,$THUMB2" \
+    SIM_SERVER_CERT_OUT="$TRUST_WIN/trusted/certs/sim-server.der" \
     java -jar "$SIM_JAR_WIN" >"$SIM_LOG" 2>&1 &
   ok=0
   for i in $(seq 1 30); do grep -q "OPC-UA sim listening" "$SIM_LOG" 2>/dev/null && { ok=1; break; }; sleep 2; done
@@ -465,7 +475,7 @@ else
         POLICY_PATH="$(cygpath -m "$(pwd)/heimdall/registry/policy.json")" \
         REGISTRY_PATH="$(cygpath -m "$(pwd)/heimdall/registry")" \
         CONFORMANCE_PATH="$(cygpath -m "$(pwd)/heimdall/registry/conformance/Line1-Mixer/1.0.0.json")" \
-        HEIMDALL_IDENTITY_DIR="$2" \
+        HEIMDALL_IDENTITY_DIR="$2" HEIMDALL_SERVER_TRUST_DIR="$TRUST_WIN" \
         java "-Dheimdall.gate=KR8-$3" -jar "$HEIMDALL_JAR_WIN" >"$1" 2>&1 &
     for i in $(seq 1 45); do grep -q "\[BRIDGE\] ready" "$1" 2>/dev/null && return 0; sleep 2; done
     return 1
