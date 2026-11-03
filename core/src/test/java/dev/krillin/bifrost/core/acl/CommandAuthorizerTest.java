@@ -146,7 +146,7 @@ class CommandAuthorizerTest {
     }
 
     /**
-     * The reason travels to the NDATA response as well as the ops log, on a broker this design's own
+     * The reason travels to the RESULT response as well as the ops log, on a broker this design's own
      * premise says authenticates nobody. Naming the authorized principal there would hand an
      * unauthenticated prober the answer for every rule.
      */

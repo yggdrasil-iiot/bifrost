@@ -79,7 +79,7 @@ Exit codes for both subcommands: 0 accepted, 1 refused with a JSON `command-refu
 gates command publish <envelope> --broker <url>
 ```
 
-Delivers an envelope as one Sparkplug B NCMD to `spBv1.0/<group>/NCMD/<edge>`, taking group and edge from the statement's `target`. The NCMD carries exactly one metric, named `bifrost/command/v1`, of datatype String, whose value is the envelope JSON as written; the metric has property `op` = `method`. The payload uuid is the `cmdId`, so the edge's NDATA answer correlates with it.
+Delivers an envelope as one Sparkplug B NCMD to `spBv1.0/<group>/NCMD/<edge>`, taking group and edge from the statement's `target`. The NCMD carries exactly one metric, named `bifrost/command/v1`, of datatype String, whose value is the envelope JSON as written; the metric has property `op` = `method`. The payload uuid is the `cmdId`, so the edge's answer on `bifrost/<group>/RESULT/<edge>` correlates with it.
 
 Publish verifies nothing; the edge does. So it can also deliver an envelope the edge must refuse.
 
@@ -105,11 +105,11 @@ Every refusal before the reservation writes one audit entry with outcome `denied
 
 `ENFORCEMENT_LOG_ONLY` and `REQUIRE_SIGNED_COMMAND` do not apply to `op=method`: a policy refusal on this path always refuses.
 
-The NDATA answer: on success `ok` is true, `value` is the Method's first output argument, and `detail` describes the call. On refusal, `detail` begins `denied: <reason code>`. On a failed call, `detail` begins `failed: command.method.failed (<outcome>)`.
+The RESULT answer: on success `ok` is true, `value` is the Method's first output argument, and `detail` describes the call. On refusal, `detail` begins `denied: <reason code>`. On a failed call, `detail` begins `failed: command.method.failed (<outcome>)`.
 
 ### Gate
 
-`scripts/run-command-method-gate.sh` runs this path against HiveMQ CE, the OPC UA sim requiring the edge's certificate, and a running Heimdall. It asserts: an approved proposal for 42.0 is applied once and answered on NDATA; the same envelope again and again after a Heimdall restart is refused `command.replay`; an expired window is refused `command.window`; a proposal without the co-signature is refused `command.signature`; a Bad Temp sample is refused `command.precondition`; and a release published on the stream after approval is refused `command.head.mismatch`. With `--negative-control` it expects the restarted edge to apply the replay, which fails, so the gate exits non-zero.
+`scripts/run-command-method-gate.sh` runs this path against HiveMQ CE, the OPC UA sim requiring the edge's certificate, and a running Heimdall. It asserts: an approved proposal for 42.0 is applied once and answered on RESULT, with nothing published on the node's NDATA; the same envelope again and again after a Heimdall restart is refused `command.replay`; an expired window is refused `command.window`; a proposal without the co-signature is refused `command.signature`; a Bad Temp sample is refused `command.precondition`; and a release published on the stream after approval is refused `command.head.mismatch`. With `--negative-control` it expects the restarted edge to apply the replay, which fails, so the gate exits non-zero.
 
 ## Reason codes
 

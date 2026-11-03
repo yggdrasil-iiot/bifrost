@@ -14,7 +14,7 @@ import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
  * counterpart to {@link RogueNcmd}, which publishes.
  *
  * <p>The gates previously had no way to observe a topic at all — every script could publish and
- * none could subscribe — which is why the retained status topic and the NDATA response detail were
+ * none could subscribe — which is why the retained status topic and the RESULT response detail were
  * both unassertable from a gate.
  *
  * <pre>

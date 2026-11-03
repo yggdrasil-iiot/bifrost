@@ -8,7 +8,8 @@
 # gates/ProposalFixture, co-signed with `gates command approve` and delivered with `gates command publish`.
 #
 #   M1 normal          : 42.0 is applied - the sim transfers Line1/Mixer1.Temp = 42.0, the ledger holds
-#                        a reservation and an applied outcome, and the NDATA answer reports the call
+#                        a reservation and an applied outcome, and the RESULT answer reports the call;
+#                        nothing is published on the node's Sparkplug NDATA (Muninn owns that session)
 #   M2 replay          : the same envelope again is refused command.replay; the sim is not touched
 #   M3 replay+restart  : after Heimdall is killed and restarted, still command.replay - the reservation
 #                        was on disk, not in memory
@@ -42,7 +43,8 @@ LED="$WORK/mg-ledger"
 PROP="$WORK/mg-proposals"
 SIM_LOG="$WORK/mg-sim.log"
 EDGE_LOG="$WORK/mg-edge.log"
-WATCH_LOG="$WORK/mg-ndata.log"
+WATCH_LOG="$WORK/mg-result.log"
+SPB_LOG="$WORK/mg-spb.log"
 CLI_LOG="$WORK/mg-cli.log"
 : > "$CLI_LOG"
 
@@ -57,7 +59,7 @@ COMPOSE_WIN="$(cygpath -m "$(pwd)/docker-compose.yml")"
 
 fail() {
   echo "[GATE] FAIL: $*"
-  for f in "$SIM_LOG" "$EDGE_LOG" "$WATCH_LOG" "$CLI_LOG"; do
+  for f in "$SIM_LOG" "$EDGE_LOG" "$WATCH_LOG" "$SPB_LOG" "$CLI_LOG"; do
     [ -s "$f" ] && { echo "--- $(basename "$f") tail ---"; tail -25 "$f"; } || true
   done
   exit 1
@@ -178,8 +180,11 @@ start_edge M 1 || fail "Heimdall did not start"
 grep -q "OPC-UA identity $THUMB" "$EDGE_LOG" || fail "Heimdall is not presenting the identity the sim trusts"
 
 : > "$WATCH_LOG"
-java -cp "$H" dev.krillin.bifrost.heimdall.TopicWatcher "spBv1.0/$GROUP/NDATA/$EDGE" 900 >"$WATCH_LOG" 2>&1 &
-wait_line "$WATCH_LOG" "\[WATCH\] subscribed" 15 || fail "the NDATA watcher did not subscribe"
+java -cp "$H" dev.krillin.bifrost.heimdall.TopicWatcher "bifrost/$GROUP/RESULT/$EDGE" 900 >"$WATCH_LOG" 2>&1 &
+wait_line "$WATCH_LOG" "\[WATCH\] subscribed" 15 || fail "the RESULT watcher did not subscribe"
+: > "$SPB_LOG"
+java -cp "$H" dev.krillin.bifrost.heimdall.TopicWatcher "spBv1.0/$GROUP/NDATA/$EDGE" 900 >"$SPB_LOG" 2>&1 &
+wait_line "$SPB_LOG" "\[WATCH\] subscribed" 15 || fail "the NDATA watcher did not subscribe"
 
 # ---------------------------------------------------------------------------
 echo "[GATE] ===== M1: an approved proposal is applied ====="
@@ -195,9 +200,11 @@ grep "\"cmdId\":\"$C1\"" "$SEG" | grep -q '"phase":"outcome".*"outcome":"applied
 java -cp "$G" dev.krillin.bifrost.gates.CommandLogGate verify "$(cygpath -m "$SEG")" >/dev/null || fail "M1 the ledger chain is broken"
 # The watcher prints raw Sparkplug bytes: the detail metric precedes the uuid and the bytes carry
 # newlines, so one answer is joined back into one line and matched within itself.
-ndata_has() { for _ in $(seq 1 10); do tr -d '\r\n' < "$WATCH_LOG" | grep -aqE "$1" && return 0; sleep 2; done; return 1; }
-ndata_has "called [^ ]*SetTemperature\(42\.0\) -> 42\.0.{0,80}$C1" || fail "M1 no affirmative NDATA answer"
-echo "[GATE] M1 OK: applied once, reserved and recorded, answered on NDATA"
+result_has() { for _ in $(seq 1 10); do tr -d '\r\n' < "$WATCH_LOG" | grep -aqE "$1" && return 0; sleep 2; done; return 1; }
+result_has "called [^ ]*SetTemperature\(42\.0\) -> 42\.0.{0,80}$C1" || fail "M1 no affirmative RESULT answer"
+# The answer is already here, so an NDATA copy of it would be too.
+! grep -aq "^\[WATCH\] spBv1.0/" "$SPB_LOG" || fail "M1 Heimdall published on the node's Sparkplug NDATA"
+echo "[GATE] M1 OK: applied once, reserved and recorded, answered on RESULT, nothing on NDATA"
 
 echo "[GATE] ===== M2: the same envelope again ====="
 publish m1.approved || fail "M2 publish failed"

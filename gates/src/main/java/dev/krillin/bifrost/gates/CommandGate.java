@@ -59,7 +59,7 @@ public final class CommandGate {
     }
 
     /** One NCMD to spBv1.0/<group>/NCMD/<edge> of the statement's target: the envelope bytes as the String metric, property
-     *  op=method, payload uuid = cmdId so the edge's NDATA answer correlates. */
+     *  op=method, payload uuid = cmdId so the edge's RESULT answer correlates. */
     static JsonNode publish(byte[] envelope,String broker) throws Exception {
         var p=CommandProposal.parse(Base64.getDecoder().decode(text(JSON.readTree(envelope),"payload")));
         String topic="spBv1.0/"+p.target().group()+"/NCMD/"+p.target().edge();

@@ -3,9 +3,17 @@ package dev.krillin.bifrost.heimdall;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
+import org.eclipse.paho.client.mqttv3.MqttMessage;
 
 import org.eclipse.tahu.message.SparkplugBPayloadDecoder;
+import org.eclipse.tahu.message.SparkplugBPayloadEncoder;
 import org.eclipse.tahu.message.model.Metric;
 import org.eclipse.tahu.message.model.Metric.MetricBuilder;
 import org.eclipse.tahu.message.model.MetricDataType;
@@ -45,7 +53,7 @@ class NcmdWireContractTest {
     private static final String EDGE = "recipe-edge";
     private static final String NCMD_TOPIC = "spBv1.0/" + GROUP + "/NCMD/" + EDGE;
     private static final String QUERY_TOPIC = "bifrost/" + GROUP + "/QUERY/" + EDGE;
-    private static final String NDATA_TOPIC = "spBv1.0/" + GROUP + "/NDATA/" + EDGE;
+    private static final String RESULT_TOPIC = "bifrost/" + GROUP + "/RESULT/" + EDGE;
 
     private CommandPolicy policy() throws Exception {
         return AclMapperFactory.create()
@@ -182,7 +190,96 @@ class NcmdWireContractTest {
                 cmd("vec-r1", "read", "ns=2;s=Recipe/Temp", null, MetricDataType.String, null, null)).ok());
         assertTrue(fake.readCalled, "QUERY topic must be recognized as a read (topic string pinned)");
 
-        assertEquals(NDATA_TOPIC, "spBv1.0/" + GROUP + "/NDATA/" + EDGE, "NDATA response topic pinned");
+    }
+
+    // ---- Outbound: Heimdall publishes nothing under spBv1.0/ (Muninn owns the Sparkplug node) ----
+
+    record Sent(String topic, byte[] payload, int qos, boolean retained) {}
+
+    /** Records every publish; {@code await(n)} waits until n have arrived from the executor thread. */
+    static final class Recorder implements NcmdOpcUaBridge.Outbound {
+        final List<Sent> sent = Collections.synchronizedList(new ArrayList<>());
+        private volatile CountDownLatch latch = new CountDownLatch(0);
+
+        void expect(int n) {
+            latch = new CountDownLatch(n);
+        }
+
+        void await() throws InterruptedException {
+            assertTrue(latch.await(5, TimeUnit.SECONDS), "expected publishes did not arrive: " + sent);
+        }
+
+        @Override public void publish(String topic, byte[] payload, int qos, boolean retained) {
+            sent.add(new Sent(topic, payload, qos, retained));
+            latch.countDown();
+        }
+    }
+
+    private static MqttMessage message(SparkplugBPayload p) throws Exception {
+        return new MqttMessage(new SparkplugBPayloadEncoder().getBytes(p, false));
+    }
+
+    @Test void command_and_read_answers_go_to_result_not_sparkplug() throws Exception {
+        FakeApplier fake = new FakeApplier();
+        NcmdOpcUaBridge b = bridge(fake);
+        Recorder out = new Recorder();
+        b.outbound(out);
+        try {
+            out.expect(2);
+            b.messageArrived(NCMD_TOPIC, message(
+                    cmd("vec-w1", "write", "ns=2;s=Recipe/Rpm", 1500.0, MetricDataType.Double, null, null)));
+            b.messageArrived(QUERY_TOPIC, message(
+                    cmd("vec-r1", "read", "ns=2;s=Recipe/Temp", null, MetricDataType.String, null, null)));
+            out.await();
+        } finally {
+            b.close();
+        }
+        assertEquals(2, out.sent.size(), "one answer per request: " + out.sent);
+        for (Sent s : out.sent) {
+            assertEquals(RESULT_TOPIC, s.topic(), "answers go to the RESULT topic");
+            assertEquals(1, s.qos());
+            assertFalse(s.retained(), "a receipt is not retained");
+        }
+        List<String> ids = new ArrayList<>();
+        for (Sent s : out.sent) {
+            ids.add(new SparkplugBPayloadDecoder().buildFromByteArray(s.payload(), null).getUuid());
+        }
+        assertTrue(ids.containsAll(List.of("vec-w1", "vec-r1")), "each answer carries its cmdId: " + ids);
+    }
+
+    @Test void node_control_on_ncmd_is_ignored_without_an_answer() throws Exception {
+        FakeApplier fake = new FakeApplier();
+        NcmdOpcUaBridge b = bridge(fake);
+        Recorder out = new Recorder();
+        b.outbound(out);
+        SparkplugBPayload rebirth = new SparkplugBPayloadBuilder()
+                .setTimestamp(new Date())
+                .addMetric(new MetricBuilder("Node Control/Rebirth", MetricDataType.Boolean, true).createMetric())
+                .createPayload();
+        try {
+            b.messageArrived(NCMD_TOPIC, message(rebirth));
+            // A read after it: once its answer is here, anything the Rebirth had queued would be too.
+            out.expect(1);
+            b.messageArrived(QUERY_TOPIC, message(
+                    cmd("vec-r1", "read", "ns=2;s=Recipe/Temp", null, MetricDataType.String, null, null)));
+            out.await();
+        } finally {
+            b.close();
+        }
+        assertEquals(1, out.sent.size(), "the Rebirth got no answer: " + out.sent);
+        assertEquals("vec-r1",
+                new SparkplugBPayloadDecoder().buildFromByteArray(out.sent.get(0).payload(), null).getUuid());
+        assertFalse(fake.writeCalled, "a node control never reaches the applier");
+        assertFalse(fake.callCalled, "a node control never reaches the applier");
+    }
+
+    @Test void node_control_and_properties_are_recognized_and_commands_are_not() throws Exception {
+        assertTrue(NcmdOpcUaBridge.isNodeControl(new SparkplugBPayloadBuilder()
+                .addMetric(new MetricBuilder("Properties/Hardware Make", MetricDataType.String, "x").createMetric())
+                .createPayload()));
+        assertFalse(NcmdOpcUaBridge.isNodeControl(
+                cmd("vec-w1", "write", "ns=2;s=Recipe/Rpm", 1500.0, MetricDataType.Double, null, null)));
+        assertFalse(NcmdOpcUaBridge.isNodeControl(new SparkplugBPayloadBuilder().createPayload()));
     }
 
     private static Metric metric(SparkplugBPayload p, String name) {

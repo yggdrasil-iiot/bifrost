@@ -23,7 +23,7 @@ public final class CommandAuthorizer {
             // sits in, and that is the reason.
             //
             // The reason string carries the RULE ID and never the expected principal: it travels
-            // to the NDATA response as well as the log, on a broker this design's own premise says
+            // to the RESULT response as well as the log, on a broker this design's own premise says
             // authenticates nobody.
             if (req.subject() != null && !principalMatches(r.principal(), req.subject())) {
                 return Decision.deny("principal-mismatch [" + r.id() + "]");

@@ -826,7 +826,7 @@ experience, and says so.
 - **Three more things the command ledger does not cover.** An overloaded edge refuses without an
   entry, because that refusal happens on the broker callback thread where a blocking append does not
   belong. Reads leave nothing, by the same boundary that keeps them out of authorization. And the
-  requester gets no receipt: the NDATA response carries no entry hash, so nobody outside the edge
+  requester gets no receipt: the RESULT response carries no entry hash, so nobody outside the edge
   can check their command was recorded. Growth is unmeasured and retention unsolved.
 - **Break-glass moves four-eyes earlier in time; it does not remove it, and it is not free.** Two
   registered people mint a duty key ahead of the emergency (`gates activation duty-key-mint`, and
