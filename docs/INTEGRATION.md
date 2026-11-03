@@ -248,7 +248,7 @@ would be wrong.
 - **[`ADOPTION.md`](ADOPTION.md)** — the order this goes into a plant that is already running, and
   the phase where it stops being risk-free. Phase 0 touches nothing and produces an artifact
   auditors already ask for.
-- **[`ENTERPRISE.md`](ENTERPRISE.md)** — thirteen axes with *built · deferred · open · measured*
+- **[`ENTERPRISE.md`](ENTERPRISE.md)** — fourteen axes with *built · deferred · open · measured*
   status, including the two this document leans on hardest: §5 (the division of labour with the
   plant's own infrastructure) and §13 (the governed model against the vendor's copy).
 - **The gates** — every claim above that is marked built is backed by a script in `scripts/` that

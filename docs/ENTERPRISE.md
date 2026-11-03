@@ -9,9 +9,12 @@ are deliberately deferred, and which are open** — for the Yggdrasil spine as a
 proves it. A row marked *deferred* must name the concrete trigger that would force the work.
 A row with neither is a wish, and wishes do not belong here.
 
-Evidence dates from **2026-09-10**, when all 23 gates were last run green (Docker 26.1.4) and
-the Huginn suite measured 242 tests. The Bifrost suite was re-measured on **2026-10-20**: 851
-tests, 237 of them for offline mapping publication; the gates were not re-run then.
+On **2026-11-03** all 24 gate scripts (`scripts/run-*gate*.sh`) were run green against one
+`mvn clean install` (Docker 26.1.4). That build ran 1,019 Bifrost tests: core 706, gates 136,
+heimdall 144, sim 33; no failures, errors or skips. On **2026-11-02** the Vor side of the agent
+write path (§14) was run in yggdrasil-iiot/vor: 96 pytest tests, `scripts/injection_gate.py` 14
+of 14 assertions, `scripts/propose_crosscheck.py` 7 assertions. The Huginn suite was last
+measured on **2026-09-10**: 242 tests.
 
 ---
 
@@ -32,7 +35,7 @@ it did.**
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="diagrams/readiness-board.dark.svg">
-  <img alt="Thirteen enterprise-readiness axes sorted into four columns: five built, six partial, two deferred with a named trigger, none open" src="diagrams/readiness-board.svg">
+  <img alt="Fourteen enterprise-readiness axes sorted into four columns: five built, seven partial, two deferred with a named trigger, none open" src="diagrams/readiness-board.svg">
 </picture>
 
 The table below is the same board with the evidence attached. Read the figure for the shape of
@@ -43,7 +46,7 @@ what is and is not answered; read the rows for why.
 | 1 | Multi-site authority, site specialization | **built** | `run-federation-gate.sh` F1 · `run-template-conformance-gate.sh` (site ⊨ enterprise, 3 adapters ≡ native) |
 | 2 | Governance propagation to a site | **built, with a boundary** | F2 — `git pull`, then effective at that site's **next Heimdall restart** ([why](#2-propagation-is-restart-scoped-on-purpose)) |
 | 3 | Site keeps running while disconnected | **built** | F4 — offline serving, reconcile on reconnect |
-| 4 | Tamper-evidence, insider rollback | **built** | LN1–LN4 · I1–I7 · AN1–AN8 · F5 (cross-domain anchor) — that is the **activation** ledger, at T7. The **command** ledger added in `run-command-ledger-gate.sh` D1–D8 is chained only, so it is **T4 for commands: an edit, a mid-list deletion or a reorder is caught; truncation is not**. Mapping stream heads signed with two keys are checked at the same strength: a restored older head or a removed head attestation is caught against the `AnchorStore` witness, and a full restore only by a witness kept off the box. |
+| 4 | Tamper-evidence, insider rollback | **built** | LN1–LN4 · I1–I7 · AN1–AN8 · F5 (cross-domain anchor) — that is the **activation** ledger, at T7. The **command** ledger added in `run-command-ledger-gate.sh` D1–D8 is chained only, so it is **T4 for commands: an edit, a mid-list deletion or a reorder is caught; truncation is not**. Mapping stream heads signed with two keys are checked at the same strength: a restored older head or a removed head attestation is caught against the `AnchorStore` witness, and a full restore only by a witness kept off the box. The command ledger now also holds the replay reservation of the governed Method path (`run-command-method-gate.sh` M3: a replay is refused after a Heimdall restart because the reservation is on disk), so truncating the ledger's tail can remove a reservation and let the same approved envelope run once more, but only until its signed window closes (at most 15 minutes after `notBefore`). |
 | 5 | **Conduit inventory (IEC 62443 SR 6.2)** | **partial** | Huginn produces the *observed* list and reconciles it; frequency, ownership and non-TCP conduits are missing ([detail](#5-conduit-inventory)) |
 | 6 | **Identity lifecycle** | **deferred, with a path** | Trigger: the second site on real hardware, or the first certificate expiry ([detail](#6-identity-lifecycle)) |
 | 7 | **Supply chain / EU CRA** | **partial** | Ledger, provenance manifest and a CycloneDX SBOM exist; **no vulnerability-handling process, and the ledger does not reach the build** ([detail](#7-supply-chain-and-the-cra)) |
@@ -51,8 +54,9 @@ what is and is not answered; read the rows for why.
 | 9 | AAS alignment → conformance | **deferred** | Trigger: a customer asking for an IDTA submodel template by number |
 | 10 | **Certificate expiry, key rotation** | **partial** | `run-key-rotation-gate.sh` K1-K10 — a signing key rotates offline without breaking history, and an expiring certificate is announced rather than discovered. **No CA, no enrolment, and rotation is not revocation** ([detail](#10-certificate-expiry-and-key-rotation)) |
 | 11 | Audit query at scale | **measured** | `scripts/bench-ledger.sh` — growth is exactly 586 B/entry (884 signed); signature verification costs ~9× the chain walk, and anchoring is free on top of it ([detail](#11-audit-query-at-scale)). **Those numbers are for the activation ledger at roughly ten events a day. The command ledger is a different volume class — two entries per applied command — and is unmeasured** |
-| 12 | **Write-path exclusivity** | **partial** | `run-write-exclusivity-gate.sh` X1–X6 — the edge presents an X.509 identity and a server told to require it refuses a second client's write with `Bad_UserAccessDenied` while still serving its reads. A bypass **over another protocol** is now visible rather than merely acknowledged: `run-huginn-seam-gate.sh` H1–H8 reports a write to governed equipment from anything that is not the edge. **Visibility is not enforcement**, Modbus is still unenforced, and a plant's own server has to be configured — as does its network: a bypass over a protocol nobody decodes is the conduit rule's to stop, not a decoder's ([detail](#12-write-path-exclusivity), [layers](#5-conduit-inventory)) |
+| 12 | **Write-path exclusivity** | **partial** | `run-write-exclusivity-gate.sh` X1–X6 — the edge presents an X.509 identity and a server told to require it refuses a second client's write with `Bad_UserAccessDenied` while still serving its reads. A bypass **over another protocol** is now visible rather than merely acknowledged: `run-huginn-seam-gate.sh` H1–H8 reports a write to governed equipment from anything that is not the edge. **Visibility is not enforcement**, Modbus is still unenforced, and a plant's own server has to be configured — as does its network: a bypass over a protocol nobody decodes is the conduit rule's to stop, not a decoder's ([detail](#12-write-path-exclusivity), [layers](#5-conduit-inventory)) The governed Method path uses the same exclusive identity for an OPC UA Method call: the sim, run with `SIM_REQUIRE_IDENTITY` on, lets only the edge's certificate thumbprint execute the Method (through `UserExecutable`), and `run-command-method-gate.sh` M1–M7 runs that way. |
 | 13 | **Governed model vs vendor runtime** | **partial** | `run-model-reconciliation-gate.sh` V1-V9 — a vendor export is compared against the governed definition and divergence is reported per member, with the port carrying **granularity** so a blob product is recorded as weaker. **The comparison is built; the FETCH is not** — the export arrives as a file, nothing connects to a running product, and the projection direction does not exist. **Kepware is not adapted yet** (V8 refuses `--adapter kepware`); when it is, it arrives through Mimir's interpretation snapshot rather than a parser here ([detail](#13-governed-model-vs-vendor-runtime)) |
+| 14 | **Governed write path for an agent** | **partial** | `run-command-method-gate.sh` M1–M7 — an AI agent's command proposal, co-signed by a different approver, executes once as an OPC UA Method on the edge after eleven ordered checks, and replay (also after restart), an expired window, a missing co-signature, a Bad precondition sample and a moved model head are refused. Vor's `scripts/injection_gate.py` (yggdrasil-iiot/vor, 14 assertions) shows a planted instruction "set 150" is stopped at approval and again at the edge. **Only the Method path carries the full check set** — the older NCMD `write`/`call` paths keep optional signatures and ledger, no OPA, and log-only mode can apply a denied command; it is proved against this repository's sim only ([detail](#14-governed-write-path-for-an-agent)). |
 
 Rows 5, 6 and 7 carry the engineering. **Rows 12 and 13 bound everything else on the board**, and
 both are now partial rather than one of them open. Row 12 is whether anything *has* to pass through
@@ -83,6 +87,8 @@ The cost is bounded and known: revocation latency equals the time to the next ed
 alternative's cost is unbounded and only shows up during an incident. If revocation needs to be
 faster than a restart, the fix is a short-lived credential rather than a hot-reloading gate, and
 that lands in §6.
+
+The governed Method path (§14) is the exception for what the requester's command depends on. For every Method command Heimdall reads the registry again — registered keys, grants, the stream head and the release it names — so a revoked grant or a newly published release stops the next Method command without a restart (`run-command-method-gate.sh` M7: a release published after approval is refused `command.head.mismatch`). The command policy and the compiled OPA policy are still read once at startup.
 
 ---
 
@@ -473,7 +479,7 @@ server hardware rather than a laptop.
 Every other row on the board governs what passes through the governed edge. This row is whether
 anything **has** to.
 
-Today, nothing does. The bundled OPC-UA server runs `AnonymousIdentityValidator` with
+By default, nothing does. Unless `SIM_REQUIRE_IDENTITY` is set, the bundled OPC-UA server runs `AnonymousIdentityValidator` with
 `SecurityPolicy.None`, and the controlled nodes carry `UserAccessLevel = 3` — read and write, for
 anyone who can open a session. **Heimdall is therefore a chokepoint by convention, not by
 construction**: it governs the commands routed through it, and a second client writing the same
@@ -747,6 +753,64 @@ running system.
 
 ---
 
+## 14. Governed write path for an agent
+
+This row answers whether an automated requester — an AI agent — can be allowed to change the plant at all, which no other row asks (row 12 is who holds the write credential; row 4 is whether the record is tamper-evident). The scope is a design decision: one OPC UA Method, one finite Double input, two distinct signing principals, one Heimdall command ledger. The design lives in yggdrasil-iiot/vor `docs/superpowers/specs/2026-11-02-vor-m2-governed-write-design.md`; the contract is [`COMMAND-PROPOSAL.md`](COMMAND-PROPOSAL.md).
+
+### The path
+
+1. Vor `read_governed` (an MCP server, read-only, holds no key) answers with a value bound to a published mapping release and a live Sparkplug B sample; that answer JSON is the evidence.
+2. `vor-propose`, a separate process holding the agent's Ed25519 key file, signs a DSSE envelope around an in-toto Statement v1 with three raw-byte SHA-256 subjects: the stream head file, the `release.json` it names, and the evidence bytes. It refuses to sign unusable evidence. Signing is a separate process so that a prompt steering a tool call cannot obtain a signature. Cross-language proof: vor `scripts/propose_crosscheck.py`, 7 assertions.
+3. `gates command approve` runs ten ordered checks (grants `propose_command`/`approve_command` on the stream, current verified head and release, usable evidence whose pin names that release, the command policy with default `deny`, the approver's key) and co-signs the same PAE bytes without re-serializing the payload.
+4. `gates command publish` sends one Sparkplug B NCMD, metric `bifrost/command/v1`, `op` = `method`, payload uuid = `cmdId`. It verifies nothing, so it can also deliver what the edge must refuse — the gates use exactly that.
+5. Heimdall runs eleven ordered checks (listed in [`COMMAND-PROPOSAL.md`](COMMAND-PROPOSAL.md) "Execution in Heimdall"): transport and target, a configured ledger, two signatures on distinct registered keys, the window on the edge's clock, the head and release this registry serves now plus usable evidence, the precondition derived from the pinned release, no earlier reservation, `CommandAuthorizer` then the OPA `command_method` policy, a live Good sample no older than `maxAgeMs`, a reservation forced to disk (fsync) under the ledger lock, and the Method call. It answers on `bifrost/<group>/RESULT/<edge>`.
+6. The sim's `SetTemperature` Method on `Line1/Mixer1` (range 0..100), executable only by the edge's certificate thumbprint.
+
+**Two gates prove execution and refusal.** In `run-command-method-gate.sh`, M1 is applied once and answered on RESULT with nothing on the node's NDATA; M2 replay is refused; M3 replay is refused after a Heimdall restart (the reservation is on disk); M4 triggers `command.window`; M5 triggers `command.signature`; M6 triggers `command.precondition`; and M7 triggers `command.head.mismatch`. Vor `scripts/injection_gate.py` (14 assertions) proves rejection: a control proposal for 50.0 is applied; for 150.0 approval refuses `command.policy.denied`, and the same proposal co-signed outside approval is refused by Heimdall with the same code; bad-quality evidence is refused by `vor-propose`, approval, and Heimdall (`command.evidence.unusable`); a value changed in flight is refused `command.signature`; after a new release a proposal is refused `command.head.mismatch`; and the sim never receives 150.0.
+
+### Who holds what
+
+- The agent key is a file on the agent host, outside the MCP server process and outside any repository. The approver key is the approver's. Both public keys are registered in `identity/authorized-keys.jsonl`, the same trust anchor as the activation ladder (§6).
+- Heimdall holds no signing key for this path. It holds its OPC UA X.509 identity (row 12), which the server requires for the Method.
+- What the agent cannot do: write through Vor (Vor publishes nothing); have a statement accepted for anything but the current head and evidence it read; get a value outside the policy past approval or the edge; extend the window past 15 minutes; approve itself (one principal or one key for both is `identity.four-eyes.same-key`; `activate` and `approve` grants do not stand in for the command grants); replay (the reservation); act after the model moved.
+- What the edge re-checks with its own inputs: signatures, grants from its registry, head and release from its `REGISTRY_PATH`, its own command policy and OPA policy, a fresh sample over its own OPC UA session, its own clock, its own ledger. Approval is not an input the edge trusts — injection A proves it. Transport is untrusted: the topic's group and edge must equal the signed target, and `ENFORCEMENT_LOG_ONLY` and `REQUIRE_SIGNED_COMMAND` do not apply to this path.
+- OPA is the second policy layer over principals, grants, the window, the declared method, and its one input range. Distinct keys, head match, and usable evidence are established in Java first; the live precondition is checked in Java after OPA.
+
+### Operating it
+
+**Provisioning isolates the signing roles, binds permissions to the stream, and mandates local disk reservation.** Generate distinct agent and approver keys with `gates identity keygen` and register the public lines in `identity/authorized-keys.jsonl`. Grant `propose_command` and `approve_command` (target `command`, kind `method`, ref = the stream) in `activation-policy.json`. Write one command-policy rule per Method with the agent as `principal`, a `constraint` min/max, and `default: deny`, for both approval and the edge. Configure Heimdall with `REGISTRY_PATH`, `POLICY_PATH`, `COMMAND_LEDGER_PATH` (mandatory on this path: without it every Method command is refused `command.ledger.required`), and `HEIMDALL_IDENTITY_DIR`, and configure the plant server to let only that certificate execute the Method. Script `run-command-method-gate.sh` is the worked example. Keep the edge's clock synchronized.
+
+| Refusal | What the operator does |
+| :--- | :--- |
+| `command.malformed`, `command.signature`, `identity.four-eyes.same-key`, `command.approver.mismatch` | A tooling or handoff fault; inspect the envelope and registered identities; the `cmdId` is not consumed, so a corrected envelope can be sent. |
+| `command.window` | Check the clocks; an expired proposal needs a new one. |
+| `command.head.mismatch` | The model moved; the agent reads again and proposes again. |
+| `command.evidence.unusable`, `command.precondition` | Plant state; wait for Good, fresh data and propose again. |
+| `command.grant`, `command.policy.denied`, `command.opa.denied` | An authorization question for the policy owner; the edge's policy is not widened first. |
+| `command.replay` | Expected on redelivery; investigate if not. |
+| `command.ledger.required` | A storage fault; nothing on this path runs until it is fixed. |
+| `command.method.failed` (outcome `method-failed` or `unknown`) | The `cmdId` is consumed; inspect the plant before any new, newly approved proposal. |
+
+With a ledger configured, every refusal before the reservation writes one `denied` entry; a reserved command writes an intent entry `reserved` and an outcome entry.
+
+### Where it is weak
+
+- The reservation lives in the command ledger, which is T4 (row 4): truncating its tail removes a reservation, and the same envelope could run once more until its window closes. The activation ledger's signed head and anchor do not cover this ledger.
+- The edge's clock is not authenticated. Drift refuses rather than admits.
+- `target.device` is matched by the command-policy rule and by nothing else. `vor-propose` compares the evidence's group and edge with the target, not the device, and the device string differs between the OPC UA object path (`Line1/Mixer1`) and the binding's ISA-95 device (`synthetic-site:line1:mixer1`).
+- After a reservation, an `unknown` outcome leaves the `cmdId` consumed, and there is no reconciliation procedure.
+- The RESULT answer carries no ledger entry hash.
+- Proved against this repository's sim only.
+
+### Not built, and what would force it
+
+- Heimdall's own Sparkplug node (Muninn owns the node today; Heimdall publishes nothing under `spBv1.0/` and its liveness is the retained `STATUS`) — trigger: a host that needs Heimdall's liveness as a Sparkplug death certificate rather than `STATUS`.
+- An explicit link between the data edge and the command edge, and one meaning for `target.device` — trigger: a second device on one edge.
+- The older NCMD `write`/`call` paths keep optional signatures and ledger, no OPA, and log-only mode can apply a denied command — trigger: a site that must keep plain NCMD writes while turning the bar on; otherwise agents use the Method path only, and converging the two needs an explicit migration decision.
+- Methods with several inputs, reservations shared across several edges, break-glass for commands, outcome reconciliation — trigger: a Method signature that needs them, a second executor, or a production rollout.
+
+---
+
 ## Where this sits next to what shipped
 
 Broker-side governance arrived while this was being built. EMQX Enterprise 6.2 ships a UNS
@@ -799,35 +863,14 @@ experience, and says so.
   fail-closes on an unsigned ledger" are true only once you turn it on.
 - **Authorization is direct principal grants**, not roles or attributes, and the policy file is
   plaintext with change control out of band.
-- **A command's requester is verified only with the bar on, only on the write path, and the record
-  of it is not durable.** `REQUIRE_SIGNED_COMMAND` makes the edge verify an Ed25519 envelope against
-  the same plaintext trust anchor the activation ladder uses, and `CommandAuthorizer` then matches
-  the rule's principal — `run-command-identity-gate.sh` C1–C8. Three limits, all real. The bar is
-  **opt-in and off by default**. **Reads bypass it**: `handle()` short-circuits observation before
-  authorization, so the claim is about commands that write. And replay is refused from a **bounded
-  window** that a bridge restart empties — durable freshness needs a timestamp and a clock the site
-  trusts, and OT sites frequently have neither.
+- **On the NCMD `write`/`call` paths, a command's requester is verified only with the bar on, only on the write path, and the record of it is not durable.** `REQUIRE_SIGNED_COMMAND` makes the edge verify an Ed25519 envelope against the same plaintext trust anchor the activation ladder uses, and `CommandAuthorizer` then matches the rule's principal — `run-command-identity-gate.sh` C1–C8. Three limits, all real. The bar is **opt-in and off by default**. **Reads bypass it**: `handle()` short-circuits observation before authorization, so the claim is about commands that write. And replay is refused from a **bounded window** that a bridge restart empties — durable freshness needs a timestamp and a clock the site trusts, and OT sites frequently have neither. On the Method path the two signatures and the durable reservation are mandatory, and its freshness is a signed window checked on an edge clock that is itself not authenticated.
 - **The broker half is projected, not enforced.** `gates acl-project` emits the ACL a policy implies,
   which is a caller and an output where there was neither. No broker enforces it: `hivemq-ce` is the
   shared broker for twelve gates and runs an allow-all extension deliberately, and the projected
   entries carry no MQTT username mapping.
-- **Commands leave a chained record, at T4 and no higher — and the limits are specific.** The edge
-  writes an **intent** entry before the applier touches the plant and an **outcome** entry after,
-  because `applied` is only knowable once the plant has already moved; `run-command-ledger-gate.sh`
-  proves both, and with `REQUIRE_COMMAND_LEDGER` on a command whose intent cannot be written is
-  refused before the applier runs. What the chain catches is an edit, a mid-list deletion or a
-  reorder. **It does not catch truncation**: deleting the last N entries leaves genesis, every
-  self-hash and every prev-link satisfied, and that is the cheap attack rather than the expensive
-  one. Nothing signs the entries, so a segment can also be rewritten end to end. Closing either
-  needs the signed head and external anchor the activation ladder has and this does not.
-- **The command record names a requester only with `REQUIRE_SIGNED_COMMAND` on, and that bar is off
-  by default.** In a default deployment it is a tamper-evident record of *what was decided*, not of
-  *who asked* — which is half of the sentence at the top of this document, not all of it.
-- **Three more things the command ledger does not cover.** An overloaded edge refuses without an
-  entry, because that refusal happens on the broker callback thread where a blocking append does not
-  belong. Reads leave nothing, by the same boundary that keeps them out of authorization. And the
-  requester gets no receipt: the RESULT response carries no entry hash, so nobody outside the edge
-  can check their command was recorded. Growth is unmeasured and retention unsolved.
+- **Commands leave a chained record, at T4 and no higher — and the limits are specific.** The edge writes an **intent** entry before the applier touches the plant and an **outcome** entry after, because `applied` is only knowable once the plant has already moved; `run-command-ledger-gate.sh` proves both, and with `REQUIRE_COMMAND_LEDGER` on a command whose intent cannot be written is refused before the applier runs. What the chain catches is an edit, a mid-list deletion or a reorder. **It does not catch truncation**: deleting the last N entries leaves genesis, every self-hash and every prev-link satisfied, and that is the cheap attack rather than the expensive one. Nothing signs the entries, so a segment can also be rewritten end to end. Closing either needs the signed head and external anchor the activation ladder has and this does not. On the Method path the intent entry is the reservation, forced to disk before the call, so truncation there also removes a reservation, bounded by the 15-minute window.
+- **The command record names a requester only with `REQUIRE_SIGNED_COMMAND` on, and that bar is off by default.** In a default deployment it is a tamper-evident record of *what was decided*, not of *who asked* — which is half of the sentence at the top of this document, not all of it. This holds for the `write`/`call` paths; on the Method path every entry written after the signatures verify names the proposer, whose signature the edge verified; a refusal before that records no subject.
+- **Three more things the command ledger does not cover.** An overloaded edge refuses without an entry, because that refusal happens on the broker callback thread where a blocking append does not belong. A Method refusal before the reservation does leave a `denied` entry, unlike the overload refusal. Reads leave nothing, by the same boundary that keeps them out of authorization. And the requester gets no receipt: the RESULT response carries no entry hash, so nobody outside the edge can check their command was recorded. Growth is unmeasured and retention unsolved.
 - **Break-glass moves four-eyes earlier in time; it does not remove it, and it is not free.** Two
   registered people mint a duty key ahead of the emergency (`gates activation duty-key-mint`, and
   `run-break-glass-gate.sh` B1 proves one key file cannot stand for two people), after which one
@@ -898,7 +941,7 @@ experience, and says so.
 ## How to falsify this document
 
 Every *built* row above names a script. Clone, run it, and read the exit code — eight of the
-twenty-three need no broker at all, though one of those eight needs the Huginn repository beside
+twenty-four need no broker at all, though one of those eight needs the Huginn repository beside
 this one and skips without it. If a row's gate does not prove what the row claims, the row is
 wrong and should be reported as a bug in this document, not excused.
 
