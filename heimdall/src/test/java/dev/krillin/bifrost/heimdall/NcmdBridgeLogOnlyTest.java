@@ -129,7 +129,7 @@ class NcmdBridgeLogOnlyTest {
         NcmdResponse r = logOnly(fake).handle(NCMD_TOPIC, empty);
 
         assertFalse(r.ok());
-        assertEquals("no command metric", r.detail());
+        assertEquals("denied: command.malformed: no command metric", r.detail());
         assertFalse(fake.writeCalled);
     }
 

@@ -72,7 +72,7 @@ public final class NcmdOpcUaBridgeMain {
                   String anchorDir, boolean enforcementLogOnly, int healthPort, int applyThreads, String identityDir,
                   boolean requireSignedCommand, int replayWindow,
                   String commandLedgerPath, boolean requireCommandLedger, int certWarnDays,
-                  boolean requirePublishedActivation, String serverTrustDir) {}
+                  boolean requirePublishedActivation, String serverTrustDir, String applicationUriOverride) {}
 
     /**
      * Tri-state flag parse shared by every boolean env toggle. {@code true/on/1} and {@code false/off/0}
@@ -96,7 +96,8 @@ public final class NcmdOpcUaBridgeMain {
         String broker = env(getenv, "MQTT_URL", "tcp://localhost:1883");
         String opcua = env(getenv, "OPCUA_URL", "opc.tcp://localhost:48400");
         String group = env(getenv, "SPB_GROUP", "Bifrost:Line1");
-        String edge = env(getenv, "SPB_EDGE", "recipe-edge");
+        // The command edge, never the data edge: an unconfigured Heimdall must not birth Muninn's node.
+        String edge = env(getenv, "SPB_EDGE", DEFAULT_COMMAND_EDGE);
         String policyPath = env(getenv, "POLICY_PATH", "registry/policy.json");
         String registryPath = env(getenv, "REGISTRY_PATH", "registry");
         String conformancePath = env(getenv, "CONFORMANCE_PATH", null);
@@ -123,10 +124,78 @@ public final class NcmdOpcUaBridgeMain {
         String commandLedgerPath = env(getenv, "COMMAND_LEDGER_PATH", null);
         boolean requireCommandLedger = flag(getenv, "REQUIRE_COMMAND_LEDGER", "");
         boolean requirePublished = flag(getenv, "REQUIRE_PUBLISHED_ACTIVATION", "");
+        String applicationUriOverride = env(getenv, "HEIMDALL_APPLICATION_URI", null);
         return new Config(broker, opcua, group, edge, policyPath, registryPath, conformancePath, activationPath,
                 activationTarget, requireSignedEffective, requireAnchored, anchorStore, anchorDir, logOnly,
                 healthPort, applyThreads, identityDir, requireSignedCommand, replayWindow,
-                commandLedgerPath, requireCommandLedger, certWarnDays, requirePublished, serverTrustDir);
+                commandLedgerPath, requireCommandLedger, certWarnDays, requirePublished, serverTrustDir,
+                applicationUriOverride);
+    }
+
+    /** Heimdall's default Sparkplug edge id: its own command edge, next to Muninn's data edge. */
+    static final String DEFAULT_COMMAND_EDGE = "recipe-edge-cmd";
+
+    /**
+     * The command ledger's directory, which stage A makes required: the command node's bdSeq is
+     * persisted under it, and without a durable bdSeq a restart could reuse a number a broker still
+     * holds in a Will.
+     */
+    static Path requireCommandLedgerPath(Config config) {
+        if (config.commandLedgerPath() == null || config.commandLedgerPath().isBlank()) {
+            throw new IllegalStateException("command.node: COMMAND_LEDGER_PATH is required"
+                    + " (the Sparkplug bdSeq of " + config.edge() + " is persisted under it)");
+        }
+        return Path.of(config.commandLedgerPath());
+    }
+
+    /**
+     * The applicationUri the edge announces: {@code HEIMDALL_APPLICATION_URI} when set, otherwise
+     * {@link #applicationUri(String, String)}.
+     */
+    static String effectiveApplicationUri(Config config) {
+        return config.applicationUriOverride() != null
+                ? config.applicationUriOverride() : applicationUri(config.group(), config.edge());
+    }
+
+    /**
+     * Load the edge's OPC-UA identity, or null on the anonymous path, refusing two states before any
+     * MQTT CONNECT and any OPC-UA connect (the OPC-UA connect failure is swallowed at startup, so a
+     * mismatch found there would read as a server fault and the edge would run on):
+     *
+     * <ul>
+     *   <li>{@code identity.uri.override-without-certificate}: the override set with no existing
+     *       certificate. The override only carries an existing certificate across a Sparkplug rename,
+     *       keeping its thumbprint and the server's trust; a new identity is created only under the
+     *       derived URI, so two edges stay two principals.
+     *   <li>{@code identity.uri.mismatch}: an existing certificate whose subjectAltName URI is not the
+     *       effective URI, or that carries no URI or more than one. OPC UA Part 6 requires the
+     *       certificate's URI to equal the announced applicationUri.
+     * </ul>
+     */
+    static EdgeIdentity loadIdentity(Config config) throws Exception {
+        String uri = effectiveApplicationUri(config);
+        boolean overridden = config.applicationUriOverride() != null;
+        if (config.identityDir() == null) {
+            if (overridden) {
+                throw new IllegalStateException("identity.uri.override-without-certificate:"
+                        + " HEIMDALL_APPLICATION_URI is set but HEIMDALL_IDENTITY_DIR is not");
+            }
+            return null;
+        }
+        Path dir = Path.of(config.identityDir());
+        if (overridden && !EdgeIdentity.exists(dir)) {
+            throw new IllegalStateException("identity.uri.override-without-certificate: " + dir
+                    + " holds no identity; a new identity is created only under the derived URI "
+                    + applicationUri(config.group(), config.edge()) + " (unset HEIMDALL_APPLICATION_URI)");
+        }
+        EdgeIdentity identity = EdgeIdentity.loadOrCreate(dir, uri);
+        java.util.List<String> sans = EdgeIdentity.subjectAltNameUris(identity.certificate());
+        if (sans.size() != 1 || !sans.get(0).equals(uri)) {
+            throw new IllegalStateException("identity.uri.mismatch: certificate in " + dir + " carries "
+                    + sans + " but the effective applicationUri is " + uri + "; run EdgeIdentity renew "
+                    + dir + " " + uri + ", or set HEIMDALL_APPLICATION_URI to the certificate's URI to keep it");
+        }
+        return identity;
     }
 
     /**
@@ -451,6 +520,7 @@ public final class NcmdOpcUaBridgeMain {
 
     public static void main(String[] args) throws Exception {
         Config config = resolve(System::getenv);
+        Path commandLedgerDir = requireCommandLedgerPath(config);
 
         ObjectMapper mapper = AclMapperFactory.create();
         CommandPolicy policy = mapper.readValue(Path.of(config.policyPath()).toFile(), CommandPolicy.class);
@@ -482,9 +552,8 @@ public final class NcmdOpcUaBridgeMain {
             System.out.println("[BRIDGE] OPC-UA server trust list " + config.serverTrustDir() + " ("
                     + serverTrust.trustedCount() + " trusted certificate(s); any other server is refused)");
         }
-        if (config.identityDir() != null) {
-            identity = EdgeIdentity.loadOrCreate(Path.of(config.identityDir()),
-                    applicationUri(config.group(), config.edge()));
+        identity = loadIdentity(config);
+        if (identity != null) {
             // Printed so an operator can match this against what the server has been told to trust.
             // Without it, a thumbprint mismatch looks like an ordinary connection failure.
             System.out.println("[BRIDGE] OPC-UA identity " + identity.thumbprint()
@@ -507,13 +576,12 @@ public final class NcmdOpcUaBridgeMain {
                     + " sub/sig (trust anchor: " + config.registryPath() + "/identity/authorized-keys.jsonl)");
         }
 
-        dev.krillin.bifrost.core.command.CommandLedger commandLedger = null;
-        if (config.commandLedgerPath() != null && !config.commandLedgerPath().isBlank()) {
-            commandLedger = new dev.krillin.bifrost.core.command.CommandLedger(
-                    Path.of(config.commandLedgerPath()), java.time.Clock.systemUTC());
-            System.out.println("[BRIDGE] command ledger at " + config.commandLedgerPath()
-                    + (config.requireCommandLedger() ? " (REQUIRED: an unwritable entry refuses)" : ""));
-        }
+        dev.krillin.bifrost.core.command.CommandLedger commandLedger =
+                new dev.krillin.bifrost.core.command.CommandLedger(commandLedgerDir, java.time.Clock.systemUTC());
+        System.out.println("[BRIDGE] command ledger at " + commandLedgerDir
+                + (config.requireCommandLedger() ? " (REQUIRED: an unwritable entry refuses)" : ""));
+        CommandNode node = new CommandNode(config.group(), config.edge(), commandLedgerDir);
+        System.out.println("[BRIDGE] command node " + node.birthTopic() + " (bdSeq in " + node.file() + ")");
 
         OpcUaApplier applier = new OpcUaApplier(config.opcua(), health, identity, serverTrust);
         try {
@@ -534,6 +602,7 @@ public final class NcmdOpcUaBridgeMain {
                 new NcmdOpcUaBridge.MethodPath(Path.of(config.registryPath()),
                         new dev.krillin.bifrost.core.acl.opa.OpaMethodAuthorizer(), java.time.Clock.systemUTC(),
                         identity != null));
+        bridge.commandNode(node);
         health.startHttp(config.healthPort());
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             try {

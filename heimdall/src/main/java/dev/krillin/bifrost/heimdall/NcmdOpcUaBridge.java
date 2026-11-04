@@ -1,6 +1,5 @@
 package dev.krillin.bifrost.heimdall;
 
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.LinkedHashSet;
@@ -54,7 +53,14 @@ import dev.krillin.bifrost.core.schema.UdtDefinition;
 /**
  * Self-bridge: receives Sparkplug NCMD commands over MQTT, authorizes them deny-by-default at the
  * edge, applies them to OPC-UA via an injected {@link Applier}, confirms by read-back, and
- * publishes a correlated Sparkplug NDATA response.
+ * publishes a correlated response on {@code bifrost/<group>/RESULT/<edge>}.
+ *
+ * <p>Heimdall is its own Sparkplug edge node, the command edge ({@link CommandNode}): NBIRTH on every
+ * connect, an NDEATH Will with the same bdSeq, and a rebirth on {@code Node Control/Rebirth}. The
+ * data edge belongs to Muninn and Heimdall publishes nothing on its topics. NCMD dispatch: no metric
+ * or more than one metric is {@code command.malformed}; a payload of node controls and properties
+ * only goes to the session (one Boolean Rebirth acts, anything else is logged and unanswered); one
+ * metric goes to {@link #handle} (setpoint, Method or read).
  *
  * <p>The core is the pure, broker-free {@link #handle(String, SparkplugBPayload)} — unit-tested with
  * a fake applier + the real {@link CommandAuthorizer}/policy. The Paho wiring ({@link #connect},
@@ -95,24 +101,23 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
 
     /**
      * Where every correlated response goes: command outcomes, QUERY read-backs and overload
-     * refusals. Not Sparkplug NDATA: Muninn owns this group/edge's Sparkplug session, so a message
-     * from Heimdall under {@code spBv1.0/<group>/.../<edge>} would sit outside that session's
-     * {@code seq} and carry metrics the NBIRTH never declared, and a host that follows the session
-     * (Vor does) drops it. Heimdall publishes nothing under {@code spBv1.0/}; the Sparkplug view of
-     * a successful write is the new value in Muninn's own data.
+     * refusals, under the command edge. Not Sparkplug: Sparkplug defines no reply to NCMD, and an
+     * outcome published as node data would be historized by hosts as a process value. Heimdall's
+     * only Sparkplug messages are its own NBIRTH and NDEATH ({@link CommandNode}); it publishes
+     * nothing on the data edge's topics, whose session Muninn owns.
      */
     private final String resultTopic;
 
     /**
-     * Bifrost's own liveness topic, carrying a retained "online"/"offline".
-     *
-     * <p>Deliberately NOT the Sparkplug NDEATH topic. In the spine
-     * ({@code scripts/run-yggdrasil-spine-gate.sh}) Muninn is the node that births this
-     * group/edge, and two components birthing one edge is a protocol error rather than a detail.
-     * Muninn owns that node; Heimdall subscribes to its NCMD and answers on {@link #resultTopic}.
-     * This follows the existing {@code bifrost/.../QUERY/...} convention.
+     * Heimdall's Sparkplug edge node, required before {@link #connect}. Its NDEATH Will replaces the
+     * former retained {@code bifrost/<group>/STATUS/<edge>} liveness topic, so a Sparkplug-only host
+     * learns the write boundary's liveness from {@code spBv1.0/} alone.
      */
-    private final String statusTopic;
+    private CommandNode node;
+
+    void commandNode(CommandNode node) {
+        this.node = node;
+    }
 
     private final SparkplugBPayloadEncoder encoder = new SparkplugBPayloadEncoder();
     private final SparkplugBPayloadDecoder decoder = new SparkplugBPayloadDecoder();
@@ -288,7 +293,6 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
         this.ncmdTopic = "spBv1.0/" + group + "/NCMD/" + edge;
         this.queryTopic = "bifrost/" + group + "/QUERY/" + edge;
         this.resultTopic = "bifrost/" + group + "/RESULT/" + edge;
-        this.statusTopic = "bifrost/" + group + "/STATUS/" + edge;
     }
 
     // ----- pure core (no broker / no live OPC-UA) -----
@@ -302,8 +306,14 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
         String cmdId = req.getUuid();
         if (req.getMetrics() == null || req.getMetrics().isEmpty()) {
             // Fail-closed: a malformed payload carrying no command metric is rejected, not crashed.
-            record(cmdId, null, null, null, null, "intent", "malformed", "no command metric");
-            return new NcmdResponse(cmdId, false, null, false, "no command metric");
+            return malformed(cmdId, "no command metric");
+        }
+        if (req.getMetrics().size() > 1) {
+            // A Bifrost restriction, not a Sparkplug rule (Sparkplug 3.0 allows several metrics in an
+            // NCMD). The command signature covers only one metric, so a second one would ride along
+            // unsigned; it used to be accepted and silently dropped. This also refuses a Rebirth mixed
+            // with a command and two setpoints in one payload.
+            return malformed(cmdId, "more than one metric");
         }
         Metric m = req.getMetrics().get(0);
         String name = m.getName();
@@ -314,6 +324,12 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
         String op = propString(props, "op");
         String doneNode = propString(props, "doneNode");
         long timeoutMs = propLong(props, "timeoutMs", 30_000L);
+
+        // Node control reaches handle() only on the QUERY topic (messageArrived routes it on NCMD):
+        // there it is neither a rebirth nor a read of a node named after the control.
+        if (isNodeControl(req)) {
+            return malformed(cmdId, "node control on " + topic);
+        }
 
         // Routed before the read check: a Method command on the QUERY topic is malformed, not a read.
         if (METHOD_METRIC.equals(name) || "method".equals(op)) {
@@ -672,6 +688,16 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
     }
 
     /** A Method refusal before the reservation: one audit entry, outcome denied, and the cmdId stays unreserved. */
+    /**
+     * A payload that is not one command: refused before any verdict, never shadowed by log-only
+     * (there is no command to let through), and worded like the Method path's refusals.
+     */
+    private NcmdResponse malformed(String cmdId, String why) {
+        record(cmdId, null, null, null, null, CommandEvent.INTENT, "denied", "command.malformed: " + why);
+        System.out.println("[BRIDGE] MALFORMED cmdId=" + cmdId + " (" + why + ")");
+        return NcmdResponse.apply(cmdId, false, "denied: command.malformed: " + why);
+    }
+
     private NcmdResponse refuseMethod(String cmdId, String subject, CommandProposal.Proposal p, String why, String reason) {
         String full = why == null ? reason : reason + ": " + why;
         record(cmdId, subject, p == null ? METHOD_METRIC : p.methodNodeId(), p == null ? null : String.valueOf(p.value()),
@@ -768,25 +794,52 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
         return ("heimdall-" + group + "-" + edge).replaceAll("[:/]", "-");
     }
 
+    private volatile String broker;
+    private volatile boolean closed;
+    private final java.util.concurrent.ScheduledExecutorService reconnector =
+            java.util.concurrent.Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "heimdall-reconnect");
+                t.setDaemon(true);
+                return t;
+            });
+
+    /**
+     * Connect once, as the command node. A failure here propagates (startup refuses); losses after
+     * that are handled by Heimdall's own reconnect loop, not Paho's automatic reconnect, because
+     * Paho would reuse the first CONNECT's options and with them a Will carrying a stale bdSeq.
+     */
     public void connect(String broker) throws Exception {
+        if (node == null) {
+            throw new IllegalStateException("command.node: no CommandNode configured");
+        }
+        this.broker = broker;
         client = new MqttClient(broker, clientId(group, edge), new MemoryPersistence());
         client.setCallback(this);
-        MqttConnectOptions opts = new MqttConnectOptions();
-        opts.setCleanSession(true);
-        opts.setAutomaticReconnect(true);
-        // Explicit, because the will's latency IS this value: the broker cannot declare us dead
-        // until the keepalive lapses, and the 60s default makes a death take ~90s to appear.
-        opts.setKeepAliveInterval(20);
-        // The will is the whole liveness story: if this process dies, is partitioned, or hangs past
-        // the keepalive, the BROKER publishes "offline" on our behalf. Nothing else can report a
-        // death that the dying process did not notice. See statusTopic's javadoc for why this is
-        // not Sparkplug NDEATH.
-        opts.setWill(statusTopic, "offline".getBytes(StandardCharsets.UTF_8), 1, true);
-        client.connect(opts);
-        subscribeAll();
-        publishStatus("online");
+        connectOnce();
         System.out.println("[BRIDGE] subscribed NCMD=" + ncmdTopic + " QUERY=" + queryTopic
                 + " (policy rules=" + policy.rules().size() + ")");
+    }
+
+    /**
+     * One Sparkplug session start: advance and persist bdSeq, CONNECT with the NDEATH Will carrying
+     * it, subscribe, then NBIRTH. Subscribing before the birth means no command addressed to the
+     * newly born node can arrive unheard.
+     */
+    private synchronized void connectOnce() throws Exception {
+        int bdSeq = node.advance();
+        MqttConnectOptions opts = new MqttConnectOptions();
+        opts.setCleanSession(true);
+        opts.setAutomaticReconnect(false);
+        // Explicit, because the Will's latency IS this value: the broker cannot declare the node dead
+        // until ~1.5x the keepalive lapses, and the 60s default makes a death take ~90s to appear.
+        opts.setKeepAliveInterval(20);
+        // Sparkplug 3.0: NDEATH Will at QoS 1, not retained.
+        opts.setWill(node.deathTopic(), node.death(), 1, false);
+        client.connect(opts);
+        subscribeAll();
+        // Sparkplug 3.0: NBIRTH at QoS 0, not retained.
+        outbound.publish(node.birthTopic(), node.birth(), 0, false);
+        System.out.println("[BRIDGE] NBIRTH " + node.birthTopic() + " bdSeq=" + bdSeq);
     }
 
     private void subscribeAll() throws Exception {
@@ -794,44 +847,37 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
         client.subscribe(queryTopic, 1);
     }
 
-    private void publishStatus(String state) {
-        try {
-            outbound.publish(statusTopic, state.getBytes(StandardCharsets.UTF_8), 1, true);
-        } catch (Exception e) {
-            System.out.println("[BRIDGE] status publish failed (" + state + "): " + e);
-        }
-    }
-
     @Override
     public void connectComplete(boolean reconnect, String serverURI) {
         health.brokerConnected();
-        if (!reconnect) {
-            return;   // the initial connect already subscribed and announced
-        }
-        // LOAD-BEARING. cleanSession(true) means the broker dropped our subscriptions along with
-        // the session, and automatic reconnect does not restore them. Without this the bridge comes
-        // back CONNECTED and deaf — which reads healthy in the log, and is worse than the outage.
-        //
-        // This runs on Paho's callback thread and both calls below are synchronous, so the callback
-        // is blocked until they ack. That is the standard resubscribe pattern and the window is
-        // bounded, but it is why nothing heavier belongs here.
+    }
+
+    /** Rebirth without CONNECT: a new NBIRTH, seq 0, the same bdSeq. */
+    private void rebirth() {
         try {
-            subscribeAll();
-            publishStatus("online");
-            System.out.println("[BRIDGE] reconnected to " + serverURI + ", resubscribed");
+            outbound.publish(node.birthTopic(), node.birth(), 0, false);
+            System.out.println("[BRIDGE] REBIRTH " + node.birthTopic() + " bdSeq=" + node.bdSeq());
         } catch (Exception e) {
-            System.out.println("[BRIDGE] RESUBSCRIBE FAILED after reconnect: " + e);
+            System.out.println("[BRIDGE] rebirth publish failed: " + e);
         }
     }
 
     public void close() throws Exception {
+        closed = true;
+        reconnector.shutdownNow();
         executor.close();
         if (client != null) {
-            if (client.isConnected()) {
-                // An orderly stop is not a death: say so ourselves rather than leaving the will to
-                // report it. A hard kill still leaves the broker to publish "offline" for us.
-                publishStatus("offline");
-                client.disconnect();
+            synchronized (this) {
+                if (client.isConnected()) {
+                    // An orderly stop is a death the node announces itself, with the same bdSeq the
+                    // Will carries; a hard kill leaves the broker to publish the Will instead.
+                    try {
+                        outbound.publish(node.deathTopic(), node.death(), 1, false);
+                    } catch (Exception e) {
+                        System.out.println("[BRIDGE] NDEATH publish failed: " + e);
+                    }
+                    client.disconnect();
+                }
             }
             client.close();
         }
@@ -839,7 +885,34 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
 
     @Override public void connectionLost(Throwable cause) {
         health.brokerDisconnected();
-        System.out.println("[BRIDGE] connection lost: " + cause + " (auto-reconnect armed)");
+        System.out.println("[BRIDGE] connection lost: " + cause + " (reconnecting)");
+        scheduleReconnect(1);
+    }
+
+    /**
+     * Retry with a doubling delay capped at 30 s. Every attempt advances bdSeq, so a number can be
+     * skipped but never reused: a Will from an earlier CONNECT can never kill a later birth.
+     */
+    private void scheduleReconnect(long delaySeconds) {
+        if (closed) {
+            return;
+        }
+        try {
+            reconnector.schedule(() -> {
+                if (closed) {
+                    return;
+                }
+                try {
+                    connectOnce();
+                    System.out.println("[BRIDGE] reconnected to " + broker + ", resubscribed and reborn");
+                } catch (Exception e) {
+                    System.out.println("[BRIDGE] reconnect failed: " + e);
+                    scheduleReconnect(Math.min(delaySeconds * 2, 30));
+                }
+            }, delaySeconds, java.util.concurrent.TimeUnit.SECONDS);
+        } catch (java.util.concurrent.RejectedExecutionException closing) {
+            // close() won the race; nothing to reconnect.
+        }
     }
 
     @Override public void deliveryComplete(IMqttDeliveryToken token) { }
@@ -857,8 +930,15 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
             return;
         }
         if (topic.equals(ncmdTopic) && isNodeControl(req)) {
-            // Addressed to the Sparkplug node, which is Muninn's: not a command, not refused, no answer.
-            System.out.println("[BRIDGE] IGNORE node control " + req.getMetrics().get(0).getName());
+            // Addressed to this node's session, not a command: no answer on RESULT, which would reply
+            // to the node owner's protocol on the requester's channel.
+            if (isRebirth(req)) {
+                if (Boolean.TRUE.equals(req.getMetrics().get(0).getValue())) {
+                    reconnector.execute(this::rebirth);   // never publish on the Paho callback thread
+                }
+                return;
+            }
+            System.out.println("[BRIDGE] IGNORE node control " + metricNames(req));
             return;
         }
         String stripeKey = (req.getMetrics() == null || req.getMetrics().isEmpty())
@@ -882,17 +962,41 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
     }
 
     /**
-     * True when the NCMD's first metric is a Sparkplug node control or property ({@code Node Control/*},
-     * {@code Properties/*}), e.g. the Rebirth request a host sends after a seq gap. Those belong to
-     * the node owner; authorizing one would answer a host's Rebirth with a refusal, and under
-     * log-only would hand it to the applier as a write to a node named after the control.
+     * True when EVERY metric is a Sparkplug node control or property ({@code Node Control/*},
+     * {@code Properties/*}), e.g. the Rebirth a host sends after a seq gap. Those address the node's
+     * session; authorizing one would answer a host's Rebirth with a refusal, and under log-only
+     * would hand it to the applier as a write to a node named after the control. A payload that
+     * mixes one with anything else is not node control; {@link #handle} refuses it as malformed.
      */
     static boolean isNodeControl(SparkplugBPayload req) {
         if (req.getMetrics() == null || req.getMetrics().isEmpty()) {
             return false;
         }
-        String name = req.getMetrics().get(0).getName();
-        return name != null && (name.startsWith("Node Control/") || name.startsWith("Properties/"));
+        for (Metric m : req.getMetrics()) {
+            String name = m.getName();
+            if (name == null || !(name.startsWith("Node Control/") || name.startsWith("Properties/"))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** Exactly one Boolean {@code Node Control/Rebirth}: the only node control the session acts on. */
+    static boolean isRebirth(SparkplugBPayload req) {
+        if (req.getMetrics() == null || req.getMetrics().size() != 1) {
+            return false;
+        }
+        Metric m = req.getMetrics().get(0);
+        return CommandNode.REBIRTH.equals(m.getName()) && m.getDataType() == MetricDataType.Boolean
+                && m.getValue() instanceof Boolean;
+    }
+
+    private static String metricNames(SparkplugBPayload req) {
+        List<String> names = new ArrayList<>();
+        for (Metric m : req.getMetrics()) {
+            names.add(m.getName());
+        }
+        return names.toString();
     }
 
     /**

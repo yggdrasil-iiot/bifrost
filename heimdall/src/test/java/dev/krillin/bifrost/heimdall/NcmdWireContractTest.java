@@ -24,6 +24,7 @@ import org.eclipse.tahu.message.model.PropertyValue;
 import org.eclipse.tahu.message.model.SparkplugBPayload;
 import org.eclipse.tahu.message.model.SparkplugBPayload.SparkplugBPayloadBuilder;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import dev.krillin.bifrost.core.acl.AclMapperFactory;
 import dev.krillin.bifrost.core.acl.CommandPolicy;
@@ -54,6 +55,7 @@ class NcmdWireContractTest {
     private static final String NCMD_TOPIC = "spBv1.0/" + GROUP + "/NCMD/" + EDGE;
     private static final String QUERY_TOPIC = "bifrost/" + GROUP + "/QUERY/" + EDGE;
     private static final String RESULT_TOPIC = "bifrost/" + GROUP + "/RESULT/" + EDGE;
+    private static final String BIRTH_TOPIC = "spBv1.0/" + GROUP + "/NBIRTH/" + EDGE;
 
     private CommandPolicy policy() throws Exception {
         return AclMapperFactory.create()
@@ -247,39 +249,152 @@ class NcmdWireContractTest {
         assertTrue(ids.containsAll(List.of("vec-w1", "vec-r1")), "each answer carries its cmdId: " + ids);
     }
 
-    @Test void node_control_on_ncmd_is_ignored_without_an_answer() throws Exception {
-        FakeApplier fake = new FakeApplier();
-        NcmdOpcUaBridge b = bridge(fake);
-        Recorder out = new Recorder();
+    private static SparkplugBPayload control(Object... nameTypeValue) throws Exception {
+        SparkplugBPayloadBuilder b = new SparkplugBPayloadBuilder().setTimestamp(new Date());
+        for (int i = 0; i < nameTypeValue.length; i += 3) {
+            b.addMetric(new MetricBuilder((String) nameTypeValue[i], (MetricDataType) nameTypeValue[i + 1],
+                    nameTypeValue[i + 2]).createMetric());
+        }
+        return b.createPayload();
+    }
+
+    private NcmdOpcUaBridge bornBridge(Applier applier, Path ledger, Recorder out) throws Exception {
+        NcmdOpcUaBridge b = bridge(applier);
+        CommandNode node = new CommandNode(GROUP, EDGE, ledger);
+        node.advance();
+        b.commandNode(node);
         b.outbound(out);
-        SparkplugBPayload rebirth = new SparkplugBPayloadBuilder()
-                .setTimestamp(new Date())
-                .addMetric(new MetricBuilder("Node Control/Rebirth", MetricDataType.Boolean, true).createMetric())
-                .createPayload();
+        return b;
+    }
+
+    @Test void rebirth_true_on_ncmd_publishes_nbirth_with_seq_zero_and_the_same_bdseq(@TempDir Path ledger)
+            throws Exception {
+        FakeApplier fake = new FakeApplier();
+        Recorder out = new Recorder();
+        NcmdOpcUaBridge b = bornBridge(fake, ledger, out);
         try {
-            b.messageArrived(NCMD_TOPIC, message(rebirth));
-            // A read after it: once its answer is here, anything the Rebirth had queued would be too.
-            out.expect(1);
+            out.expect(2);
+            b.messageArrived(NCMD_TOPIC, message(control("Node Control/Rebirth", MetricDataType.Boolean, true)));
             b.messageArrived(QUERY_TOPIC, message(
                     cmd("vec-r1", "read", "ns=2;s=Recipe/Temp", null, MetricDataType.String, null, null)));
             out.await();
         } finally {
             b.close();
         }
-        assertEquals(1, out.sent.size(), "the Rebirth got no answer: " + out.sent);
-        assertEquals("vec-r1",
-                new SparkplugBPayloadDecoder().buildFromByteArray(out.sent.get(0).payload(), null).getUuid());
+        List<Sent> births = out.sent.stream().filter(s -> s.topic().equals(BIRTH_TOPIC)).toList();
+        assertEquals(1, births.size(), "one NBIRTH for one Rebirth: " + out.sent);
+        assertEquals(0, births.get(0).qos(), "NBIRTH is QoS 0");
+        assertFalse(births.get(0).retained(), "NBIRTH is not retained");
+        SparkplugBPayload birth = new SparkplugBPayloadDecoder().buildFromByteArray(births.get(0).payload(), null);
+        assertEquals(0L, birth.getSeq());
+        assertEquals(0L, ((Number) metric(birth, "bdSeq").getValue()).longValue(), "same bdSeq, no CONNECT");
+        assertEquals(MetricDataType.Boolean, metric(birth, "Node Control/Rebirth").getDataType());
+        assertEquals(MetricDataType.String, metric(birth, NcmdOpcUaBridge.METHOD_METRIC).getDataType());
+        assertEquals(3, birth.getMetrics().size(), "no setpoint is declared at birth: " + birth.getMetrics());
+        assertEquals(1, out.sent.stream().filter(s -> s.topic().equals(RESULT_TOPIC)).count(),
+                "the Rebirth got no answer on RESULT: " + out.sent);
         assertFalse(fake.writeCalled, "a node control never reaches the applier");
         assertFalse(fake.callCalled, "a node control never reaches the applier");
     }
 
-    @Test void node_control_and_properties_are_recognized_and_commands_are_not() throws Exception {
-        assertTrue(NcmdOpcUaBridge.isNodeControl(new SparkplugBPayloadBuilder()
-                .addMetric(new MetricBuilder("Properties/Hardware Make", MetricDataType.String, "x").createMetric())
-                .createPayload()));
+    @Test void rebirth_false_and_other_node_controls_are_silent(@TempDir Path ledger) throws Exception {
+        FakeApplier fake = new FakeApplier();
+        Recorder out = new Recorder();
+        NcmdOpcUaBridge b = bornBridge(fake, ledger, out);
+        try {
+            b.messageArrived(NCMD_TOPIC, message(control("Node Control/Rebirth", MetricDataType.Boolean, false)));
+            b.messageArrived(NCMD_TOPIC, message(control("Node Control/Next Server", MetricDataType.Boolean, true)));
+            b.messageArrived(NCMD_TOPIC, message(control("Properties/Hardware Make", MetricDataType.String, "x")));
+            b.messageArrived(NCMD_TOPIC, message(control(
+                    "Node Control/Rebirth", MetricDataType.Boolean, true,
+                    "Properties/Hardware Make", MetricDataType.String, "x")));
+            // A read after them: once its answer is here, anything they had queued would be too.
+            out.expect(1);
+            b.messageArrived(QUERY_TOPIC, message(
+                    cmd("vec-r1", "read", "ns=2;s=Recipe/Temp", null, MetricDataType.String, null, null)));
+            out.await();
+            Thread.sleep(200);   // the rebirth path is asynchronous; give a wrong NBIRTH time to appear
+        } finally {
+            b.close();
+        }
+        assertEquals(1, out.sent.size(), "only the read was answered: " + out.sent);
+        assertEquals(RESULT_TOPIC, out.sent.get(0).topic());
+        assertFalse(fake.writeCalled);
+    }
+
+    @Test void more_than_one_metric_is_malformed_and_writes_nothing() throws Exception {
+        FakeApplier fake = new FakeApplier();
+        SparkplugBPayload two = new SparkplugBPayloadBuilder()
+                .setUuid("vec-m2")
+                .setTimestamp(new Date())
+                .addMetric(new MetricBuilder("ns=2;s=Recipe/Rpm", MetricDataType.Double, 1500.0).createMetric())
+                .addMetric(new MetricBuilder("ns=2;s=Recipe/Temp", MetricDataType.Double, 80.0).createMetric())
+                .createPayload();
+        NcmdResponse r = bridge(fake).handle(NCMD_TOPIC, two);
+        assertFalse(r.ok());
+        assertTrue(r.detail().startsWith("denied: command.malformed"), r.detail());
+        assertFalse(fake.writeCalled, "the first metric must not be applied either");
+    }
+
+    @Test void rebirth_mixed_with_a_command_is_malformed_and_answered(@TempDir Path ledger) throws Exception {
+        FakeApplier fake = new FakeApplier();
+        Recorder out = new Recorder();
+        NcmdOpcUaBridge b = bornBridge(fake, ledger, out);
+        SparkplugBPayload mixed = new SparkplugBPayloadBuilder()
+                .setUuid("vec-mx")
+                .setTimestamp(new Date())
+                .addMetric(new MetricBuilder("Node Control/Rebirth", MetricDataType.Boolean, true).createMetric())
+                .addMetric(new MetricBuilder("ns=2;s=Recipe/Rpm", MetricDataType.Double, 1500.0).createMetric())
+                .createPayload();
+        try {
+            out.expect(1);
+            b.messageArrived(NCMD_TOPIC, message(mixed));
+            out.await();
+            Thread.sleep(200);
+        } finally {
+            b.close();
+        }
+        assertEquals(1, out.sent.size(), "one answer, no NBIRTH: " + out.sent);
+        assertEquals(RESULT_TOPIC, out.sent.get(0).topic());
+        SparkplugBPayload answer = new SparkplugBPayloadDecoder().buildFromByteArray(out.sent.get(0).payload(), null);
+        assertEquals("vec-mx", answer.getUuid());
+        assertEquals(Boolean.FALSE, metric(answer, "ok").getValue());
+        assertTrue(String.valueOf(metric(answer, "detail").getValue()).startsWith("denied: command.malformed"));
+        assertFalse(fake.writeCalled);
+    }
+
+    @Test void node_control_on_query_is_malformed_not_a_read() throws Exception {
+        FakeApplier fake = new FakeApplier();
+        NcmdResponse r = bridge(fake).handle(QUERY_TOPIC,
+                control("Node Control/Rebirth", MetricDataType.Boolean, true));
+        assertFalse(r.ok());
+        assertTrue(r.detail().startsWith("denied: command.malformed"), r.detail());
+        assertFalse(fake.readCalled, "a node control is not a read of a node named after it");
+    }
+
+    @Test void connect_refuses_without_a_command_node() throws Exception {
+        NcmdOpcUaBridge b = bridge(new FakeApplier());
+        IllegalStateException e = assertThrows(IllegalStateException.class, () -> b.connect("tcp://127.0.0.1:1"));
+        assertTrue(e.getMessage().startsWith("command.node"), e.getMessage());
+    }
+
+    @Test void node_control_is_every_metric_and_rebirth_is_exactly_one_boolean() throws Exception {
+        assertTrue(NcmdOpcUaBridge.isNodeControl(control("Properties/Hardware Make", MetricDataType.String, "x")));
+        assertTrue(NcmdOpcUaBridge.isNodeControl(control(
+                "Node Control/Rebirth", MetricDataType.Boolean, true,
+                "Properties/Hardware Make", MetricDataType.String, "x")));
+        assertFalse(NcmdOpcUaBridge.isNodeControl(control(
+                "Node Control/Rebirth", MetricDataType.Boolean, true,
+                "ns=2;s=Recipe/Rpm", MetricDataType.Double, 1500.0)), "mixed is not node control");
         assertFalse(NcmdOpcUaBridge.isNodeControl(
                 cmd("vec-w1", "write", "ns=2;s=Recipe/Rpm", 1500.0, MetricDataType.Double, null, null)));
         assertFalse(NcmdOpcUaBridge.isNodeControl(new SparkplugBPayloadBuilder().createPayload()));
+
+        assertTrue(NcmdOpcUaBridge.isRebirth(control("Node Control/Rebirth", MetricDataType.Boolean, true)));
+        assertFalse(NcmdOpcUaBridge.isRebirth(control("Node Control/Rebirth", MetricDataType.String, "true")));
+        assertFalse(NcmdOpcUaBridge.isRebirth(control(
+                "Node Control/Rebirth", MetricDataType.Boolean, true,
+                "Properties/Hardware Make", MetricDataType.String, "x")));
     }
 
     private static Metric metric(SparkplugBPayload p, String name) {

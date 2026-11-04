@@ -151,7 +151,30 @@ public final class EdgeIdentity {
         }
     }
 
-    /** Load the identity in {@code dir}, generating and persisting one if it is not there yet. */
+    /** Whether {@code dir} holds an identity {@link #loadOrCreate} would reuse rather than mint. */
+    public static boolean exists(Path dir) {
+        return Files.exists(dir.resolve(CERT_FILE)) && Files.exists(dir.resolve(KEY_FILE));
+    }
+
+    /** The URI entries (GeneralName type 6) of the certificate's subjectAltName, in order. */
+    public static java.util.List<String> subjectAltNameUris(X509Certificate cert) throws Exception {
+        java.util.List<String> uris = new java.util.ArrayList<>();
+        java.util.Collection<java.util.List<?>> sans = cert.getSubjectAlternativeNames();
+        if (sans != null) {
+            for (java.util.List<?> san : sans) {
+                if (san.size() >= 2 && Integer.valueOf(6).equals(san.get(0))) {
+                    uris.add(String.valueOf(san.get(1)));
+                }
+            }
+        }
+        return uris;
+    }
+
+    /**
+     * Load the identity in {@code dir}, generating and persisting one if it is not there yet. An
+     * existing certificate is reused whatever URI it carries; {@code NcmdOpcUaBridgeMain.loadIdentity}
+     * checks it against the effective applicationUri before anything connects.
+     */
     public static EdgeIdentity loadOrCreate(Path dir, String applicationUri) throws Exception {
         createPrivateDirectory(dir);
         Path certPath = dir.resolve(CERT_FILE);

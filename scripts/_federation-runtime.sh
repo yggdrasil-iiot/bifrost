@@ -122,6 +122,7 @@ start_heimdall() {  # $1=logfile $2=mqtt $3=opcua $4=group $5=regBash $6=healthP
   POLICY_PATH="$reg_win/policy.json" REGISTRY_PATH="$reg_win" \
   CONFORMANCE_PATH="$reg_win/conformance/Line1-Mixer/recipe.json" \
   ACTIVATION_PATH="$reg_win" ACTIVATION_TARGET="Line1" \
+  COMMAND_LEDGER_PATH="$WORK/command-ledger-$6" \
     java -jar "$HEIMDALL_JAR_WIN" >"$1" 2>&1 &
   REPLY=$!
 }

@@ -41,6 +41,11 @@ import org.eclipse.tahu.message.model.SparkplugBPayload.SparkplugBPayloadBuilder
  * is on. Optional {@code --cmd-id <id>} pins the payload uuid, which the replay leg of the command
  * identity gate needs in order to send the same signed payload twice.
  *
+ * <p><b>Stage A dispatch probes.</b> {@code dataType} may also be {@code Boolean}, so
+ * {@code "Node Control/Rebirth" true Boolean} sends a Rebirth request. Optional
+ * {@code --extra <name> <Double|String|Boolean> <value>} appends a second, unsigned metric, which the
+ * command-node gate uses to prove a two-metric payload is refused before anything is written.
+ *
  * <p>Extended rather than copied on purpose: every gate already publishes through this class, and a
  * second publisher differing by two properties is a pair that drifts.
  */
@@ -49,8 +54,8 @@ public final class RogueNcmd {
     public static void main(String[] args) throws Exception {
         String nodeId = args[0];
         String dataType = args.length > 2 && !args[2].startsWith("--") ? args[2] : "Double";
-        MetricDataType mdt = "Double".equals(dataType) ? MetricDataType.Double : MetricDataType.String;
-        Object value = "Double".equals(dataType) ? Double.parseDouble(args[1]) : args[1];
+        MetricDataType mdt = type(dataType);
+        Object value = value(dataType, args[1]);
 
         String signAs = optArg(args, "--sign", 0);
         String keyFile = optArg(args, "--sign", 1);
@@ -58,7 +63,7 @@ public final class RogueNcmd {
 
         String broker = env("MQTT_URL", "tcp://localhost:1883");
         String group = env("SPB_GROUP", "Bifrost:Line1");
-        String edge = env("SPB_EDGE", "recipe-edge");
+        String edge = env("SPB_EDGE", NcmdOpcUaBridgeMain.DEFAULT_COMMAND_EDGE);
         String topic = "spBv1.0/" + group + "/NCMD/" + edge;
         String uuid = pinnedCmdId != null ? pinnedCmdId : UUID.randomUUID().toString();
 
@@ -76,11 +81,18 @@ public final class RogueNcmd {
             System.out.println("[ROGUE] signed as " + signAs + " cmdId=" + uuid);
         }
         PropertySet props = pb.createPropertySet();
-        SparkplugBPayload payload = new SparkplugBPayloadBuilder()
+        SparkplugBPayloadBuilder builder = new SparkplugBPayloadBuilder()
                 .setUuid(uuid)
                 .setTimestamp(new Date())
-                .addMetric(new MetricBuilder(nodeId, mdt, value).properties(props).createMetric())
-                .createPayload();
+                .addMetric(new MetricBuilder(nodeId, mdt, value).properties(props).createMetric());
+        String extraName = optArg(args, "--extra", 0);
+        if (extraName != null) {
+            String extraType = optArg(args, "--extra", 1);
+            builder.addMetric(new MetricBuilder(extraName, type(extraType),
+                    value(extraType, optArg(args, "--extra", 2))).createMetric());
+            System.out.println("[ROGUE] extra metric " + extraName);
+        }
+        SparkplugBPayload payload = builder.createPayload();
         byte[] bytes = new SparkplugBPayloadEncoder().getBytes(payload, false);
 
         MqttClient client = new MqttClient(broker, "rogue-" + uuid, new MemoryPersistence());
@@ -90,6 +102,22 @@ public final class RogueNcmd {
         client.close();
         System.out.println("[ROGUE] published NCMD topic=" + topic + " cmd=" + nodeId
                 + " val=" + value + " type=" + dataType + " uuid=" + uuid);
+    }
+
+    private static MetricDataType type(String dataType) {
+        switch (dataType) {
+            case "Double": return MetricDataType.Double;
+            case "Boolean": return MetricDataType.Boolean;
+            default: return MetricDataType.String;
+        }
+    }
+
+    private static Object value(String dataType, String raw) {
+        switch (dataType) {
+            case "Double": return Double.parseDouble(raw);
+            case "Boolean": return Boolean.parseBoolean(raw);
+            default: return raw;
+        }
     }
 
     /** The {@code n}-th value after {@code flag}, or null when the flag is absent. */

@@ -72,7 +72,7 @@ public final class ProposalFixture {
         s.put("predicateType", predicate);
         ObjectNode p = s.putObject("predicate");
         p.put("cmdId", UUID.randomUUID().toString()).put("streamId", stream);
-        p.putObject("target").put("group", GROUP).put("edge", edge == null ? "recipe-edge" : edge).put("device",
+        p.putObject("target").put("group", GROUP).put("edge", edge == null ? "recipe-edge-cmd" : edge).put("device",
             device == null ? "synthetic-site:line1:mixer" + mixer : device);
         String object = "nsu=urn:bifrost:opcua:sim;s=Line1/Mixer" + mixer;
         ObjectNode m = p.putObject("method");

@@ -9,8 +9,8 @@
 #                      APPLIED AFTER the restart (an APPLY *count increase*), because a reconnect
 #                      that failed to resubscribe still logs "reconnected" and then hears nothing.
 #   E2 death cert    : taskkill //F the edge (bypassing the JVM shutdown hook) and require the
-#                      BROKER to deliver the retained will. The topic is cleared first, so a
-#                      previous run's retained "offline" cannot satisfy this one.
+#                      BROKER to deliver the edge's Sparkplug NDEATH Will, carrying the bdSeq of the
+#                      edge's latest NBIRTH. The Will is not retained, so no earlier run can satisfy it.
 #   E3 outage != deny: kill the OPC-UA sim, send an AUTHORIZED command, require [BRIDGE] UNREACHABLE,
 #                      NO new [BRIDGE] DENY line, no conformance-error, and a RESULT response detail
 #                      that says plant-unreachable.
@@ -44,7 +44,9 @@ GROUP="Bifrost:Line1"
 EDGE_A="recipe-edge"
 EDGE_B="mixer-edge"
 RPM_NODE="ns=2;s=Recipe/Rpm"
-STATUS_A="bifrost/$GROUP/STATUS/$EDGE_A"
+# Stage A: the command ledger is required; Heimdall persists its Sparkplug bdSeq under it.
+export COMMAND_LEDGER_PATH="$WORK/res-command-ledger"
+rm -rf "$COMMAND_LEDGER_PATH"
 
 command -v docker >/dev/null 2>&1 || { echo "[GATE] FAIL: docker not found on PATH — Docker Desktop is required for the MQTT broker"; exit 1; }
 command -v curl   >/dev/null 2>&1 || { echo "[GATE] FAIL: curl not found on PATH — needed for the /healthz assertions"; exit 1; }
@@ -78,9 +80,6 @@ cleanup() {
   kill_by_jvmarg "heimdall.gate=" || true
   kill_by_mainclass "bifrost-sim.jar" || true
   kill_by_mainclass "TopicWatcher" || true
-  # Leave no retained state that could pre-satisfy the NEXT run of this gate.
-  [ -n "$HEIMDALL_JAR_WIN" ] && java -cp "$HEIMDALL_JAR_WIN" \
-      dev.krillin.bifrost.heimdall.TopicWatcher --clear "$STATUS_A" >/dev/null 2>&1 || true
   docker compose -f "$COMPOSE_WIN" stop hivemq-ce >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
@@ -181,10 +180,6 @@ echo "[GATE] E0 OK: ready without a plant, and honest about it on /healthz"
 kill_by_jvmarg "heimdall.gate=COLD"
 sleep 3
 
-# Clear any retained status BEFORE the real edge starts: E2 must observe THIS run's will, and a
-# stale retained "offline" would satisfy it even with setWill deleted.
-java -cp "$HEIMDALL_JAR_WIN" dev.krillin.bifrost.heimdall.TopicWatcher --clear "$STATUS_A" >>"$WATCH_LOG" 2>&1 || true
-
 # ---------------------------------------------------------------------------
 echo "[GATE] step 2: start the OPC-UA sim and edge A"
 start_sim || fail "the OPC-UA sim did not start"
@@ -267,15 +262,21 @@ sleep 2
 
 # ---------------------------------------------------------------------------
 echo "[GATE] ===== E2: the broker announces a death the process did not report ====="
-java -cp "$HEIMDALL_JAR_WIN" dev.krillin.bifrost.heimdall.TopicWatcher "$STATUS_A" 120 >>"$WATCH_LOG" 2>&1 &
-wait_line "$WATCH_LOG" "\[WATCH\] $STATUS_A = online" 15 \
-  || fail "E2 no retained 'online' — the edge never announced itself on its status topic"
-# taskkill //F is a hard kill: the JVM shutdown hook does NOT run, so bridge.close()'s own
-# "offline" publish cannot happen. An "offline" that arrives now came from the BROKER's will.
+# The bdSeq of edge A's latest NBIRTH (the broker restart in E1 made a new one). The NDEATH Will must
+# carry exactly this number; a Will from an earlier CONNECT carries an older one.
+BDSEQ_A="$(grep -o "\[BRIDGE\] \(NBIRTH\|REBIRTH\) spBv1.0/$GROUP/NBIRTH/$EDGE_A bdSeq=[0-9]*" "$A_LOG" | tail -1 | sed 's/.*bdSeq=//')"
+[ -n "$BDSEQ_A" ] || fail "E2 edge A logged no NBIRTH"
+[ "$(count_in "\[BRIDGE\] NBIRTH spBv1.0/$GROUP/NBIRTH/$EDGE_A" "$A_LOG")" -ge 2 ] \
+  || fail "E2 edge A did not birth again after the E1 broker restart"
+java -cp "$HEIMDALL_JAR_WIN" dev.krillin.bifrost.heimdall.TopicWatcher --sparkplug "spBv1.0/$GROUP/+/$EDGE_A" 120 >>"$WATCH_LOG" 2>&1 &
+wait_line "$WATCH_LOG" "\[WATCH\] subscribed spBv1.0/$GROUP/\+/$EDGE_A" 15 || fail "E2 the Sparkplug watcher did not subscribe"
+# taskkill //F is a hard kill: the JVM shutdown hook does NOT run, so bridge.close()'s own NDEATH
+# cannot be published. An NDEATH that arrives now came from the BROKER's Will.
 kill_by_jvmarg "heimdall.gate=A"
 # The keepalive is 20s, so the broker needs up to ~30s to declare the session dead.
-wait_line "$WATCH_LOG" "\[WATCH\] $STATUS_A = offline" 45 || fail "E2 the broker never published the will"
-echo "[GATE] E2 OK: the will fired on a hard kill"
+wait_line "$WATCH_LOG" "\[WATCH\] spBv1.0/$GROUP/NDEATH/$EDGE_A retained=false seq=- metrics=\[bdSeq:Int64=$BDSEQ_A\]" 45 \
+  || fail "E2 the broker never published the NDEATH Will with bdSeq=$BDSEQ_A"
+echo "[GATE] E2 OK: the NDEATH Will fired on a hard kill with bdSeq=$BDSEQ_A"
 
 echo ""
 echo "[GATE] PASS run-edge-resilience-gate.sh"

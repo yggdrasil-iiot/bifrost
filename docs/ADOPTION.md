@@ -229,10 +229,7 @@ when its OPC-UA server is down (it used to exit, and would crash-loop under a re
 reconnects to the broker **and resubscribes** (an automatic reconnect without the resubscribe comes
 back connected and deaf, which reads healthy in the log), rebuilds a lost OPC-UA session by itself,
 and answers a command it cannot apply with `plant-unreachable` rather than `conformance-error` —
-an outage used to send the operator to look at the model. A retained will on
-`bifrost/{group}/STATUS/{edge}` lets the broker announce a death the process never noticed, and
-`/healthz` reports both legs, so an edge that is connected to the broker but blind to the plant
-reads unhealthy. Every assertion in that gate was checked by injecting its defect; two of them were
+an outage used to send the operator to look at the model. An `NDEATH` Will on `spBv1.0/<group>/NDEATH/<command-edge>` carrying `bdSeq` lets the broker announce a death the process never noticed, and `/healthz` reports both legs, so an edge that is connected to the broker but blind to the plant reads unhealthy. Every assertion in that gate was checked by injecting its defect; two of them were
 found to be vacuous that way and fixed.
 
 **What this does not change.** The startup ledger-trust checks still fail closed: a bridge that

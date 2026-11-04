@@ -20,9 +20,9 @@ import static org.junit.jupiter.api.Assertions.*;
 class CommandProposalTest {
     static final String OBJECT="nsu=urn:bifrost:opcua:sim;s=Line1/Mixer1",METHOD="nsu=urn:bifrost:opcua:sim;s=Line1/Mixer1.SetTemperature";
     static final String OBJECT2="nsu=urn:bifrost:opcua:sim;s=Line1/Mixer2",METHOD2=OBJECT2+".SetTemperature";
-    static final String DEVICE="synthetic-site:line1:mixer1",DEVICE2="synthetic-site:line1:mixer2",EDGE="recipe-edge";
+    static final String DEVICE="synthetic-site:line1:mixer1",DEVICE2="synthetic-site:line1:mixer2",EDGE="recipe-edge-cmd";
     static final String CMD="0f0e8f43-6a43-4d0e-9a3a-2b6f1f5f0c11";
-    static final String RULE2=",{\"id\":\"set-temp-2\",\"principal\":\"agent\",\"target\":{\"group\":\"Bifrost:Line1\",\"edge\":\"recipe-edge\",\"device\":\"synthetic-site:line1:mixer2\"},\"command\":\""+METHOD2+"\",\"constraint\":{\"type\":\"Double\",\"min\":0.0,\"max\":100.0}}]}";
+    static final String RULE2=",{\"id\":\"set-temp-2\",\"principal\":\"agent\",\"target\":{\"group\":\"Bifrost:Line1\",\"edge\":\"recipe-edge-cmd\",\"device\":\"synthetic-site:line1:mixer2\"},\"command\":\""+METHOD2+"\",\"constraint\":{\"type\":\"Double\",\"min\":0.0,\"max\":100.0}}]}";
     static final class MovableClock extends Clock {
         Instant now=Instant.parse("2026-11-01T00:00:00Z");
         @Override public ZoneId getZone(){return ZoneOffset.UTC;}
@@ -52,7 +52,7 @@ class CommandProposalTest {
         service.publish(bundle,"vor-read","1.0.0","approval-1",new MappingRegistry.HeadSigners("proposer",key("proposer",k),"approver",key("approver",k),Duration.ofDays(90)));
         head=read(registry.resolve("mappings/heads/line1.json"));
         policy=tmp.resolve("command-policy.json");
-        Files.writeString(policy,"{\"version\":\"1.0.0\",\"default\":\"deny\",\"rules\":[{\"id\":\"set-temp\",\"principal\":\"agent\",\"target\":{\"group\":\"Bifrost:Line1\",\"edge\":\"recipe-edge\",\"device\":\"synthetic-site:line1:mixer1\"},\"command\":\""+METHOD+"\",\"constraint\":{\"type\":\"Double\",\"min\":0.0,\"max\":100.0}}]}");
+        Files.writeString(policy,"{\"version\":\"1.0.0\",\"default\":\"deny\",\"rules\":[{\"id\":\"set-temp\",\"principal\":\"agent\",\"target\":{\"group\":\"Bifrost:Line1\",\"edge\":\"recipe-edge-cmd\",\"device\":\"synthetic-site:line1:mixer1\"},\"command\":\""+METHOD+"\",\"constraint\":{\"type\":\"Double\",\"min\":0.0,\"max\":100.0}}]}");
     }
     static void copy(Path source,Path dest) throws Exception {
         try(var walk=Files.walk(source)){for(Path p:walk.toList()){Path q=dest.resolve(source.relativize(p));if(Files.isDirectory(p))Files.createDirectories(q);else Files.copy(p,q);}}

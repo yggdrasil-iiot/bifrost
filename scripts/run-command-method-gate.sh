@@ -9,7 +9,8 @@
 #
 #   M1 normal          : 42.0 is applied - the sim transfers Line1/Mixer1.Temp = 42.0, the ledger holds
 #                        a reservation and an applied outcome, and the RESULT answer reports the call;
-#                        nothing is published on the node's Sparkplug NDATA (Muninn owns that session)
+#                        nothing is published on the data edge's Sparkplug topics (Muninn owns that
+#                        session; Heimdall is its own command edge)
 #   M2 replay          : the same envelope again is refused command.replay; the sim is not touched
 #   M3 replay+restart  : after Heimdall is killed and restarted, still command.replay - the reservation
 #                        was on disk, not in memory
@@ -80,9 +81,11 @@ CLI_LOG="$WORK/mg-cli.log"
 : > "$CLI_LOG"
 
 GROUP="Bifrost:Line1"
-EDGE="recipe-edge"
+# Heimdall's own Sparkplug command edge, and the data edge whose session belongs to Muninn.
+EDGE="recipe-edge-cmd"
+DATA_EDGE="recipe-edge"
 STATUS_NODE="ns=2;s=Sim/Line1/Mixer1.Temp.StatusCode"
-SEG_DIR="$LED/commands/Bifrost-Line1/recipe-edge"
+SEG_DIR="$LED/commands/Bifrost-Line1/$EDGE"
 
 command -v docker >/dev/null 2>&1 || { echo "[GATE] FAIL: docker not found on PATH"; exit 1; }
 COMPOSE_WIN="$(cygpath -m "$(pwd)/docker-compose.yml")"
@@ -146,7 +149,7 @@ p = sys.argv[1]
 d = json.load(open(p))
 for rid, n in (("set-temperature", 1), ("set-temperature-mixer2", 2)):
     d["rules"].append({"id": rid, "principal": "agent",
-                       "target": {"group": "Bifrost:Line1", "edge": "recipe-edge", "device": f"synthetic-site:line1:mixer{n}"},
+                       "target": {"group": "Bifrost:Line1", "edge": "recipe-edge-cmd", "device": f"synthetic-site:line1:mixer{n}"},
                        "command": f"nsu=urn:bifrost:opcua:sim;s=Line1/Mixer{n}.SetTemperature",
                        "constraint": {"type": "Double", "min": 0.0, "max": 100.0}})
 json.dump(d, open(p, "w"), indent=2)
@@ -250,8 +253,8 @@ grep -q "OPC-UA server trust list .* (1 trusted certificate" "$EDGE_LOG" || fail
 java -cp "$H" dev.krillin.bifrost.heimdall.TopicWatcher "bifrost/$GROUP/RESULT/$EDGE" 900 >"$WATCH_LOG" 2>&1 &
 wait_line "$WATCH_LOG" "\[WATCH\] subscribed" 15 || fail "the RESULT watcher did not subscribe"
 : > "$SPB_LOG"
-java -cp "$H" dev.krillin.bifrost.heimdall.TopicWatcher "spBv1.0/$GROUP/NDATA/$EDGE" 900 >"$SPB_LOG" 2>&1 &
-wait_line "$SPB_LOG" "\[WATCH\] subscribed" 15 || fail "the NDATA watcher did not subscribe"
+java -cp "$H" dev.krillin.bifrost.heimdall.TopicWatcher "spBv1.0/$GROUP/+/$DATA_EDGE" 900 >"$SPB_LOG" 2>&1 &
+wait_line "$SPB_LOG" "\[WATCH\] subscribed" 15 || fail "the data-edge watcher did not subscribe"
 
 # ---------------------------------------------------------------------------
 echo "[GATE] ===== M1: an approved proposal is applied ====="
@@ -269,9 +272,9 @@ java -cp "$G" dev.krillin.bifrost.gates.CommandLogGate verify "$(cygpath -m "$SE
 # newlines, so one answer is joined back into one line and matched within itself.
 result_has() { for _ in $(seq 1 10); do tr -d '\r\n' < "$WATCH_LOG" | grep -aqE "$1" && return 0; sleep 2; done; return 1; }
 result_has "called [^ ]*SetTemperature\(42\.0\) -> 42\.0.{0,80}$C1" || fail "M1 no affirmative RESULT answer"
-# The answer is already here, so an NDATA copy of it would be too.
-! grep -aq "^\[WATCH\] spBv1.0/" "$SPB_LOG" || fail "M1 Heimdall published on the node's Sparkplug NDATA"
-echo "[GATE] M1 OK: applied once, reserved and recorded, answered on RESULT, nothing on NDATA"
+# The answer is already here, so a copy of it on the data edge would be too.
+! grep -aq "^\[WATCH\] spBv1.0/" "$SPB_LOG" || fail "M1 Heimdall published on the data edge's Sparkplug topics"
+echo "[GATE] M1 OK: applied once, reserved and recorded, answered on RESULT, nothing on the data edge"
 
 echo "[GATE] ===== M2: the same envelope again ====="
 publish m1.approved || fail "M2 publish failed"
