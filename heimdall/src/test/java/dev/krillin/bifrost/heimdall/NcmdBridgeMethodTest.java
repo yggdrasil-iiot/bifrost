@@ -40,7 +40,9 @@ import org.eclipse.tahu.message.model.PropertyValue;
 import org.eclipse.tahu.message.model.SparkplugBPayload;
 import org.eclipse.tahu.message.model.SparkplugBPayload.SparkplugBPayloadBuilder;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
@@ -55,6 +57,16 @@ class NcmdBridgeMethodTest {
     static final String TEMP = OBJECT + ".Temp";
     static final String OBJECT2 = "nsu=urn:bifrost:opcua:sim;s=Line1/Mixer2", METHOD2 = OBJECT2 + ".SetTemperature";
     static final String DEVICE = "synthetic-site:line1:mixer1", DEVICE2 = "synthetic-site:line1:mixer2";
+    static final String SIM_URI = "urn:bifrost:opcua:sim-server";
+
+    /** A certificate from core's test resources. */
+    static byte[] der(String resource) {
+        try {
+            return Files.readAllBytes(Path.of("../core/src/test/resources/" + resource));
+        } catch (java.io.IOException e) {
+            throw new java.io.UncheckedIOException(e);
+        }
+    }
 
     static final class MovableClock extends Clock {
         Instant now = Instant.parse("2026-11-02T10:00:00Z");
@@ -71,7 +83,13 @@ class NcmdBridgeMethodTest {
         Boolean methodOk = true;
         int calls;
         final List<String> sampled = new ArrayList<>();
+        /** The server the session is on: the certificate it presented and its endpoint's ApplicationUri. */
+        byte[] serverCertificate = der("mapping-fixtures/vor-read/data/server-certificate-sim.der");
+        String serverApplicationUri = SIM_URI;
+        /** A reconnect between the bridge's endpoint comparison and the call: the session moves to this server first. */
+        byte[] reconnectTo;
         FakePlant(MovableClock clock) { this.clock = clock; }
+        @Override public Peer peer() { return new Peer(serverCertificate, serverApplicationUri); }
         @Override public ReadBack read(String nodeId) { return new ReadBack("0", true); }
         @Override public double readDouble(String nodeId) { return 0; }
         @Override public Result write(String nodeId, double value) { throw new AssertionError("the Method path never writes"); }
@@ -80,7 +98,11 @@ class NcmdBridgeMethodTest {
             sampled.add(nodeId);
             return new Sample(42.0, good, clock.now.minusMillis(ageMs));
         }
-        @Override public MethodResult method(String objectNodeId, String methodNodeId, double input) throws Exception {
+        @Override public MethodResult method(String objectNodeId, String methodNodeId, double input,
+                java.util.function.Function<Peer, String> endpoint) throws Exception {
+            if (reconnectTo != null) serverCertificate = reconnectTo;
+            String refused = endpoint.apply(peer());
+            if (refused != null) throw new EndpointRefused(refused);
             calls++;
             if (methodOk == null) throw new PlantUnreachableException("session lost mid-call");
             return methodOk ? new MethodResult(true, String.valueOf(input), "called " + methodNodeId + "(" + input + ")")
@@ -95,7 +117,7 @@ class NcmdBridgeMethodTest {
     FakePlant plant;
     CommandPolicy policy;
 
-    @BeforeEach void setup() throws Exception {
+    @BeforeEach void setup(TestInfo info) throws Exception {
         Path bundle = tmp.resolve("bundle");
         Path fixture = Path.of("../core/src/test/resources/mapping-fixtures/vor-read");
         try (var walk = Files.walk(fixture)) {
@@ -104,6 +126,7 @@ class NcmdBridgeMethodTest {
                 if (Files.isDirectory(p)) Files.createDirectories(q); else Files.copy(p, q);
             }
         }
+        if (info.getTags().contains("legacy")) legacy(bundle);
         registry = tmp.resolve("registry");
         Files.createDirectories(registry.resolve("identity"));
         StringBuilder lines = new StringBuilder();
@@ -342,5 +365,71 @@ class NcmdBridgeMethodTest {
         assertEquals(2, plant.calls, "never retried: a new attempt needs a new proposal");
         assertEquals(List.of("reserved", "method-failed", "reserved", "unknown", "denied", "denied"),
                 entries().stream().map(x -> x.event().outcome()).toList());
+    }
+
+    /** The bundle as contract 2.25.0 published it: links that name no server, and no certificate artifact. */
+    static void legacy(Path bundle) throws Exception {
+        for (String l : List.of("command-bindings/mixer1-set-temperature.json", "command-bindings/mixer2-set-temperature.json")) {
+            ObjectNode d = (ObjectNode) read(bundle.resolve(l));
+            d.put("schemaVersion", "2.25.0").remove("endpointRef");
+            Files.write(bundle.resolve(l), bytes(d));
+        }
+        ObjectNode p = (ObjectNode) read(bundle.resolve("proposal.json"));
+        p.put("schemaVersion", "2.25.0");
+        ArrayNode kept = JSON.createArrayNode();
+        for (JsonNode e : p.path("files")) if (!text(e, "id").equals("server-certificate-sim")) kept.add(e);
+        p.set("files", kept);
+        Files.delete(bundle.resolve("evidence/server-certificate-sim.json"));
+        Files.delete(bundle.resolve("data/server-certificate-sim.der"));
+        for (JsonNode e : kept) ((ObjectNode) e).put("sha256", sha(bundle.resolve(text(e, "path"))));
+        Files.write(bundle.resolve("proposal.json"), bytes(p));
+        ObjectNode sub = (ObjectNode) read(bundle.resolve("submission.json"));
+        String digest = sha(bundle.resolve("proposal.json"));
+        sub.put("proposalSha256", digest).put("workspaceSha256", digest);
+        Files.write(bundle.resolve("submission.json"), bytes(sub));
+    }
+
+    // endpointRef (2.26.0): the session is compared with the link after the precondition and again on the calling client.
+
+    @Test void aServerTheLinkDoesNotNameIsRefusedBeforeTheReservation() throws Exception {
+        JsonNode env = approved(42.0);
+        NcmdOpcUaBridge b = bridge();
+        // another server whose certificate the trust list would accept: trusted is not authorized
+        plant.serverCertificate = der("server-certificates/sim-b.der");
+        refused(b.handle(NCMD, ncmd(env)), "command.link.endpoint: certificate ");
+        plant.serverCertificate = der("mapping-fixtures/vor-read/data/server-certificate-sim.der");
+        plant.serverApplicationUri = "urn:bifrost:opcua:other-server";
+        refused(b.handle(NCMD, ncmd(env)), "command.link.endpoint: server.applicationUri");
+        plant.serverCertificate = null;
+        plant.serverApplicationUri = SIM_URI;
+        refused(b.handle(NCMD, ncmd(env)), "command.link.endpoint: certificate none");
+        assertEquals(0, plant.calls);
+        assertEquals(3, plant.sampled.size(), "compared after the precondition read, which opens the session");
+        assertTrue(entries().stream().allMatch(x -> "denied".equals(x.event().outcome())), "a refusal, not a reservation");
+
+        plant.serverCertificate = der("mapping-fixtures/vor-read/data/server-certificate-sim.der");
+        assertTrue(b.handle(NCMD, ncmd(env)).ok(), "the same cmdId executes on the linked server: nothing above consumed it");
+        assertEquals(1, plant.calls);
+    }
+
+    @Test void aReconnectToAnotherServerBeforeTheCallIsRefusedAndConsumesTheCmdId() throws Exception {
+        JsonNode env = approved(42.0);
+        plant.reconnectTo = der("server-certificates/sim-b.der");
+        NcmdResponse r = bridge().handle(NCMD, ncmd(env));
+        refused(r, "command.link.endpoint: certificate " + dev.krillin.bifrost.core.mapping.ServerCertificates.sha1(plant.reconnectTo));
+        assertEquals(0, plant.calls, "not called on the server it reconnected to");
+        assertEquals(List.of("reserved", "denied"), entries().stream().map(x -> x.event().outcome()).toList());
+        plant.reconnectTo = null;
+        plant.serverCertificate = der("mapping-fixtures/vor-read/data/server-certificate-sim.der");
+        refused(bridge().handle(NCMD, ncmd(env)), "command.replay");
+        assertEquals(0, plant.calls, "never retried");
+    }
+
+    @Test @Tag("legacy") void aLinkThatNamesNoServerIsRefusedBeforeThePlantIsRead() throws Exception {
+        JsonNode env = approved(42.0);
+        refused(bridge().handle(NCMD, ncmd(env)), "command.link.endpoint: missing");
+        assertEquals(0, plant.calls);
+        assertTrue(plant.sampled.isEmpty(), "refused at admission");
+        assertTrue(entries().stream().allMatch(x -> "denied".equals(x.event().outcome())));
     }
 }

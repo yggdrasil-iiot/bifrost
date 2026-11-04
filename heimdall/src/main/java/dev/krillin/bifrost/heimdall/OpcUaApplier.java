@@ -2,12 +2,14 @@ package dev.krillin.bifrost.heimdall;
 
 import java.security.cert.X509Certificate;
 import java.util.List;
+import java.util.function.Function;
 
 import org.eclipse.milo.opcua.sdk.client.OpcUaClient;
 import org.eclipse.milo.opcua.sdk.client.identity.X509IdentityProvider;
 import org.eclipse.milo.opcua.stack.core.StatusCodes;
 import org.eclipse.milo.opcua.stack.core.UaException;
 import org.eclipse.milo.opcua.stack.core.security.SecurityPolicy;
+import org.eclipse.milo.opcua.stack.core.types.builtin.ByteString;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DataValue;
 import org.eclipse.milo.opcua.stack.core.types.builtin.ExpandedNodeId;
 import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
@@ -411,6 +413,10 @@ public final class OpcUaApplier implements Applier {
      * path names nodes by namespace URI, because an index is the server's to assign.
      */
     private NodeId node(String id) throws UaException {
+        return node(client, id);
+    }
+
+    private static NodeId node(OpcUaClient client, String id) throws UaException {
         if (!id.startsWith("nsu=")) {
             return NodeId.parse(id);
         }
@@ -440,11 +446,18 @@ public final class OpcUaApplier implements Applier {
     }
 
     @Override
-    public MethodResult method(String objectNodeId, String methodNodeId, double input) throws Exception {
+    public MethodResult method(String objectNodeId, String methodNodeId, double input, Function<Peer, String> endpoint)
+            throws Exception {
         ensureConnected();
+        // One client for the comparison and the call: a reconnect replaces the field, never this local.
+        OpcUaClient c = client;
+        String refused = endpoint.apply(peer(c));
+        if (refused != null) {
+            throw new EndpointRefused(refused);
+        }
         CallMethodResult r;
         try {
-            r = client.call(List.of(new CallMethodRequest(node(objectNodeId), node(methodNodeId),
+            r = c.call(List.of(new CallMethodRequest(node(c, objectNodeId), node(c, methodNodeId),
                     new Variant[] {new Variant(input)}))).getResults()[0];
         } catch (Exception e) {
             if (isUnreachable(e)) {
@@ -464,6 +477,28 @@ public final class OpcUaApplier implements Applier {
                 ? "called " + methodNodeId + "(" + input + ") -> " + output
                 : "call " + methodNodeId + " failed: " + r.getStatusCode()
                         + (args == null ? "" : " inputs=" + java.util.Arrays.toString(args)));
+    }
+
+    @Override
+    public Peer peer() throws Exception {
+        ensureConnected();
+        return peer(client);
+    }
+
+    /** The session's server certificate and the endpoint description the client created that session on. */
+    private Peer peer(OpcUaClient c) throws Exception {
+        ByteString cert;
+        try {
+            cert = c.getSession().getServerCertificate();
+        } catch (Exception e) {
+            if (isUnreachable(e)) {
+                throw fault("session: " + e.getMessage(), e);
+            }
+            throw e;
+        }
+        EndpointDescription e = c.getConfig().getEndpoint();
+        return new Peer(cert == null || cert.isNull() ? null : cert.bytesOrEmpty(),
+                e == null || e.getServer() == null ? null : e.getServer().getApplicationUri());
     }
 
     public void close() {

@@ -35,7 +35,7 @@ public final class MappingBundle {
         root=folder;JsonNode p=null,s=null;
         try{
             p=read(safe(root,"proposal.json"));schema(p,"mapping-proposal");
-            require(Set.of("2.0.0","2.6.0","2.7.0","2.18.0","2.19.0","2.20.0","2.21.0","2.22.0","2.23.0","2.24.0","2.25.0").contains(text(p,"schemaVersion")),"capability.proposal-version");
+            require(Set.of("2.0.0","2.6.0","2.7.0","2.18.0","2.19.0","2.20.0","2.21.0","2.22.0","2.23.0","2.24.0","2.25.0","2.26.0").contains(text(p,"schemaVersion")),"capability.proposal-version");
             files.put("proposal.json",sha(root.resolve("proposal.json")));
             s=read(safe(root,"submission.json"));schema(s,"mapping-submission");
             require(text(s,"proposalSha256").equals(files.get("proposal.json")),"submission.proposal-digest");
@@ -60,7 +60,7 @@ public final class MappingBundle {
                     require(files.containsKey(rel),"bundle.unlisted-file:"+rel);
                 }
             }
-            require(docs.values().stream().anyMatch(d->Set.of("mapping-set","record-mapping").contains(text(d,"kind")))||Set.of("2.18.0","2.19.0","2.20.0","2.21.0","2.22.0","2.23.0","2.24.0","2.25.0").contains(text(p,"schemaVersion"))&&docs.values().stream().anyMatch(d->text(d,"kind").equals("semantic-lifecycle")),"mapping.required");
+            require(docs.values().stream().anyMatch(d->Set.of("mapping-set","record-mapping").contains(text(d,"kind")))||Set.of("2.18.0","2.19.0","2.20.0","2.21.0","2.22.0","2.23.0","2.24.0","2.25.0","2.26.0").contains(text(p,"schemaVersion"))&&docs.values().stream().anyMatch(d->text(d,"kind").equals("semantic-lifecycle")),"mapping.required");
             for(JsonNode d:docs.values()){
                 String path=key(d);evidence(d.path("evidenceRefs"),path);
                 switch(text(d,"kind")){
@@ -102,8 +102,9 @@ public final class MappingBundle {
             CommandBindings.validate(docs.values(),path->Files.readAllBytes(safe(root,path)));
             if(docs.values().stream().anyMatch(d->MappingTemplates.KINDS.contains(text(d,"kind"))))MappingTemplates.validate(docs.values(),List.of());
             if(docs.values().stream().anyMatch(d->text(d,"kind").equals("record-mapping")))RecordMappings.validate(docs.values(),List.of(),this::validateDerived);
-            if(docs.values().stream().anyMatch(d->text(d,"schemaVersion").equals("2.22.0")))require(Set.of("2.22.0","2.23.0","2.24.0","2.25.0").contains(text(p,"schemaVersion")),"broadcast.envelope");
-            if(docs.values().stream().anyMatch(d->text(d,"schemaVersion").equals("2.21.0"))){require(Set.of("2.21.0","2.22.0","2.23.0","2.24.0","2.25.0").contains(text(p,"schemaVersion")),"record-field.envelope");RecordFields.validate(docs.values());}
+            if(docs.values().stream().anyMatch(d->text(d,"schemaVersion").equals("2.22.0")))require(Set.of("2.22.0","2.23.0","2.24.0","2.25.0","2.26.0").contains(text(p,"schemaVersion")),"broadcast.envelope");
+            if(docs.values().stream().anyMatch(d->text(d,"schemaVersion").equals("2.21.0"))){require(Set.of("2.21.0","2.22.0","2.23.0","2.24.0","2.25.0","2.26.0").contains(text(p,"schemaVersion")),"record-field.envelope");RecordFields.validate(docs.values());}
+            if(docs.values().stream().anyMatch(d->text(d,"schemaVersion").equals("2.26.0")))require(text(p,"schemaVersion").equals("2.26.0"),"command-binding.envelope");
             concepts();
             if(docs.values().stream().anyMatch(d->text(d,"kind").equals("semantic-lifecycle")))SemanticLifecycle.validate(governanceDocuments(docs.values()),List.of(),Map.of());
             for(JsonNode g:GraphDependencies.order(docs.values()))graph(g);

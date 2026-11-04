@@ -1,0 +1,167 @@
+{
+  "type": "object",
+  "properties": {
+    "kind": {
+      "const": "command-binding"
+    },
+    "schemaVersion": {
+      "const": "2.26.0"
+    },
+    "id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "version": {
+      "$ref": "common.schema.json#/$defs/version"
+    },
+    "equipmentRef": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "version": {
+          "$ref": "common.schema.json#/$defs/version"
+        },
+        "equipmentInstanceId": {
+          "$ref": "common.schema.json#/$defs/id"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "equipmentInstanceId"
+      ],
+      "additionalProperties": false
+    },
+    "readBindingRef": {
+      "$ref": "common.schema.json#/$defs/documentRef"
+    },
+    "command": {
+      "type": "object",
+      "properties": {
+        "group": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "edge": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      },
+      "required": [
+        "group",
+        "edge"
+      ],
+      "additionalProperties": false
+    },
+    "method": {
+      "type": "object",
+      "properties": {
+        "objectNodeId": {
+          "type": "string",
+          "pattern": "^nsu=[^;]+;s=.+$",
+          "maxLength": 2048
+        },
+        "methodNodeId": {
+          "type": "string",
+          "pattern": "^nsu=[^;]+;s=.+$",
+          "maxLength": 2048
+        },
+        "inputs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "maxLength": 256
+              },
+              "type": {
+                "type": "string",
+                "maxLength": 64
+              },
+              "unit": {
+                "type": "string",
+                "maxLength": 64
+              }
+            },
+            "required": [
+              "name",
+              "type",
+              "unit"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 32
+        }
+      },
+      "required": [
+        "objectNodeId",
+        "methodNodeId",
+        "inputs"
+      ],
+      "additionalProperties": false
+    },
+    "endpointRef": {
+      "type": "object",
+      "properties": {
+        "applicationUri": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "certificates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "thumbprintSha1": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{40}$"
+              },
+              "certificateRef": {
+                "$ref": "common.schema.json#/$defs/documentRef"
+              }
+            },
+            "required": [
+              "thumbprintSha1",
+              "certificateRef"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 8
+        }
+      },
+      "required": [
+        "applicationUri",
+        "certificates"
+      ],
+      "additionalProperties": false
+    },
+    "evidenceRefs": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/evidenceRef"
+      },
+      "maxItems": 256
+    }
+  },
+  "required": [
+    "kind",
+    "schemaVersion",
+    "id",
+    "version",
+    "equipmentRef",
+    "readBindingRef",
+    "command",
+    "method",
+    "endpointRef",
+    "evidenceRefs"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:tyr:contract:2.26.0:command-binding"
+}

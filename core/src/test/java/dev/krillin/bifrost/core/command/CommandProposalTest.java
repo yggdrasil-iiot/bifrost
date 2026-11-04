@@ -36,8 +36,10 @@ class CommandProposalTest {
     MovableClock clock=new MovableClock();
     JsonNode head;
 
-    @BeforeEach void setup() throws Exception {
+    @BeforeEach void setup(TestInfo info) throws Exception {
         Path bundle=tmp.resolve("bundle");copy(Path.of(getClass().getResource("/mapping-fixtures/vor-read").toURI()),bundle);
+        // a release as contract 2.25.0 published it: links that name no server
+        if(info.getTags().contains("legacy"))EndpointBundle.legacy(bundle);
         registry=tmp.resolve("registry");Files.createDirectories(registry.resolve("identity"));
         Map<String,KeyPair> k=new LinkedHashMap<>();
         for(String p:List.of("proposer","approver","agent","operator","other"))k.put(p,Ed25519Keys.generate());
@@ -361,7 +363,7 @@ class CommandProposalTest {
     @Test void twoLinksForOneKeyAreAmbiguous() throws Exception {
         // publish refuses a duplicate; a release that carries one anyway is refused by every verifier
         CommandLink.Release r=CommandLink.Release.of(registry,head);
-        Path copy=tmp.resolve("tampered");copy(r.dir(),copy);
+        Path copy=tmp.resolve("tampered-"+UUID.randomUUID());copy(r.dir(),copy);
         Path dup=copy.resolve("payload/command-bindings/mixer1-again.json");
         Files.copy(copy.resolve("payload/command-bindings/mixer1-set-temperature.json"),dup);
         ObjectNode listing=(ObjectNode)read(copy.resolve("payload/proposal.json"));
@@ -382,5 +384,54 @@ class CommandProposalTest {
         f.toFile().setWritable(true);
         Files.writeString(f,Files.readString(f).replace("5000","50000"));
         assertEquals("mapping.release-file",admitRefusal(approved),"the registry's own release check refuses it before the edge reads it");
+    }
+
+    // endpointRef (2.26.0)
+
+    @Test void approvalReportsTheServerTheLinkAuthorizes() throws Exception {
+        JsonNode endpoint=approve(proposal()).report().at("/commandBinding/endpoint");
+        assertEquals(EndpointBundle.URI,text(endpoint,"applicationUri"));
+        List<String> thumbprints=new ArrayList<>();endpoint.path("thumbprintsSha1").forEach(x->thumbprints.add(x.asText()));
+        assertEquals(List.of(ServerCertificates.sha1(EndpointBundle.der("sim"))),thumbprints,endpoint.toString());
+    }
+
+    @Test @Tag("legacy") void aLinkThatNamesNoServerAuthorizesNoCommand() throws Exception {
+        assertEquals("command.link.endpoint:missing",detail(()->approve(proposal())));
+        assertEquals("command.link.endpoint:missing",detail(()->CommandProposal.verify(registry,proposal(),false,clock)));
+        assertEquals("command.link.endpoint",admitRefusal(coSign(proposal())));
+    }
+
+    /** The release with one link file edited and every digest the verifiers check re-pinned: what publish would refuse. */
+    CommandLink.Release tampered(Consumer<ObjectNode> endpoint) throws Exception {
+        CommandLink.Release r=CommandLink.Release.of(registry,head);
+        Path copy=tmp.resolve("tampered-"+UUID.randomUUID());copy(r.dir(),copy);
+        Path link=copy.resolve("payload/command-bindings/mixer1-set-temperature.json");
+        ObjectNode d=(ObjectNode)read(link);endpoint.accept((ObjectNode)d.path("endpointRef"));Files.write(link,bytes(d));
+        Map<String,String> files=new HashMap<>(r.files());files.put("payload/command-bindings/mixer1-set-temperature.json",sha(link));
+        return new CommandLink.Release(copy,r.root(),files);
+    }
+    CommandProposal.Proposal parsed() throws Exception {return CommandProposal.parse(Base64.getDecoder().decode(text(proposal(),"payload")));}
+
+    @Test void everyVerifierReDerivesTheCertificate() throws Exception {
+        var p=parsed();
+        assertEquals("command.link.endpoint:thumbprintSha1",detail(()->CommandLink.resolve(tampered(e->((ObjectNode)e.path("certificates").get(0)).put("thumbprintSha1","0".repeat(40))),p)));
+        assertEquals("command.link.endpoint:applicationUri",detail(()->CommandLink.resolve(tampered(e->e.put("applicationUri","urn:bifrost:opcua:other-server")),p)));
+        assertEquals("command.link.endpoint:certificateRef",detail(()->CommandLink.resolve(tampered(e->((ObjectNode)e.path("certificates").get(0).path("certificateRef")).put("id","vor-binding-mixer1-temp")),p)));
+        assertEquals("command.link.endpoint:missing",detail(()->CommandLink.resolve(tampered(e->((ArrayNode)e.path("certificates")).removeAll()),p).requireEndpoint()));
+    }
+
+    @Test void theSessionMustBeOnAListedCertificateAndTheLinkedApplicationUri() throws Exception {
+        byte[] sim=EndpointBundle.der("sim"),b=EndpointBundle.der("sim-b");
+        CommandLink.Endpoint one=CommandLink.resolve(CommandLink.Release.of(registry,head),parsed()).requireEndpoint();
+        assertNull(one.refusal(sim,EndpointBundle.URI));
+        assertEquals("certificate "+ServerCertificates.sha1(b),one.refusal(b,EndpointBundle.URI),"trusted is not enough: the link names one server");
+        assertEquals("certificate none",one.refusal(null,EndpointBundle.URI));
+        assertEquals("server.applicationUri urn:bifrost:opcua:other-server",one.refusal(sim,"urn:bifrost:opcua:other-server"));
+        byte[] prefix=Arrays.copyOf(sim,sim.length-1);
+        assertNotNull(one.refusal(prefix,EndpointBundle.URI),"byte equality, not a prefix");
+        // a rotation overlap: either certificate of the one server
+        var both=new CommandLink.Endpoint(EndpointBundle.URI,List.of(one.certificates().get(0),new CommandLink.Endpoint.Certificate(ServerCertificates.sha1(b),b)));
+        assertNull(both.refusal(sim,EndpointBundle.URI));
+        assertNull(both.refusal(b,EndpointBundle.URI));
     }
 }

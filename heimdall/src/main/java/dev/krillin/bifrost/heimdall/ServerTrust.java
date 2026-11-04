@@ -2,10 +2,12 @@ package dev.krillin.bifrost.heimdall;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Set;
 import org.eclipse.milo.opcua.stack.core.security.CertificateValidator;
 import org.eclipse.milo.opcua.stack.core.security.DefaultClientCertificateValidator;
 import org.eclipse.milo.opcua.stack.core.security.FileBasedCertificateQuarantine;
 import org.eclipse.milo.opcua.stack.core.security.FileBasedTrustListManager;
+import org.eclipse.milo.opcua.stack.core.util.validation.ValidationCheck;
 
 /**
  * The OPC-UA servers this edge will talk to, as an operator-managed trust list.
@@ -21,6 +23,11 @@ import org.eclipse.milo.opcua.stack.core.security.FileBasedTrustListManager;
  * ({@code trusted/certs}, {@code trusted/crl}, {@code issuer/certs}, {@code issuer/crl}); the layout
  * is created on first use. An empty list refuses to start: it would refuse every server, and the
  * symptom an operator would see at command time is "plant unreachable", which names the wrong cause.
+ *
+ * <p>The validator also runs Milo's {@code APPLICATION_URI} check: when the session is created, the server certificate's
+ * subjectAltName URI must equal the endpoint description's server ApplicationUri. Trust says the certificate is one the
+ * operator accepts; which of the trusted servers a command may reach is the command link's endpointRef, compared by the
+ * bridge.
  */
 public final class ServerTrust implements AutoCloseable {
 
@@ -40,7 +47,8 @@ public final class ServerTrust implements AutoCloseable {
                     + dir.resolve("trusted/certs"));
         }
         FileBasedCertificateQuarantine quarantine = FileBasedCertificateQuarantine.create(dir.resolve("rejected"));
-        return new ServerTrust(trustList, new DefaultClientCertificateValidator(trustList, quarantine));
+        return new ServerTrust(trustList, new DefaultClientCertificateValidator(trustList,
+                Set.of(ValidationCheck.APPLICATION_URI), quarantine));
     }
 
     public CertificateValidator validator() {
