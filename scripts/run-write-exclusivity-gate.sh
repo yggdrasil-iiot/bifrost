@@ -32,6 +32,8 @@ cd "$(dirname "$0")/.."
 command -v cygpath >/dev/null 2>&1 || cygpath() { printf '%s\n' "${@: -1}"; }
 
 WORK="build/gate"
+# Stage A: Heimdall persists its Sparkplug bdSeq under the command ledger, which is required.
+export COMMAND_LEDGER_PATH="$WORK/command-ledger"
 mkdir -p "$WORK"
 SIM_OPEN_LOG="$WORK/wx-sim-open.log"
 SIM_SEC_LOG="$WORK/wx-sim-sec.log"

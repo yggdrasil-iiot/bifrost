@@ -45,7 +45,10 @@ TYPE="MixerType"
 REF="Line1-Mixer"
 VER="1.0.0"
 GROUP="Bifrost:Line1"
+# Muninn feeds the data edge; Heimdall is its own Sparkplug command edge (stage A), so the two never
+# share one node's session.
 EDGE="recipe-edge"
+CMD_EDGE="recipe-edge-cmd"
 INSTANCE="Line1/Mixer1"
 MQTT="tcp://localhost:1883"
 RPM_NODE="ns=2;s=Recipe/Rpm"
@@ -207,8 +210,12 @@ echo "[GATE] step 4: start the Heimdall daemon (southbound write boundary)"
 export MQTT_URL="$MQTT"
 export OPCUA_URL="$ENDPOINT"
 export SPB_GROUP="$GROUP"
-export SPB_EDGE="$EDGE"
-export POLICY_PATH="$POLICY_PATH"
+export SPB_EDGE="$CMD_EDGE"
+# The registry policy targets the data edge's name; the commands now address the command edge.
+sed 's/"edge": "recipe-edge"/"edge": "recipe-edge-cmd"/' heimdall/registry/policy.json > "$WORK/policy.json"
+grep -q '"edge": "recipe-edge-cmd"' "$WORK/policy.json" || fail "could not derive the command-edge policy"
+export POLICY_PATH="$(cygpath -m "$(pwd)/$WORK/policy.json")"
+export COMMAND_LEDGER_PATH="$WORK/command-ledger"
 # Rpm range moved from policy.json to the governed model (conformance track): activate ② so L5's
 # Rpm=9999 above-max DENY comes from the governed Mixer model, not a hand-authored policy.json bound.
 export REGISTRY_PATH="$(cygpath -m "$(pwd)/heimdall/registry")"
@@ -225,7 +232,7 @@ done
 echo "[GATE] Heimdall ready (pid $BRIDGE_PID)"
 
 pub() {  # $1=nodeId $2=value $3=dataType
-  MQTT_URL="$MQTT" SPB_GROUP="$GROUP" SPB_EDGE="$EDGE" \
+  MQTT_URL="$MQTT" SPB_GROUP="$GROUP" SPB_EDGE="$CMD_EDGE" \
     java -cp "$HEIMDALL_JAR_WIN" dev.krillin.bifrost.heimdall.RogueNcmd "$1" "$2" "$3" >>"$WORK/pub.log" 2>&1
 }
 apply_count() { grep -c "\[BRIDGE\] APPLY cmd=$1" "$WORK/bridge.log" 2>/dev/null || echo 0; }

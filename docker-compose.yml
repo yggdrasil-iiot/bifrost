@@ -41,11 +41,18 @@ services:
       OPCUA_URL: "opc.tcp://host.docker.internal:48400"
       SPB_GROUP: "Bifrost:Line1"
       SPB_EDGE: "recipe-edge"
+      # Required: Heimdall persists its Sparkplug bdSeq under the command ledger, so it must outlive
+      # the container. A restart that reused a bdSeq could be declared dead by its predecessor's Will.
+      COMMAND_LEDGER_PATH: "/var/lib/heimdall/ledger"
     # Required for host.docker.internal outside Docker Desktop, harmless on it.
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
       - ./heimdall/registry:/opt/heimdall/registry:ro
+      - heimdall-ledger:/var/lib/heimdall/ledger
     ports:
       - "9090:9090"
     restart: unless-stopped
+
+volumes:
+  heimdall-ledger:

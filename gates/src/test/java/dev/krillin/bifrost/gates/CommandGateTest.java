@@ -37,7 +37,7 @@ class CommandGateTest {
         cli(0,"mapping","publish",r,bundle.toString(),"vor-read","1.0.0","--approval","approval-1","--by","proposer","--by-key",pk,"--approved-by","approver","--approved-by-key",ak);
         var head=read(reg.resolve("mappings/heads/line1.json"));
         Path policy=dir.resolve("command-policy.json");
-        Files.writeString(policy,"{\"version\":\"1.0.0\",\"default\":\"deny\",\"rules\":[{\"id\":\"set-temp\",\"principal\":\"agent\",\"target\":{\"group\":\"Bifrost:Line1\",\"edge\":\"recipe-edge\",\"device\":\"synthetic-site:line1:mixer1\"},\"command\":\""+METHOD+"\",\"constraint\":{\"type\":\"Double\",\"min\":0.0,\"max\":100.0}}]}");
+        Files.writeString(policy,"{\"version\":\"1.0.0\",\"default\":\"deny\",\"rules\":[{\"id\":\"set-temp\",\"principal\":\"agent\",\"target\":{\"group\":\"Bifrost:Line1\",\"edge\":\"recipe-edge-cmd\",\"device\":\"synthetic-site:line1:mixer1\"},\"command\":\""+METHOD+"\",\"constraint\":{\"type\":\"Double\",\"min\":0.0,\"max\":100.0}}]}");
 
         Instant now=Instant.now().truncatedTo(ChronoUnit.SECONDS);
         String nb=now.toString(),na=now.plus(Duration.ofMinutes(10)).toString(),agent=keys.resolve("agent.key").toString();

@@ -49,7 +49,7 @@ import org.junit.jupiter.api.io.TempDir;
  * consumes a cmdId, and once reserved a cmdId is never executed again.
  */
 class NcmdBridgeMethodTest {
-    static final String GROUP = "Bifrost:Line1", EDGE = "recipe-edge";
+    static final String GROUP = "Bifrost:Line1", EDGE = "recipe-edge-cmd";
     static final String NCMD = "spBv1.0/" + GROUP + "/NCMD/" + EDGE;
     static final String OBJECT = "nsu=urn:bifrost:opcua:sim;s=Line1/Mixer1", METHOD = OBJECT + ".SetTemperature";
     static final String TEMP = OBJECT + ".Temp";
@@ -312,7 +312,7 @@ class NcmdBridgeMethodTest {
         refused(bridge(false, null).handle(NCMD, ncmd(approved(42.0))), "command.ledger.required");
         // A regular file where the edge's segment directory must be: the reservation cannot be written.
         Files.createDirectories(ledgerDir.resolve("commands/Bifrost-Line1"));
-        Files.writeString(ledgerDir.resolve("commands/Bifrost-Line1/recipe-edge"), "not a directory");
+        Files.writeString(ledgerDir.resolve("commands/Bifrost-Line1/recipe-edge-cmd"), "not a directory");
         refused(bridge().handle(NCMD, ncmd(approved(42.0))), "command.ledger.required");
         assertEquals(0, plant.calls);
     }

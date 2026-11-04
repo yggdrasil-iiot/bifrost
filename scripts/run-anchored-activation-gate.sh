@@ -53,6 +53,8 @@ command -v cygpath >/dev/null 2>&1 || cygpath() { printf '%s
 ' "${@: -1}"; }
 
 WORK="build/anchored-gate"
+# Stage A: Heimdall persists its Sparkplug bdSeq under the command ledger, which is required.
+export COMMAND_LEDGER_PATH="$WORK/command-ledger"
 SIM_LOG="$WORK/sim.log"
 BLOG_AN8="$WORK/bridge-an8.log"
 

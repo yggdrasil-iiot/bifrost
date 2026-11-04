@@ -66,7 +66,7 @@ class LoadConformanceActivationTest {
     NcmdOpcUaBridgeMain.Config cfg(boolean requirePublished) {
         return new NcmdOpcUaBridgeMain.Config("tcp://x","opc.tcp://x","g","e","p",
             reg.toString(), confFile.toString(), reg.toString(), "Line1", false, false, "file", null, false,
-            0, 4, null, false, 1024, null, false, 30, requirePublished, null);
+            0, 4, null, false, 1024, null, false, 30, requirePublished, null, null);
     }
     String failure(NcmdOpcUaBridgeMain.Config c) {
         return assertThrows(Exception.class, () -> NcmdOpcUaBridgeMain.loadConformance(c)).getMessage();
