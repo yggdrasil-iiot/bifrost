@@ -3,8 +3,8 @@ import com.fasterxml.jackson.databind.*;
 import java.util.*;
 import static dev.krillin.bifrost.core.mapping.MappingJson.*;
 /** Independent 2.25 command-binding validator: the published link between one governed member's read binding and one OPC UA
- *  Method of the same equipment. Every reference resolves inside the bundle, the read binding's device is the hierarchy path
- *  of the equipment the link names, the Method takes exactly one Double input with a UCUM unit, and no two links share a
+ *  Method of the same equipment. Every reference resolves inside the bundle, the read binding and the mapping set it reads
+ *  belong to the equipment the link names, its device is that equipment's hierarchy path, the Method takes exactly one Double input with a UCUM unit, and no two links share a
  *  device and methodNodeId. */
 final class CommandBindings {
  static final String KIND="command-binding";
@@ -24,7 +24,9 @@ final class CommandBindings {
    require(set!=null,"command-binding.unresolved");
    boolean mapped=false;for(JsonNode m:set.path("mappings"))mapped|=text(m,"mappingId").equals(b.mappingId());
    require(mapped,"command-binding.unresolved");
-   require(b.equipmentInstanceId().equals(text(eq,"equipmentInstanceId"))&&b.device().equals(path(nodes,text(eq,"equipmentInstanceId"))),"command-binding.device-path");
+   // the mapping set's equipment too: the precondition reads that mapping, so another equipment's set would gate this Method
+   require(b.equipmentInstanceId().equals(text(eq,"equipmentInstanceId"))&&text(set,"equipmentInstanceId").equals(b.equipmentInstanceId())
+    &&b.device().equals(path(nodes,text(eq,"equipmentInstanceId"))),"command-binding.device-path");
    JsonNode in=c.path("method").path("inputs");
    require(in.size()==1&&!text(in.get(0),"name").isEmpty()&&text(in.get(0),"type").equals("Double")&&ucum.contains(text(in.get(0),"unit")),"command-binding.inputs");
    require(keys.add(b.device()+"\n"+text(c.path("method"),"methodNodeId")),"command-binding.duplicate");

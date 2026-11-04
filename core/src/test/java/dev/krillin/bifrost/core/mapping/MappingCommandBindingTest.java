@@ -62,6 +62,12 @@ class MappingCommandBindingTest {
         change("evidence/vor-read-binding-mixer2.json",d->((ObjectNode)d.path("file")).put("sha256",sha0("data/vor-read-binding-mixer2.json")));
         refused("command-binding.device-path");
     }
+    @Test void theReadBindingsMappingSetMustBeTheLinkedEquipments() throws Exception {
+        // device and equipment say mixer2, the mapping it reads is mixer1's: the precondition would read the other mixer's Temp
+        change("data/vor-read-binding-mixer2.json",d->{((ObjectNode)d.path("mappingSetRef")).put("id","mixer1-mapping");d.put("mappingId","temp");});
+        change("evidence/vor-read-binding-mixer2.json",d->((ObjectNode)d.path("file")).put("sha256",sha0("data/vor-read-binding-mixer2.json")));
+        refused("command-binding.device-path");
+    }
     String sha0(String rel){try{return sha(bundle.resolve(rel));}catch(Exception e){throw new IllegalStateException(e);}}
     @Test void exactlyOneInput() throws Exception {
         link("mixer1",d->((ArrayNode)d.path("method").path("inputs")).add(input(d).deepCopy().put("name","rampRate")));
