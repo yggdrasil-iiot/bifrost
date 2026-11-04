@@ -24,6 +24,19 @@
 #   M9 no identity     : (G1) Heimdall restarted without HEIMDALL_IDENTITY_DIR, against a sim whose
 #                        Method anyone may call, refuses command.identity.required; nothing is called
 #
+# G3 (contract 2.25.0 command binding, proposal v2): the release links each mixer's read binding to that
+# mixer's Method, and approve and the edge both resolve the proposal through that link.
+#   G3 publish         : a bundle whose Mixer2 link names Mixer1's read binding is refused
+#                        command-binding.device-path at mapping approve, and nothing is published
+#   G3a own link       : a proposal for synthetic-site:line1:mixer2 with Mixer2's evidence is applied, and
+#                        the sim transfers Line1/Mixer2.Temp, not Line1/Mixer1.Temp
+#   G3b cross-equipment: Mixer1's evidence on Mixer2's Method is refused command.link.mismatch
+#                        (binding.source) by approve and - co-signed past approve - by the edge
+#   G3c v1 statement   : a command-proposal/v1 predicate is refused command.malformed, by both
+#   G3d object path    : device Line1/Mixer1 is no device of the release: command.link.missing, by both
+#   G3e binding digest : a wrong binding.source.sha256 is refused command.link.mismatch, by both
+#   No refused proposal reaches either mixer's Method.
+#
 #   --negative-control : M3 expects the restarted edge to APPLY the replay. The reservation survives, so
 #                        that expectation fails and the gate exits non-zero - the M3 assertion can fail.
 #
@@ -37,7 +50,9 @@
 # weaken it): (NC1) delete the setCertificateValidator line in OpcUaApplier.createGoverned, so Milo's
 # default accepts any server - M8 fails because the rogue is called; (NC2) delete the
 # command.identity.required check in NcmdOpcUaBridge.handleMethod - M9 fails because the anonymous
-# edge calls the Method. Rebuild heimdall/target/bifrost-heimdall.jar after each injection.
+# edge calls the Method; (NC3) delete the CommandLink.match line in CommandProposal.link - G3b fails
+# because the co-signed cross-equipment proposal calls Mixer2's Method. Rebuild
+# heimdall/target/bifrost-heimdall.jar after each injection.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -66,7 +81,6 @@ CLI_LOG="$WORK/mg-cli.log"
 
 GROUP="Bifrost:Line1"
 EDGE="recipe-edge"
-METHOD="nsu=urn:bifrost:opcua:sim;s=Line1/Mixer1.SetTemperature"
 STATUS_NODE="ns=2;s=Sim/Line1/Mixer1.Temp.StatusCode"
 SEG_DIR="$LED/commands/Bifrost-Line1/recipe-edge"
 
@@ -124,18 +138,43 @@ cat > "$REG/identity/activation-policy.json" <<'JSON'
  {"id":"agent-proposes","principal":"agent","action":"propose_command","target":"command","kind":"method","ref":"line1"},
  {"id":"operator-co-signs","principal":"operator","action":"approve_command","target":"command","kind":"method","ref":"line1"}]}
 JSON
-# The edge's own CommandPolicy gains one rule: the agent may call the Method on Mixer1, 0..100.
-python - "$REG/policy.json" "$METHOD" <<'PY'
+# The edge's own CommandPolicy gains one rule per mixer: the agent may call that mixer's Method, 0..100.
+# The device is the Sparkplug device id the release's read binding names (the ISA-95 path).
+python - "$REG/policy.json" <<'PY'
 import json, sys
-p, method = sys.argv[1], sys.argv[2]
+p = sys.argv[1]
 d = json.load(open(p))
-d["rules"].append({"id": "set-temperature", "principal": "agent",
-                   "target": {"group": "Bifrost:Line1", "edge": "recipe-edge", "device": "Line1/Mixer1"},
-                   "command": method, "constraint": {"type": "Double", "min": 0.0, "max": 100.0}})
+for rid, n in (("set-temperature", 1), ("set-temperature-mixer2", 2)):
+    d["rules"].append({"id": rid, "principal": "agent",
+                       "target": {"group": "Bifrost:Line1", "edge": "recipe-edge", "device": f"synthetic-site:line1:mixer{n}"},
+                       "command": f"nsu=urn:bifrost:opcua:sim;s=Line1/Mixer{n}.SetTemperature",
+                       "constraint": {"type": "Double", "min": 0.0, "max": 100.0}})
 json.dump(d, open(p, "w"), indent=2)
 PY
 SIGNERS=(--by proposer --by-key "$PKI_WIN/proposer.key" --approved-by approver --approved-by-key "$PKI_WIN/approver.key")
 BUNDLE="$(cygpath -m "$(pwd)/core/src/test/resources/mapping-fixtures/vor-read")"
+# G3 publish: Mixer2's link pointed at Mixer1's read binding, every digest re-pinned so only that rule fails.
+CROSSED="$WORK/mg-crossed-bundle"
+rm -rf "$CROSSED"; cp -r core/src/test/resources/mapping-fixtures/vor-read "$CROSSED"
+python - "$CROSSED" <<'PY'
+import hashlib, json, sys
+from pathlib import Path
+root = Path(sys.argv[1])
+dump = lambda rel, d: (root / rel).write_bytes((json.dumps(d, indent=2) + "\n").encode())
+sha = lambda rel: hashlib.sha256((root / rel).read_bytes()).hexdigest()
+rel = "command-bindings/mixer2-set-temperature.json"
+d = json.loads((root / rel).read_bytes()); d["readBindingRef"]["id"] = "vor-binding-mixer1-temp"; dump(rel, d)
+p = json.loads((root / "proposal.json").read_bytes())
+for f in p["files"]:
+    if f["path"] == rel: f["sha256"] = sha(rel)
+dump("proposal.json", p)
+s = json.loads((root / "submission.json").read_bytes()); s["proposalSha256"] = sha("proposal.json"); dump("submission.json", s)
+PY
+! gates mapping approve "$REG_WIN" "$(cygpath -m "$(pwd)/$CROSSED")" approval-crossed "${SIGNERS[@]}" \
+  || fail "G3 publish: a link to another mixer's read binding was approved"
+grep -q "command-binding.device-path" "$CLI_LOG" || fail "G3 publish: the crossed link was not refused command-binding.device-path"
+[ ! -e "$REG/mappings/heads/line1.json" ] || fail "G3 publish: a head exists after the refusal"
+echo "[GATE] G3 publish OK: a link to another mixer's read binding is refused command-binding.device-path"
 gates mapping approve "$REG_WIN" "$BUNDLE" approval-vor-read "${SIGNERS[@]}" || fail "mapping approve failed"
 gates mapping publish "$REG_WIN" "$BUNDLE" vor-read 1.0.0 --approval approval-vor-read "${SIGNERS[@]}" \
   || fail "mapping publish failed"
@@ -183,10 +222,15 @@ wait_line() { for _ in $(seq 1 "$3"); do grep -qE "$2" "$1" 2>/dev/null && retur
 count_in() { grep -cF -- "$1" "$2" 2>/dev/null || true; }
 iso() { date -u -d "@$(( $(date +%s) + $1 ))" +%Y-%m-%dT%H:%M:%SZ; }
 
-# propose <name> <value> <notBefore offset s> <notAfter offset s> -> prints the cmdId
+# propose <name> <value> <notBefore offset s> <notAfter offset s> [fixture options] -> prints the cmdId
 propose() {
   fixture propose "$REG_WIN" "$(cygpath -m "$(pwd)/$PROP/$1.json")" --by agent --by-key "$PKI_WIN/agent.key" \
-    --approved-by operator --value "$2" --not-before "$(iso "$3")" --not-after "$(iso "$4")" | tr -d '\r'
+    --approved-by operator --value "$2" --not-before "$(iso "$3")" --not-after "$(iso "$4")" "${@:5}" | tr -d '\r'
+}
+# The operator's signature over a proposal approve refused: only the edge's own checks are left.
+cosign() {
+  fixture cosign "$(cygpath -m "$(pwd)/$PROP/$1.json")" "$(cygpath -m "$(pwd)/$PROP/$1.approved.json")" \
+    --by operator --by-key "$PKI_WIN/operator.key"
 }
 approve() {
   gates command approve "$REG_WIN" "$(cygpath -m "$(pwd)/$PROP/$1.json")" --approved-by operator \
@@ -195,7 +239,7 @@ approve() {
 }
 publish() { gates command publish "$(cygpath -m "$(pwd)/$PROP/$1.json")" --broker "$MQTT_URL"; }
 denied() { wait_line "$EDGE_LOG" "DENY cmd=bifrost/command/v1 cmdId=$1 reason=$2" 15; }
-transfers() { count_in "[SIM] transfer Line1/Mixer1.Temp = $1" "$SIM_LOG"; }
+transfers() { count_in "[SIM] transfer Line1/Mixer${2:-1}.Temp = $1" "$SIM_LOG"; }
 
 : > "$EDGE_LOG"
 start_edge M 1 || fail "Heimdall did not start"
@@ -254,6 +298,41 @@ wait_count "cmdId=$C1 reason=command.replay" 2 10 || fail "M3 after a restart th
 sleep 2
 [ "$(transfers 42.0)" = "1" ] || fail "M3 the sim was touched by the replay after the restart"
 echo "[GATE] M3 OK: the reservation survived the restart"
+
+echo "[GATE] ===== G3a: Mixer2 through its own link ====="
+CA="$(propose g3a 49.0 -60 600 --mixer 2)"
+approve g3a || fail "G3a approval refused"
+publish g3a.approved || fail "G3a publish failed"
+wait_line "$EDGE_LOG" "METHOD cmdId=$CA .*Mixer2.SetTemperature.* ok=true" 20 || fail "G3a Mixer2's Method was not applied"
+[ "$(transfers 49.0 2)" = "1" ] || fail "G3a the sim did not transfer Line1/Mixer2.Temp = 49.0 exactly once"
+[ "$(transfers 49.0)" = "0" ] || fail "G3a Mixer1 was touched by Mixer2's command"
+echo "[GATE] G3a OK: applied to Mixer2 only"
+
+# g3_refused <leg> <value> <code> <detail or -> [fixture options]: refused by approve, then co-signed past
+# approve and refused by the edge with the same code; neither mixer's Method is called.
+g3_refused() {
+  local leg="$1" value="$2" code="$3" detail="$4"; shift 4
+  local c; c="$(propose "$leg" "$value" -60 600 "$@")"
+  [ -n "$c" ] || fail "$leg no proposal"
+  local before; before="$(wc -l < "$CLI_LOG")"
+  ! approve "$leg" || fail "$leg approve accepted the proposal"
+  tail -n +"$((before + 1))" "$CLI_LOG" | grep -q "\"error\":\"$code\"" || fail "$leg approve did not refuse $code"
+  [ "$detail" = "-" ] || tail -n +"$((before + 1))" "$CLI_LOG" | grep -q "\"detail\":\"$detail\"" \
+    || fail "$leg approve did not name $detail"
+  cosign "$leg" || fail "$leg co-sign failed"
+  publish "$leg.approved" || fail "$leg publish failed"
+  denied "$c" "$code" || fail "$leg the edge did not refuse $code"
+  [ "$detail" = "-" ] || grep -qF "cmdId=$c reason=$code ($detail)" "$EDGE_LOG" || fail "$leg the edge did not name $detail"
+  sleep 2
+  { [ "$(transfers "$value")" = "0" ] && [ "$(transfers "$value" 2)" = "0" ]; } || fail "$leg a mixer's Method was called"
+  echo "[GATE] $leg OK: refused $code by approve and by the edge, no Method called"
+}
+echo "[GATE] ===== G3b-e: proposals the link refuses ====="
+g3_refused G3b 51.0 command.link.mismatch binding.source --mixer 2 --evidence-mixer 1
+g3_refused G3c 52.0 command.malformed - --predicate "https://github.com/yggdrasil-iiot/bifrost/attestation/command-proposal/v1"
+g3_refused G3d 53.0 command.link.missing - --device Line1/Mixer1
+g3_refused G3e 54.0 command.link.mismatch binding.source \
+  --binding-sha256 0000000000000000000000000000000000000000000000000000000000000000
 
 echo "[GATE] ===== M4: an expired window ====="
 C4="$(propose m4 43.0 -60 20)"
@@ -345,5 +424,5 @@ sleep 2
 echo "[GATE] M9 OK: refused command.identity.required, the sim untouched"
 
 echo ""
-echo "[GATE] PASS run-command-method-gate.sh (M1-M9)"
+echo "[GATE] PASS run-command-method-gate.sh (M1-M9, G3)"
 exit 0

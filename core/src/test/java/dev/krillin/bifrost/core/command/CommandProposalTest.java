@@ -19,7 +19,10 @@ import static org.junit.jupiter.api.Assertions.*;
  *  co-signs the same bytes, and every refusal carries its reason code. */
 class CommandProposalTest {
     static final String OBJECT="nsu=urn:bifrost:opcua:sim;s=Line1/Mixer1",METHOD="nsu=urn:bifrost:opcua:sim;s=Line1/Mixer1.SetTemperature";
+    static final String OBJECT2="nsu=urn:bifrost:opcua:sim;s=Line1/Mixer2",METHOD2=OBJECT2+".SetTemperature";
+    static final String DEVICE="synthetic-site:line1:mixer1",DEVICE2="synthetic-site:line1:mixer2",EDGE="recipe-edge";
     static final String CMD="0f0e8f43-6a43-4d0e-9a3a-2b6f1f5f0c11";
+    static final String RULE2=",{\"id\":\"set-temp-2\",\"principal\":\"agent\",\"target\":{\"group\":\"Bifrost:Line1\",\"edge\":\"recipe-edge\",\"device\":\"synthetic-site:line1:mixer2\"},\"command\":\""+METHOD2+"\",\"constraint\":{\"type\":\"Double\",\"min\":0.0,\"max\":100.0}}]}";
     static final class MovableClock extends Clock {
         Instant now=Instant.parse("2026-11-01T00:00:00Z");
         @Override public ZoneId getZone(){return ZoneOffset.UTC;}
@@ -49,7 +52,7 @@ class CommandProposalTest {
         service.publish(bundle,"vor-read","1.0.0","approval-1",new MappingRegistry.HeadSigners("proposer",key("proposer",k),"approver",key("approver",k),Duration.ofDays(90)));
         head=read(registry.resolve("mappings/heads/line1.json"));
         policy=tmp.resolve("command-policy.json");
-        Files.writeString(policy,"{\"version\":\"1.0.0\",\"default\":\"deny\",\"rules\":[{\"id\":\"set-temp\",\"principal\":\"agent\",\"target\":{\"group\":\"Bifrost:Line1\",\"edge\":\"heimdall-edge\",\"device\":\"Line1/Mixer1\"},\"command\":\""+METHOD+"\",\"constraint\":{\"type\":\"Double\",\"min\":0.0,\"max\":100.0}}]}");
+        Files.writeString(policy,"{\"version\":\"1.0.0\",\"default\":\"deny\",\"rules\":[{\"id\":\"set-temp\",\"principal\":\"agent\",\"target\":{\"group\":\"Bifrost:Line1\",\"edge\":\"recipe-edge\",\"device\":\"synthetic-site:line1:mixer1\"},\"command\":\""+METHOD+"\",\"constraint\":{\"type\":\"Double\",\"min\":0.0,\"max\":100.0}}]}");
     }
     static void copy(Path source,Path dest) throws Exception {
         try(var walk=Files.walk(source)){for(Path p:walk.toList()){Path q=dest.resolve(source.relativize(p));if(Files.isDirectory(p))Files.createDirectories(q);else Files.copy(p,q);}}
@@ -70,10 +73,19 @@ class CommandProposalTest {
     }
 
     /** What Vor's read_governed returns for Line1/Mixer1.Temp on this release; only the fields approval reads matter. */
-    ObjectNode answer(){
-        ObjectNode a=object();
-        a.putObject("answer").putObject("pin").put("stream_id","line1").put("release_id",text(head,"id")).put("version",text(head,"version")).put("release_sha256",text(head,"sha256"))
-            .put("file","payload/mappings/0.json").put("field_id","temp");
+    ObjectNode answer() throws Exception {return answer(1);}
+    /** The answer for mixer1 or mixer2: the pin and the binding the release's read binding for that mixer names. */
+    ObjectNode answer(int mixer) throws Exception {
+        String data=mixer==1?"payload/data/vor-read-binding.json":"payload/data/vor-read-binding-mixer2.json";
+        String file="mappings/releases/vor-read/1.0.0/"+data;
+        ObjectNode a=object(),ans=a.putObject("answer");
+        ans.putObject("pin").put("stream_id","line1").put("release_id",text(head,"id")).put("version",text(head,"version")).put("release_sha256",text(head,"sha256"))
+            .put("file",mixer==1?"payload/mappings/0.json":"payload/mappings/1.json").put("field_id",mixer==1?"temp":"temp-mixer2");
+        JsonNode b=read(registry.resolve(file));
+        ObjectNode binding=ans.putObject("binding");
+        for(String f:List.of("group","edge","device","metric"))binding.put(f,text(b,f));
+        binding.set("governedDefinitionRef",b.path("governedDefinitionRef").deepCopy());
+        binding.putObject("source").put("file",file).put("sha256",sha(registry.resolve(file)));
         a.putObject("verdict").put("usable",true).put("status","usable");
         return a;
     }
@@ -86,7 +98,7 @@ class CommandProposalTest {
         s.put("predicateType",CommandProposal.PREDICATE);
         ObjectNode p=s.putObject("predicate");
         p.put("cmdId",CMD).put("streamId","line1");
-        p.putObject("target").put("group","Bifrost:Line1").put("edge","heimdall-edge").put("device","Line1/Mixer1");
+        p.putObject("target").put("group","Bifrost:Line1").put("edge",EDGE).put("device",DEVICE);
         ObjectNode m=p.putObject("method");m.put("objectNodeId",OBJECT).put("methodNodeId",METHOD);
         m.putArray("inputs").addObject().put("name","targetTemperature").put("type","Double").put("value",42.0);
         p.putObject("validity").put("notBefore","2026-11-01T00:00:00Z").put("notAfter","2026-11-01T00:15:00Z");
@@ -273,15 +285,95 @@ class CommandProposalTest {
         assertEquals("command.signature",admitRefusal(Dsse.envelope(Dsse.IN_TOTO,payload,sigs)),"a broken co-signature is not a person");
     }
 
-    @Test void thePreconditionMustBeAMemberOfTheCalledObject() throws Exception {
-        ObjectNode a=answer();((ObjectNode)a.get("answer").get("pin")).put("field_id","rpm");
-        assertEquals("command.precondition",admitRefusal(approve(proposal(JSON.writeValueAsBytes(a),s->{})).envelope()),"no such mapping in the release");
-        ObjectNode b=answer();((ObjectNode)b.get("answer").get("pin")).put("file","payload/mappings/9.json");
-        assertEquals("command.precondition",admitRefusal(approve(proposal(JSON.writeValueAsBytes(b),s->{})).envelope()),"not a file of the release");
-        // Co-signed directly: approval would refuse Mixer2 at the command policy before the precondition is reached.
-        JsonNode elsewhere=coSign(proposal(s->((ObjectNode)predicate(s).get("method")).put("objectNodeId","nsu=urn:bifrost:opcua:sim;s=Line1/Mixer2")
-            .put("methodNodeId","nsu=urn:bifrost:opcua:sim;s=Line1/Mixer2.SetTemperature")));
-        assertEquals("command.precondition",admitRefusal(elsewhere),"Mixer1.Temp says nothing about Mixer2");
+    /** A proposal for mixer2's Method: mixer2's device, Method and evidence. */
+    JsonNode mixer2(Consumer<ObjectNode> edit) throws Exception {
+        return proposal(JSON.writeValueAsBytes(answer(2)),s->{
+            ((ObjectNode)predicate(s).get("target")).put("device",DEVICE2);
+            ((ObjectNode)predicate(s).get("method")).put("objectNodeId",OBJECT2).put("methodNodeId",METHOD2);
+            edit.accept(s);
+        });
+    }
+    void allowMixer2() throws Exception {
+        Files.writeString(policy,Files.readString(policy).replace("]}",RULE2));
+    }
+    static String detail(org.junit.jupiter.api.function.Executable e){
+        var x=assertThrows(CommandLink.Refusal.class,e);return x.getMessage()+":"+x.detail();
+    }
+
+    @Test void eachMixerIsAdmittedThroughItsOwnLink() throws Exception {
+        allowMixer2();
+        var a=admit(approve(mixer2(s->{})).envelope());
+        assertEquals("mixer2-set-temperature",a.link().id());
+        assertEquals("nsu=urn:bifrost:opcua:sim;s=Line1/Mixer2.Temp",a.preconditionNodeId(),"from mixer2's read binding, not a prefix of the called object");
+        assertEquals("mixer1-set-temperature",admit(approve(proposal()).envelope()).link().id());
+        assertEquals("mixer2-set-temperature",text(approve(mixer2(s->{})).report().path("commandBinding"),"id"));
+    }
+
+    @Test void mixer1EvidenceCannotAuthorizeMixer2sMethod() throws Exception {
+        allowMixer2();
+        // mixer2's device and Method, mixer1's answer: the link resolves to mixer2's, and the evidence is not its binding
+        JsonNode cross=proposal(JSON.writeValueAsBytes(answer(1)),s->{
+            ((ObjectNode)predicate(s).get("target")).put("device",DEVICE2);
+            ((ObjectNode)predicate(s).get("method")).put("objectNodeId",OBJECT2).put("methodNodeId",METHOD2);
+        });
+        assertEquals("command.link.mismatch:binding.source",detail(()->approve(cross)));
+        assertEquals("command.link.mismatch:binding.source",detail(()->CommandProposal.verify(registry,cross,false,clock)));
+        assertEquals("command.link.mismatch:binding.source",detail(()->admit(coSign(cross))),"co-signed outside approval, the edge refuses it too");
+        // mixer1's device with mixer2's Method: no link has that key
+        JsonNode keyed=proposal(s->((ObjectNode)predicate(s).get("method")).put("objectNodeId",OBJECT2).put("methodNodeId",METHOD2));
+        assertEquals("command.link.missing",approveRefusal(keyed));
+        assertEquals("command.link.missing",admitRefusal(coSign(keyed)));
+    }
+
+    @Test void theDeviceIsTheSparkplugDeviceIdNotTheObjectPath() throws Exception {
+        JsonNode old=proposal(s->((ObjectNode)predicate(s).get("target")).put("device","Line1/Mixer1"));
+        assertEquals("command.link.missing",approveRefusal(old));
+        assertEquals("command.link.missing",admitRefusal(coSign(old)));
+    }
+
+    @Test void aV1StatementIsMalformed() throws Exception {
+        JsonNode v1=proposal(s->s.put("predicateType","https://github.com/yggdrasil-iiot/bifrost/attestation/command-proposal/v1"));
+        assertEquals("command.malformed",approveRefusal(v1));
+        assertEquals("command.malformed",admitRefusal(coSign(v1)));
+    }
+
+    @Test void theEvidenceMustBeBoundToTheReleasedReadBinding() throws Exception {
+        ObjectNode a=answer();((ObjectNode)a.at("/answer/binding/source")).put("sha256","0".repeat(64));
+        assertEquals("command.link.mismatch:binding.source",detail(()->approve(proposal(JSON.writeValueAsBytes(a),s->{}))));
+        ObjectNode b=answer();((ObjectNode)b.at("/answer/binding/source")).put("file","mappings/releases/vor-read/1.0.0/payload/data/other.json");
+        assertEquals("command.link.mismatch:binding.source",detail(()->approve(proposal(JSON.writeValueAsBytes(b),s->{}))));
+        ObjectNode c=answer();((ObjectNode)c.at("/answer/binding")).put("metric","Rpm");
+        assertEquals("command.link.mismatch:binding.metric",detail(()->approve(proposal(JSON.writeValueAsBytes(c),s->{}))));
+        ObjectNode d=answer();((ObjectNode)d.at("/answer/binding/governedDefinitionRef")).put("version","9.9.9");
+        assertEquals("command.link.mismatch:binding.governedDefinitionRef",detail(()->approve(proposal(JSON.writeValueAsBytes(d),s->{}))));
+        ObjectNode e=answer();((ObjectNode)e.at("/answer/pin")).put("field_id","rpm");
+        assertEquals("command.link.mismatch:pin.field_id",detail(()->approve(proposal(JSON.writeValueAsBytes(e),s->{}))));
+        ObjectNode f=answer();((ObjectNode)f.at("/answer/pin")).put("file","payload/mappings/1.json");
+        assertEquals("command.link.mismatch:pin.file",detail(()->approve(proposal(JSON.writeValueAsBytes(f),s->{}))));
+    }
+
+    @Test void theCommandNodeAndMethodSignatureAreTheLinks() throws Exception {
+        assertEquals("command.link.mismatch:command",detail(()->approve(proposal(s->((ObjectNode)predicate(s).get("target")).put("edge","other-edge")))));
+        assertEquals("command.link.mismatch:method.objectNodeId",detail(()->approve(proposal(s->((ObjectNode)predicate(s).get("method")).put("objectNodeId",OBJECT2)))));
+        assertEquals("command.link.mismatch:method.inputs",detail(()->approve(proposal(s->((ObjectNode)predicate(s).get("method").get("inputs").get(0)).put("name","rampRate")))));
+    }
+
+    @Test void twoLinksForOneKeyAreAmbiguous() throws Exception {
+        // publish refuses a duplicate; a release that carries one anyway is refused by every verifier
+        CommandLink.Release r=CommandLink.Release.of(registry,head);
+        Path copy=tmp.resolve("tampered");copy(r.dir(),copy);
+        Path dup=copy.resolve("payload/command-bindings/mixer1-again.json");
+        Files.copy(copy.resolve("payload/command-bindings/mixer1-set-temperature.json"),dup);
+        ObjectNode listing=(ObjectNode)read(copy.resolve("payload/proposal.json"));
+        ObjectNode again=null;
+        for(JsonNode e:listing.path("files"))if(text(e,"path").equals("command-bindings/mixer1-set-temperature.json"))again=((ObjectNode)e).deepCopy();
+        again.put("path","command-bindings/mixer1-again.json");
+        ((ArrayNode)listing.path("files")).add(again);
+        Files.write(copy.resolve("payload/proposal.json"),bytes(listing));
+        Map<String,String> files=new HashMap<>(r.files());
+        files.put("payload/proposal.json",sha(copy.resolve("payload/proposal.json")));files.put("payload/command-bindings/mixer1-again.json",sha(dup));
+        var p=CommandProposal.parse(Base64.getDecoder().decode(text(proposal(),"payload")));
+        assertEquals("command.link.ambiguous",refusal(()->CommandLink.resolve(new CommandLink.Release(copy,r.root(),files),p)));
     }
 
     @Test void aChangedReleaseFileIsNotRead() throws Exception {

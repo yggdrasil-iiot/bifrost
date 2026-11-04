@@ -1,0 +1,114 @@
+{
+  "kind": "mapping-proposal",
+  "schemaVersion": "2.25.0",
+  "id": "local-workspace",
+  "version": "2.0.0",
+  "baseRelease": null,
+  "files": [
+    {
+      "path": "command-bindings/0.json",
+      "kind": "command-binding",
+      "id": "mixer1-set-temperature",
+      "version": "1.0.0",
+      "sha256": "bbe121c1ad64c6b83883b54759f75bf2cca15ee90691b534e93183541630abcb"
+    },
+    {
+      "path": "command-bindings/1.json",
+      "kind": "command-binding",
+      "id": "mixer2-set-temperature",
+      "version": "1.0.0",
+      "sha256": "b7b7777ee814aecfcea2b0f0f42ee472a36905a9cd24a6747d6ccdbf5aef6bb6"
+    },
+    {
+      "path": "hierarchy/0.json",
+      "kind": "equipment-hierarchy",
+      "id": "vor-plant",
+      "version": "1.0.0",
+      "sha256": "0df0d46b69cc1d63b009cdf399f35485bb73f96fb5d107a552de4494d28109d9"
+    },
+    {
+      "path": "evidence/hierarchy-0.json",
+      "kind": "evidence-artifact",
+      "id": "hierarchy-plant-register",
+      "version": "1.0.0",
+      "sha256": "99a467fec585493ac676e4731bce61b6a0e233560612ed27d65b6cafeec16118"
+    },
+    {
+      "path": "evidence/0.json",
+      "kind": "evidence-artifact",
+      "id": "manual-mixer1-temp",
+      "version": "1.0.0",
+      "sha256": "fe18cbbab58d6b53a88670b61391e2109630995eafba970db4337c6559ee75b3"
+    },
+    {
+      "path": "evidence/1.json",
+      "kind": "evidence-artifact",
+      "id": "manual-mixer2-temp",
+      "version": "1.0.0",
+      "sha256": "24dabf166a58693bdd6d35d78806aa7c951f9e91a68b688c27522033a10431d6"
+    },
+    {
+      "path": "evidence/read-binding-0.json",
+      "kind": "evidence-artifact",
+      "id": "read-binding-mixer1-temp",
+      "version": "1.0.0",
+      "sha256": "8b6445265d79cfe2489c33e7be867c2de59558e56d16ad229bd8afd41adb952c"
+    },
+    {
+      "path": "evidence/read-binding-1.json",
+      "kind": "evidence-artifact",
+      "id": "read-binding-mixer2-temp",
+      "version": "1.0.0",
+      "sha256": "ef9444bb1c4f0b4fdd756f7e376948ec1a59691b99bb146a6d6ee15e9ef946e0"
+    },
+    {
+      "path": "mappings/0.json",
+      "kind": "mapping-set",
+      "id": "mixer1-mapping",
+      "version": "1.0.0",
+      "sha256": "0cfbc62562b703d2f4272ddec191b22dfa377ebea33f583668e45ee2bfe414df"
+    },
+    {
+      "path": "mappings/1.json",
+      "kind": "mapping-set",
+      "id": "mixer2-mapping",
+      "version": "1.0.0",
+      "sha256": "01113de528cededc340a017bdee49e6e615ee190ee5f01ecebb1688902b5b623"
+    },
+    {
+      "path": "semantics/0.json",
+      "kind": "semantic-definition",
+      "id": "mixer-model",
+      "version": "1.0.0",
+      "sha256": "37ecc264594e95391f1555433d52664ceb646ac5c22a643a01c2dcbb15027883"
+    },
+    {
+      "path": "sources/0.json",
+      "kind": "source-definition",
+      "id": "mixer1-temp",
+      "version": "1.0.0",
+      "sha256": "3247c67e2e46c6fc904e275b810f3c734fb88d5d25707e7a343a8471bcecf05a"
+    },
+    {
+      "path": "sources/1.json",
+      "kind": "source-definition",
+      "id": "mixer2-temp",
+      "version": "1.0.0",
+      "sha256": "2df302aa15d8d7ebcc840daf71586a81bf1675451fe58f12b501a50c1eba0e9b"
+    },
+    {
+      "path": "targets/0.json",
+      "kind": "target-instance",
+      "id": "mixer1",
+      "version": "1.0.0",
+      "sha256": "626a60e36507cb01cf7e65aa623a9c44232d02ec88df94e877f762935fc19d31"
+    },
+    {
+      "path": "targets/1.json",
+      "kind": "target-instance",
+      "id": "mixer2",
+      "version": "1.0.0",
+      "sha256": "02aa389ed71d21cc32076bfcd9484ff8339e8db7a16c166a829e0a48dadfd948"
+    }
+  ]
+}

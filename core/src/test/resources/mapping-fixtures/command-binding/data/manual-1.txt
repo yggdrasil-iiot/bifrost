@@ -1,0 +1,3 @@
+Field label: mixer2-temp
+Mixer2 temperature: nsu=urn:bifrost:opcua:sim;s=Line1/Mixer2.Temp, Double, Cel
+Mixer2 method: nsu=urn:bifrost:opcua:sim;s=Line1/Mixer2.SetTemperature, input targetTemperature, Double, Cel

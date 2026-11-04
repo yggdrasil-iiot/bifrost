@@ -1,0 +1,46 @@
+{
+  "kind": "mapping-submission",
+  "schemaVersion": "2.9.0",
+  "id": "command-binding-fixture",
+  "streamId": "line1",
+  "version": "1.0.0",
+  "workspaceSha256": "07887eb0979c3d2d061825f0859cc22131b62ceee3b1ad6bd964a86f3dd55d77",
+  "proposalSha256": "6492c20fef262515c157b6136bfb013de0339ef7bbf1cd22f91f692a85fb203f",
+  "baseRelease": null,
+  "proposedBy": "proposer",
+  "execution": "excluded",
+  "context": {
+    "equipment": [
+      {
+        "id": "synthetic-site",
+        "label": "Synthetic site"
+      },
+      {
+        "id": "line1",
+        "label": "Line 1"
+      },
+      {
+        "id": "mixer1",
+        "label": "Mixer 1"
+      },
+      {
+        "id": "mixer2",
+        "label": "Mixer 2"
+      }
+    ],
+    "connections": [
+      {
+        "id": "sim-opcua",
+        "label": "Sim OPC UA mixer 1",
+        "equipmentInstanceId": "mixer1",
+        "accessProfileRef": "s7-1500-opcua-v1"
+      },
+      {
+        "id": "sim-opcua-mixer2",
+        "label": "Sim OPC UA mixer 2",
+        "equipmentInstanceId": "mixer2",
+        "accessProfileRef": "s7-1500-opcua-v1"
+      }
+    ]
+  }
+}

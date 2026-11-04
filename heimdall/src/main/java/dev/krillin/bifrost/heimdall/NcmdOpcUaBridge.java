@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
@@ -27,7 +28,9 @@ import dev.krillin.bifrost.core.acl.CommandAuthorizer;
 import dev.krillin.bifrost.core.acl.CommandEnvelope;
 import dev.krillin.bifrost.core.acl.CommandPolicy;
 import dev.krillin.bifrost.core.acl.CommandRequest;
+import dev.krillin.bifrost.core.acl.Constraint;
 import dev.krillin.bifrost.core.acl.Decision;
+import dev.krillin.bifrost.core.acl.Rule;
 import dev.krillin.bifrost.core.acl.Target;
 import dev.krillin.bifrost.core.acl.opa.OpaMethodAuthorizer;
 import dev.krillin.bifrost.core.activation.ActivationAction;
@@ -36,6 +39,7 @@ import dev.krillin.bifrost.core.activation.ActivationPolicy;
 import dev.krillin.bifrost.core.activation.ActivationPolicyStore;
 import dev.krillin.bifrost.core.command.CommandEvent;
 import dev.krillin.bifrost.core.command.CommandLedger;
+import dev.krillin.bifrost.core.command.CommandLink;
 import dev.krillin.bifrost.core.command.CommandProposal;
 import dev.krillin.bifrost.core.conformance.ConformanceEvaluator;
 import dev.krillin.bifrost.core.conformance.ConformancePolicy;
@@ -549,6 +553,8 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
         CommandProposal.Admitted admitted;
         try {
             admitted = CommandProposal.admit(methodPath.registry(), envelope, clock);
+        } catch (CommandLink.Refusal refusal) {
+            return refuseMethod(cmdId, null, claimed, refusal.detail(), refusal.getMessage());
         } catch (IllegalArgumentException refusal) {
             return refuseMethod(cmdId, null, claimed, null, refusal.getMessage());
         } catch (Exception e) {
@@ -556,6 +562,11 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
         }
         CommandProposal.Proposal p = admitted.proposal();
         String subject = p.proposedBy();
+        // The published link names the command node that may call its Method; that node is this edge or nothing.
+        CommandLink.Link link = admitted.link();
+        if (!group.equals(link.group()) || !edge.equals(link.edge())) {
+            return refuseMethod(cmdId, subject, p, "command.node " + link.group() + "/" + link.edge(), "command.link.mismatch");
+        }
 
         // (5) replay. The reservation at (8) checks again under the ledger's lock.
         try {
@@ -578,7 +589,7 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
                     p.proposedBy(), grants(grants, p.proposedBy(), p.streamId()),
                     p.approvedBy(), grants(grants, p.approvedBy(), p.streamId()),
                     true, p.notBefore(), p.notAfter(), clock.instant(), true, true,
-                    p.target(), p.methodNodeId(), p.input(), "Double", p.value()));
+                    p.target(), p.methodNodeId(), p.input(), "Double", p.value(), methods(link, d.ruleId())));
         } catch (Exception e) {
             opa = Decision.deny("opa-input-error: " + e.getMessage());
         }
@@ -634,6 +645,18 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
                 + (ok ? "" : " reason=command.method.failed outcome=" + outcome));
         return new NcmdResponse(cmdId, ok, ok ? r.output() : null, null,
                 ok ? detail : "failed: command.method.failed (" + outcome + "): " + detail);
+    }
+
+    /** The OPA method table for this call: the linked Method, its input as the release names it, and the bounds of the
+     *  command-policy rule that allowed it. No entry when that rule leaves a bound open, so OPA denies. */
+    private Map<String, OpaMethodAuthorizer.MethodEntry> methods(CommandLink.Link link, String ruleId) {
+        for (Rule r : policy.rules()) {
+            Constraint c = r.constraint();
+            if (r.id().equals(ruleId) && c != null && c.min() != null && c.max() != null) {
+                return Map.of(link.methodNodeId(), new OpaMethodAuthorizer.MethodEntry(link.inputName(), link.inputType(), c.min(), c.max()));
+            }
+        }
+        return Map.of();
     }
 
     /** The command grants a principal holds on this stream, by their JSON names, for the OPA input. */

@@ -53,6 +53,8 @@ class NcmdBridgeMethodTest {
     static final String NCMD = "spBv1.0/" + GROUP + "/NCMD/" + EDGE;
     static final String OBJECT = "nsu=urn:bifrost:opcua:sim;s=Line1/Mixer1", METHOD = OBJECT + ".SetTemperature";
     static final String TEMP = OBJECT + ".Temp";
+    static final String OBJECT2 = "nsu=urn:bifrost:opcua:sim;s=Line1/Mixer2", METHOD2 = OBJECT2 + ".SetTemperature";
+    static final String DEVICE = "synthetic-site:line1:mixer1", DEVICE2 = "synthetic-site:line1:mixer2";
 
     static final class MovableClock extends Clock {
         Instant now = Instant.parse("2026-11-02T10:00:00Z");
@@ -117,11 +119,15 @@ class NcmdBridgeMethodTest {
         service.approve(bundle, "approval-1", "proposer", tmp.resolve("proposer.key"), "approver", tmp.resolve("approver.key"));
         service.publish(bundle, "vor-read", "1.0.0", "approval-1", new MappingRegistry.HeadSigners("proposer",
                 tmp.resolve("proposer.key"), "approver", tmp.resolve("approver.key"), Duration.ofDays(90)));
-        policy = AclMapperFactory.create().readValue("{\"version\":\"1.0.0\",\"default\":\"deny\",\"rules\":[{\"id\":\"set-temperature\","
-                + "\"principal\":\"agent\",\"target\":{\"group\":\"" + GROUP + "\",\"edge\":\"" + EDGE + "\",\"device\":\"Line1/Mixer1\"},"
-                + "\"command\":\"" + METHOD + "\",\"constraint\":{\"type\":\"Double\",\"min\":0.0,\"max\":100.0}}]}", CommandPolicy.class);
+        policy = AclMapperFactory.create().readValue("{\"version\":\"1.0.0\",\"default\":\"deny\",\"rules\":["
+                + rule("set-temperature", DEVICE, METHOD) + "," + rule("set-temperature-mixer2", DEVICE2, METHOD2) + "]}", CommandPolicy.class);
         ledgerDir = tmp.resolve("ledger");
         plant = new FakePlant(clock);
+    }
+
+    static String rule(String id, String device, String method) {
+        return "{\"id\":\"" + id + "\",\"principal\":\"agent\",\"target\":{\"group\":\"" + GROUP + "\",\"edge\":\"" + EDGE
+                + "\",\"device\":\"" + device + "\"},\"command\":\"" + method + "\",\"constraint\":{\"type\":\"Double\",\"min\":0.0,\"max\":100.0}}";
     }
 
     void grants(boolean operatorMayCoSign) throws Exception {
@@ -145,12 +151,23 @@ class NcmdBridgeMethodTest {
 
     /** An agent-signed statement as vor-propose writes it; {@code coSign} adds the operator's signature over the same bytes. */
     JsonNode envelope(double value, boolean coSign, Consumer<ObjectNode> edit) throws Exception {
+        return envelope(1, value, coSign, edit);
+    }
+    /** {@code mixer} picks whose evidence the statement carries: the pin and the binding that mixer's released read binding names. */
+    JsonNode envelope(int mixer, double value, boolean coSign, Consumer<ObjectNode> edit) throws Exception {
         byte[] headBytes = Files.readAllBytes(registry.resolve("mappings/heads/line1.json"));
         JsonNode head = JSON.readTree(headBytes);
+        String file = "mappings/releases/vor-read/1.0.0/payload/data/" + (mixer == 1 ? "vor-read-binding.json" : "vor-read-binding-mixer2.json");
+        JsonNode released = JSON.readTree(Files.readAllBytes(registry.resolve(file)));
         ObjectNode answer = object();
-        answer.putObject("answer").putObject("pin").put("stream_id", "line1").put("release_id", text(head, "id"))
+        ObjectNode ans = answer.putObject("answer");
+        ans.putObject("pin").put("stream_id", "line1").put("release_id", text(head, "id"))
                 .put("version", text(head, "version")).put("release_sha256", text(head, "sha256"))
-                .put("file", "payload/mappings/0.json").put("field_id", "temp");
+                .put("file", mixer == 1 ? "payload/mappings/0.json" : "payload/mappings/1.json").put("field_id", mixer == 1 ? "temp" : "temp-mixer2");
+        ObjectNode binding = ans.putObject("binding");
+        for (String f : List.of("group", "edge", "device", "metric")) binding.put(f, text(released, f));
+        binding.set("governedDefinitionRef", released.path("governedDefinitionRef").deepCopy());
+        binding.putObject("source").put("file", file).put("sha256", sha(Files.readAllBytes(registry.resolve(file))));
         answer.putObject("verdict").put("usable", true);
         byte[] evidence = JSON.writeValueAsBytes(answer);
         ObjectNode s = object().put("_type", CommandProposal.STATEMENT);
@@ -161,9 +178,9 @@ class NcmdBridgeMethodTest {
         s.put("predicateType", CommandProposal.PREDICATE);
         ObjectNode p = s.putObject("predicate");
         p.put("cmdId", UUID.randomUUID().toString()).put("streamId", "line1");
-        p.putObject("target").put("group", GROUP).put("edge", EDGE).put("device", "Line1/Mixer1");
+        p.putObject("target").put("group", GROUP).put("edge", EDGE).put("device", mixer == 1 ? DEVICE : DEVICE2);
         ObjectNode m = p.putObject("method");
-        m.put("objectNodeId", OBJECT).put("methodNodeId", METHOD);
+        m.put("objectNodeId", mixer == 1 ? OBJECT : OBJECT2).put("methodNodeId", mixer == 1 ? METHOD : METHOD2);
         m.putArray("inputs").addObject().put("name", "targetTemperature").put("type", "Double").put("value", value);
         p.putObject("validity").put("notBefore", clock.now.minusSeconds(60).toString()).put("notAfter", clock.now.plusSeconds(600).toString());
         p.put("proposedBy", "agent").put("approvedBy", "operator");
@@ -243,6 +260,38 @@ class NcmdBridgeMethodTest {
 
         assertTrue(b.handle(NCMD, ncmd(env)).ok(), "the same cmdId still executes: nothing above consumed it");
         assertEquals(1, plant.calls);
+    }
+
+    @Test void eachMixerIsCalledThroughItsOwnLink() throws Exception {
+        NcmdResponse r = bridge().handle(NCMD, ncmd(envelope(2, 42.0, true, p -> {})));
+        assertTrue(r.ok(), r.detail());
+        assertEquals(List.of(OBJECT2 + ".Temp"), plant.sampled, "the precondition is mixer2's own released source");
+        assertEquals(1, plant.calls);
+    }
+
+    @Test void mixer1EvidenceCannotReachMixer2sMethod() throws Exception {
+        NcmdResponse r = bridge().handle(NCMD, ncmd(envelope(1, 42.0, true, p -> {
+            ((ObjectNode) p.get("target")).put("device", DEVICE2);
+            ((ObjectNode) p.get("method")).put("objectNodeId", OBJECT2).put("methodNodeId", METHOD2);
+        })));
+        refused(r, "command.link.mismatch");
+        assertTrue(r.detail().contains("binding.source"), r.detail());
+        refused(bridge().handle(NCMD, ncmd(envelope(1, 42.0, true, p -> ((ObjectNode) p.get("target")).put("device", "Line1/Mixer1")))),
+                "command.link.missing");
+        refused(bridge().handle(NCMD, ncmd(envelope(1, 42.0, true, p -> ((ObjectNode) p.get("method")).put("objectNodeId", OBJECT2)))),
+                "command.link.mismatch");
+        assertEquals(0, plant.calls);
+        assertTrue(plant.sampled.isEmpty(), "refused before the precondition reads the plant");
+        assertTrue(entries().stream().allMatch(x -> "denied".equals(x.event().outcome())));
+    }
+
+    @Test void theOpaMethodTableComesFromTheLinkAndThePolicyRule() throws Exception {
+        policy = AclMapperFactory.create().readValue("{\"version\":\"1.0.0\",\"default\":\"deny\",\"rules\":["
+                + rule("set-temperature", DEVICE, METHOD).replace(",\"max\":100.0", "") + "]}", CommandPolicy.class);
+        NcmdResponse r = bridge().handle(NCMD, ncmd(approved(42.0)));
+        refused(r, "command.opa.denied");
+        assertTrue(r.detail().contains("method"), "an open bound leaves the Method out of the table: " + r.detail());
+        assertEquals(0, plant.calls);
     }
 
     @Test void bothPoliciesMustAllow() throws Exception {

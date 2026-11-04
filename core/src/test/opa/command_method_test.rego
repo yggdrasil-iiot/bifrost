@@ -12,10 +12,17 @@ base := {
 	"now": 1000,
 	"headMatch": true,
 	"evidence": {"usable": true},
-	"target": {"group": "Bifrost:Line1", "edge": "heimdall-edge", "device": "Line1/Mixer1"},
+	"target": {"group": "Bifrost:Line1", "edge": "recipe-edge", "device": "synthetic-site:line1:mixer1"},
 	"method": "nsu=urn:bifrost:opcua:sim;s=Line1/Mixer1.SetTemperature",
 	"inputs": [{"name": "targetTemperature", "type": "Double", "value": 42.0}],
+	"methods": {"nsu=urn:bifrost:opcua:sim;s=Line1/Mixer1.SetTemperature": entry},
 }
+
+# What Heimdall builds from the resolved command binding and the admitting command-policy rule.
+entry := {"input": "targetTemperature", "type": "Double", "min": 0, "max": 100}
+
+# base with input.methods replaced, not merged
+with_methods(t) := object.union(object.remove(base, ["methods"]), {"methods": t})
 
 arg(v) := [{"name": "targetTemperature", "type": "Double", "value": v}]
 
@@ -61,8 +68,25 @@ test_allow_only_without_violations if {
 	not method.decision.allow with input as object.union(base, {"headMatch": false})
 }
 
+# The table is the input's: none, another Method's only, or an entry of the wrong shape admits nothing.
+test_method_table_is_input if {
+	table_violations(object.remove(base, ["methods"])) == {"method", "argument"}
+	table_violations(with_methods({})) == {"method", "argument"}
+	table_violations(with_methods({"nsu=urn:bifrost:opcua:sim;s=Line1/Mixer2.SetTemperature": entry})) == {"method", "argument"}
+	table_violations(with_methods([entry])) == {"method", "argument"}
+	table_violations(with_methods({base.method: object.union(entry, {"min": "0"})})) == {"argument"}
+	table_violations(with_methods({base.method: object.remove(entry, ["max"])})) == {"argument"}
+	table_violations(with_methods({base.method: object.union(entry, {"input": 7})})) == {"argument"}
+	table_violations(with_methods({base.method: object.union(entry, {"max": 40})})) == {"argument"}
+}
+
+# The violations for one input. `v with input as x == y` would make `x == y` the input, so the result is bound first.
+table_violations(x) := got if {
+	got := method.violations with input as x
+}
+
 # Every check fails closed on an empty input.
 test_empty_input if {
-	method.violations with input as {} == {"principal", "grant.propose", "grant.approve", "distinct-keys", "window", "head", "evidence", "method", "argument"}
+	table_violations({}) == {"principal", "grant.propose", "grant.approve", "distinct-keys", "window", "head", "evidence", "method", "argument"}
 	not method.decision.allow with input as {}
 }
