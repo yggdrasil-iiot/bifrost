@@ -1,6 +1,6 @@
 {
   "kind": "mapping-proposal",
-  "schemaVersion": "2.25.0",
+  "schemaVersion": "2.26.0",
   "id": "local-workspace",
   "version": "2.0.0",
   "baseRelease": null,
@@ -10,14 +10,14 @@
       "kind": "command-binding",
       "id": "mixer1-set-temperature",
       "version": "1.0.0",
-      "sha256": "bbe121c1ad64c6b83883b54759f75bf2cca15ee90691b534e93183541630abcb"
+      "sha256": "e3f82555e39657ebd7cb6c622964714d038c64f7b878d3e83ba2bfad49642653"
     },
     {
       "path": "command-bindings/1.json",
       "kind": "command-binding",
       "id": "mixer2-set-temperature",
       "version": "1.0.0",
-      "sha256": "b7b7777ee814aecfcea2b0f0f42ee472a36905a9cd24a6747d6ccdbf5aef6bb6"
+      "sha256": "d0cbc081412e82b5eee9f6298a1721f791ab84618df0840de65d613069959e77"
     },
     {
       "path": "hierarchy/0.json",
@@ -60,6 +60,13 @@
       "id": "read-binding-mixer2-temp",
       "version": "1.0.0",
       "sha256": "ef9444bb1c4f0b4fdd756f7e376948ec1a59691b99bb146a6d6ee15e9ef946e0"
+    },
+    {
+      "path": "evidence/server-certificate-0.json",
+      "kind": "evidence-artifact",
+      "id": "server-certificate-sim",
+      "version": "1.0.0",
+      "sha256": "bfcf95c90852796ad536a6c272d3d5f95e34457d509a2533904a6ebf83674adb"
     },
     {
       "path": "mappings/0.json",
