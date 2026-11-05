@@ -625,6 +625,19 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
             return refuseMethod(cmdId, subject, p, admitted.preconditionNodeId() + ": " + e.getMessage(), "command.precondition");
         }
 
+        // (7b) the endpoint. The precondition read opened the session; it must be on the server the link names, not on any
+        // server the trust list accepts. Admission already refused a link that names none.
+        CommandLink.Endpoint endpoint = link.requireEndpoint();
+        try {
+            Applier.Peer peer = applier.peer();
+            String why = endpoint.refusal(peer.certificate(), peer.applicationUri());
+            if (why != null) {
+                return refuseMethod(cmdId, subject, p, why, "command.link.endpoint");
+            }
+        } catch (Exception e) {
+            return refuseMethod(cmdId, subject, p, e.getMessage(), "command.link.endpoint");
+        }
+
         // (8) the reservation. From here on the cmdId is consumed whatever happens.
         try {
             if (!commandLedger.reserve(new CommandEvent(group, edge, cmdId, subject, p.methodNodeId(),
@@ -639,14 +652,23 @@ public final class NcmdOpcUaBridge implements MqttCallbackExtended {
             return NcmdResponse.apply(cmdId, false, "denied: command.ledger.required");
         }
 
-        // (9) the call.
+        // (9) the call, on a client compared again: a reconnect since (7b) may have reached another server.
         String outcome;
         String detail;
         Applier.MethodResult r = null;
         try {
-            r = applier.method(p.objectNodeId(), p.methodNodeId(), p.value());
+            r = applier.method(p.objectNodeId(), p.methodNodeId(), p.value(),
+                    peer -> endpoint.refusal(peer.certificate(), peer.applicationUri()));
             outcome = r.ok() ? "applied" : "method-failed";
             detail = r.detail();
+        } catch (Applier.EndpointRefused e) {
+            // Not called. The cmdId stays consumed: the reservation stands and the outcome says why nothing happened.
+            String full = "command.link.endpoint: " + e.getMessage();
+            record(cmdId, subject, p.methodNodeId(), String.valueOf(p.value()), "Double", CommandEvent.OUTCOME, "denied", full);
+            health.denied();
+            System.out.println("[BRIDGE] DENY cmd=" + METHOD_METRIC + " cmdId=" + cmdId + " reason=command.link.endpoint ("
+                    + e.getMessage() + ") after reservation");
+            return NcmdResponse.apply(cmdId, false, "denied: " + full);
         } catch (Exception e) {
             // The call may or may not have reached the plant. The reservation stands either way.
             outcome = "unknown";

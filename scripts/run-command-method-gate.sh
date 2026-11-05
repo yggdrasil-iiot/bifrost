@@ -155,7 +155,6 @@ for rid, n in (("set-temperature", 1), ("set-temperature-mixer2", 2)):
 json.dump(d, open(p, "w"), indent=2)
 PY
 SIGNERS=(--by proposer --by-key "$PKI_WIN/proposer.key" --approved-by approver --approved-by-key "$PKI_WIN/approver.key")
-BUNDLE="$(cygpath -m "$(pwd)/core/src/test/resources/mapping-fixtures/vor-read")"
 # G3 publish: Mixer2's link pointed at Mixer1's read binding, every digest re-pinned so only that rule fails.
 CROSSED="$WORK/mg-crossed-bundle"
 rm -rf "$CROSSED"; cp -r core/src/test/resources/mapping-fixtures/vor-read "$CROSSED"
@@ -178,10 +177,6 @@ PY
 grep -q "command-binding.device-path" "$CLI_LOG" || fail "G3 publish: the crossed link was not refused command-binding.device-path"
 [ ! -e "$REG/mappings/heads/line1.json" ] || fail "G3 publish: a head exists after the refusal"
 echo "[GATE] G3 publish OK: a link to another mixer's read binding is refused command-binding.device-path"
-gates mapping approve "$REG_WIN" "$BUNDLE" approval-vor-read "${SIGNERS[@]}" || fail "mapping approve failed"
-gates mapping publish "$REG_WIN" "$BUNDLE" vor-read 1.0.0 --approval approval-vor-read "${SIGNERS[@]}" \
-  || fail "mapping publish failed"
-[ -f "$REG/mappings/heads/line1.json" ] || fail "no head for stream line1"
 
 export MQTT_URL="tcp://localhost:1883"
 export OPCUA_URL="opc.tcp://localhost:48400"
@@ -213,6 +208,16 @@ grep -q "OPC-UA sim listening" "$SIM_LOG" || fail "the sim did not start"
 [ -s "$SIM_CERT" ] || fail "the sim did not export its server certificate"
 mkdir -p "$TRUST/trusted/certs"
 cp "$SIM_CERT" "$TRUST/trusted/certs/sim-server.der"
+# The release's links name this server (contract 2.26.0 endpointRef): the fixture is re-pinned to the certificate
+# the sim minted at this start, then published. Before the sim runs there is no certificate to name.
+PINNED="$WORK/mg-bundle"
+rm -rf "$PINNED"; cp -r core/src/test/resources/mapping-fixtures/vor-read "$PINNED"
+python scripts/pin-server-certificate.py "$PINNED" "$SIM_CERT" >>"$CLI_LOG" || fail "could not pin the sim's certificate"
+BUNDLE="$(cygpath -m "$(pwd)/$PINNED")"
+gates mapping approve "$REG_WIN" "$BUNDLE" approval-vor-read "${SIGNERS[@]}" || fail "mapping approve failed"
+gates mapping publish "$REG_WIN" "$BUNDLE" vor-read 1.0.0 --approval approval-vor-read "${SIGNERS[@]}" \
+  || fail "mapping publish failed"
+[ -f "$REG/mappings/heads/line1.json" ] || fail "no head for stream line1"
 
 # The ledger is NOT wiped between edge starts: M3 is about what survives a restart.
 start_edge() {

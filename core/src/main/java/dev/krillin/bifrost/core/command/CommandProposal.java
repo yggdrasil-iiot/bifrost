@@ -120,7 +120,11 @@ public final class CommandProposal {
         signed(registry, approved, true);
         ObjectNode report = summary("command-approval", p, head);
         report.put("proposeGrant", proposeGrant.ruleId()).put("approveGrant", approveGrant.ruleId()).put("policyRule", bounds.ruleId());
-        report.putObject("commandBinding").put("id", link.id()).put("version", link.version());
+        ObjectNode binding = report.putObject("commandBinding").put("id", link.id()).put("version", link.version());
+        // The server the link authorizes, as the release's certificates say. Approval has no session: this is not a claim
+        // about the live server, which Heimdall compares at call time.
+        ObjectNode endpoint = binding.putObject("endpoint").put("applicationUri", link.endpoint().applicationUri());
+        for (CommandLink.Endpoint.Certificate c : link.endpoint().certificates()) endpoint.withArray("thumbprintsSha1").add(c.thumbprintSha1());
         return new Approval(approved, report);
     }
 
@@ -221,6 +225,8 @@ public final class CommandProposal {
     private static CommandLink.Link link(CommandLink.Release release, Proposal p) throws Exception {
         CommandLink.Link link = CommandLink.resolve(release, p);
         CommandLink.match(release, link, p, JSON.readTree(p.evidence()).path("answer"));
+        // A link that names no server authorizes no call: 2.25.0 links are read, never acted on.
+        link.requireEndpoint();
         return link;
     }
 

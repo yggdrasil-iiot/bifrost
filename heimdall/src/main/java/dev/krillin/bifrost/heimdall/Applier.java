@@ -1,5 +1,7 @@
 package dev.krillin.bifrost.heimdall;
 
+import java.util.function.Function;
+
 /**
  * The physical apply seam the bridge drives after an edge-authorization ALLOW.
  * Implemented by {@link OpcUaApplier} (live Milo client) in production and by a fake in tests,
@@ -43,11 +45,35 @@ public interface Applier {
     }
 
     /**
-     * Call an OPC UA Method with one Double input. {@code ok} only when the call's StatusCode and
+     * Call an OPC UA Method with one Double input, after {@code endpoint} returned null for the calling client's
+     * {@link Peer} (otherwise {@link EndpointRefused}, and no call). {@code ok} only when the call's StatusCode and
      * every input argument's result are Good; {@code output} is the first output argument.
      */
-    default MethodResult method(String objectNodeId, String methodNodeId, double input) throws Exception {
+    default MethodResult method(String objectNodeId, String methodNodeId, double input, Function<Peer, String> endpoint)
+            throws Exception {
         throw new UnsupportedOperationException("method");
+    }
+
+    /**
+     * The server the current session authenticated: the server certificate it presented (DER) and the ApplicationUri of
+     * the endpoint description the session was created on. Opens the session if there is none.
+     */
+    default Peer peer() throws Exception {
+        throw new UnsupportedOperationException("peer");
+    }
+
+    /** An authenticated server: its certificate (DER, null if none) and its endpoint description's ApplicationUri. */
+    record Peer(byte[] certificate, String applicationUri) {}
+
+    /**
+     * The client about to make a Method call is not on the linked server: {@code endpoint} returned this reason for its
+     * {@link Peer}, so the call was not made. A {@code method} implementation asks {@code endpoint} on the same client it
+     * then calls with, so a reconnect between the bridge's first comparison and the call cannot slip another server in.
+     */
+    final class EndpointRefused extends Exception {
+        public EndpointRefused(String reason) {
+            super(reason);
+        }
     }
 
     /** A sample: its value, whether its StatusCode was Good, and its source timestamp (null if absent). */
