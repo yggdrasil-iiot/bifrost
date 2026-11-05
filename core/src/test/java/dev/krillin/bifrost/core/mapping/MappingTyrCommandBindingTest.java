@@ -11,8 +11,9 @@ import java.util.*;
 import static dev.krillin.bifrost.core.mapping.MappingJson.*;
 import static org.junit.jupiter.api.Assertions.*;
 
-/** 2.25 command binding as Tyr packages it: the imported read bindings ride as evidence-artifacts with their bytes
- *  unchanged, Bifrost's own checks accept the bundle, and the release attests every link and profile. */
+/** 2.26 command binding as Tyr packages it: the imported read bindings and the server certificate ride as
+ *  evidence-artifacts with their bytes unchanged, Bifrost's own checks accept the bundle, and the release attests every
+ *  link, profile and certificate. */
 class MappingTyrCommandBindingTest {
     @TempDir Path tmp;
     Path bundle,registry,proposerKey,approverKey;
@@ -29,7 +30,7 @@ class MappingTyrCommandBindingTest {
     }
     @Test void acceptsTyrBundle() {
         var c=new MappingBundle().validate(bundle);assertTrue(c.accepted(),c.report().toString());
-        assertEquals("2.25.0",text(c.proposal(),"schemaVersion"));
+        assertEquals("2.26.0",text(c.proposal(),"schemaVersion"));
         assertEquals(2,c.documents().values().stream().filter(d->text(d,"kind").equals("command-binding")).count());
     }
     @Test void releaseAndAttestationCarryEachLinkAndItsReadBinding() throws Exception {
@@ -39,13 +40,17 @@ class MappingTyrCommandBindingTest {
         JsonNode statement=service.verifyAttestation("release","1.0.0",sha(dir.resolve("release.json")));
         Set<String> subjects=new HashSet<>();for(JsonNode s:statement.path("subject"))subjects.add(text(s.path("digest"),"sha256"));
         Map<String,String> files=new HashMap<>();for(JsonNode f:release.path("files"))files.put(text(f,"path"),text(f,"sha256"));
-        for(String p:List.of("command-bindings/0.json","command-bindings/1.json","evidence/read-binding-0.json","evidence/read-binding-1.json")){
+        for(String p:List.of("command-bindings/0.json","command-bindings/1.json","evidence/read-binding-0.json","evidence/read-binding-1.json","evidence/server-certificate-0.json")){
             String h=files.entrySet().stream().filter(e->e.getKey().endsWith(p)).map(Map.Entry::getValue).findFirst().orElse(null);
             assertEquals(sha(bundle.resolve(p)),h,p);assertTrue(subjects.contains(h),p);
         }
         // the profile bytes Vor will hash are the bytes Tyr imported
         String profile=files.entrySet().stream().filter(e->e.getKey().endsWith("data/read-binding-0.json")).map(Map.Entry::getValue).findFirst().orElseThrow();
         assertEquals(text(read(bundle.resolve("evidence/read-binding-0.json")).path("file"),"sha256"),profile);
+        // and the DER Heimdall compares is the DER Tyr imported
+        String der=files.entrySet().stream().filter(e->e.getKey().endsWith("data/server-certificate-0.der")).map(Map.Entry::getValue).findFirst().orElseThrow();
+        assertEquals(sha(bundle.resolve("data/server-certificate-0.der")),der);
+        assertEquals(text(read(bundle.resolve("evidence/server-certificate-0.json")).path("file"),"sha256"),der);
     }
     @Test void aLinkToAnotherMixersReadBindingIsRefused() throws Exception {
         Path file=bundle.resolve("command-bindings/1.json");ObjectNode c=(ObjectNode)read(file);
