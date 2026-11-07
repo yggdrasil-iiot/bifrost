@@ -94,16 +94,17 @@ final class AttributionRules {
     JsonNode leaf;try{leaf=LogicalStructure.resolve(semantic,m.path("memberPath"));}catch(IllegalArgumentException e){continue;}
     JsonNode v=m.path("valueRef"),source=text(v,"kind").equals("source")?find(docs,"source-definition",v.path("sourceRef")):null;
     String identifier=source!=null&&text(source.path("access"),"kind").equals("opcua-node")?text(source.path("access"),"identifier"):null;
-    out.put(text(m,"mappingId"),new Member(key(set),path,leaf,m.path("memberPath").size()==1,names,identifier));
+    require(out.put(text(m,"mappingId"),new Member(key(set),path,leaf,m.path("memberPath").size()==1,names,identifier))==null,"mapping.duplicate-id");
    }
   }
   return out;
  }
- /** Spec: within each semantic definition a rule uses, no two leaf members share a name (a station and a tool may each have a
+ /** Spec: within each semantic definition a rule uses, no two leaf members share a name, counted per definition node (a
+  *  StructureArray's layout repeats its leaf once per index; the node is one member) (a station and a tool may each have a
   *  member of the same name, because Sparkplug metric names are scoped to one device). */
  static boolean distinctNames(JsonNode semantic){
   Set<String> names=new HashSet<>();
-  try{for(LogicalStructure.Leaf l:LogicalStructure.layout(semantic).leaves().values())if(!names.add(text(l.member(),"name")))return false;}
+  try{for(JsonNode m:LogicalStructure.layout(semantic).definitions())if(!LogicalStructure.container(m)&&!names.add(text(m,"name")))return false;}
   catch(IllegalArgumentException e){return false;}
   return true;
  }

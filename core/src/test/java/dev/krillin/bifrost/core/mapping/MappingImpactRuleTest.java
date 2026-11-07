@@ -98,5 +98,11 @@ class MappingImpactRuleTest {
     @Test void profileRefusesDuplicateKinds() throws Exception {incidentRefused(b->((ArrayNode)b.path("kinds")).add("gauge-drift"));}
     @Test void profileRefusesAnotherEquipmentRefBasis() throws Exception {incidentRefused(b->b.put("equipmentRefBasis","node-id"));}
     @Test void profileRefusesBytesThatAreNotJson() {incidentRefused("not json".getBytes(java.nio.charset.StandardCharsets.UTF_8));}
-    @Test void profileRefusesDuplicateKeys() {incidentRefused("{\"topic\":\"a\",\"topic\":\"b\"}".getBytes(java.nio.charset.StandardCharsets.UTF_8));}
+    /** The fixture's own profile bytes with one key repeated: valid but for the duplicate. The same bytes without it are accepted. */
+    @Test void profileRefusesDuplicateKeys() throws Exception {
+        byte[] original=Files.readAllBytes(Path.of(MappingImpactRuleTest.class.getResource("/mapping-fixtures/attribution-impact/data/incident-binding-line2.json").toURI()));
+        assertEquals("mfg.incidents",IncidentBindingProfile.parse(original,"x").topic());
+        String text=new String(original,java.nio.charset.StandardCharsets.UTF_8);int end=text.lastIndexOf('}');
+        incidentRefused((text.substring(0,end)+",\"topic\":\"x\""+text.substring(end)).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
 }

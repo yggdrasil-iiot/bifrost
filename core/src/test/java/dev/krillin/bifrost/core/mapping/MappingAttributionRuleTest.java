@@ -113,7 +113,14 @@ class MappingAttributionRuleTest {
     @Test void profileRefusesDuplicateSources() throws Exception {occupancyRefused(b->((ArrayNode)b.path("sources")).add("mes-line2"));}
     @Test void profileRefusesSourcesThatAreNotAnArray() throws Exception {occupancyRefused(b->b.put("sources","mes-line2"));}
     @Test void profileRefusesBytesThatAreNotJson() {occupancyRefused("not json".getBytes(java.nio.charset.StandardCharsets.UTF_8));}
-    @Test void profileRefusesDuplicateKeys() {occupancyRefused("{\"topic\":\"a\",\"topic\":\"b\"}".getBytes(java.nio.charset.StandardCharsets.UTF_8));}
+    /** The fixture's own profile bytes with one key repeated: complete and valid but for the duplicate, so only strict duplicate-key
+     *  detection can refuse it. The same bytes without the repeat are accepted. */
+    @Test void profileRefusesDuplicateKeys() throws Exception {
+        byte[] original=Files.readAllBytes(Path.of(MappingAttributionRuleTest.class.getResource("/mapping-fixtures/attribution-impact/data/occupancy-binding-line2.json").toURI()));
+        assertEquals("mfg.occupancy",OccupancyBindingProfile.parse(original,"x").topic());
+        String text=new String(original,java.nio.charset.StandardCharsets.UTF_8);int end=text.lastIndexOf('}');
+        occupancyRefused((text.substring(0,end)+",\"topic\":\"x\""+text.substring(end)).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
     // identity.pattern: the syntax common to Java and ECMA-262 only (spec 225-226)
     static void pattern(String p) throws Exception {OccupancyBindingProfile.parse(occupancy(b->((ObjectNode)b.path("identity")).put("pattern",p)),"x");}
     static void patternRefused(String p) throws Exception {occupancyRefused(b->((ObjectNode)b.path("identity")).put("pattern",p));}
@@ -189,6 +196,55 @@ class MappingAttributionRuleTest {
         assertEquals("Running",text(read(bundle.resolve("semantics/station.json")).path("members").get(0),"name"));
         assertEquals("Running",text(read(bundle.resolve("semantics/tool.json")).path("members").get(1),"name"));
         accepted();
+    }
+    static ObjectNode json(String text){try{return (ObjectNode)JSON.readTree(text);}catch(Exception e){throw new IllegalStateException(e);}}
+    static ObjectNode leaf(String id,String name){
+        return json("{\"memberId\":\""+id+"\",\"name\":\""+name+"\",\"semanticId\":\"urn:bifrost:sem:Tool/"+name+"\",\"description\":\"x\",\"valueType\":\"Double\",\"unit\":{\"status\":\"known\",\"code\":\"N.m\"},\"role\":\"measurement\",\"range\":null}");
+    }
+    static ObjectNode container(String id,String name,String type,String extra){
+        return json("{\"memberId\":\""+id+"\",\"name\":\""+name+"\",\"semanticId\":\"urn:bifrost:sem:Tool/"+name+"\",\"description\":\"x\",\"valueType\":\""+type+"\","+extra+"\"members\":[]}");
+    }
+    /** A StructureArray expands to one layout leaf per index, all of one definition node: its name is counted once. */
+    @Test void aStructureArrayLeafIsOneDefinitionNotOnePerIndex() throws Exception {
+        change("semantics/tool.json",s->{
+            ObjectNode a=container("slots","Slots","StructureArray","\"shape\":[2],\"lowerBounds\":[0],");((ArrayNode)a.path("members")).add(leaf("slot","Slot"));
+            ((ArrayNode)s.path("members")).add(a);
+        });
+        // the target instances map every layout leaf: slots[0].slot and slots[1].slot of each tool, copies of its torque mapping
+        for(String set:List.of("mappings/nutrunner1.json","mappings/nutrunner2.json"))change(set,m->{
+            ArrayNode all=(ArrayNode)m.path("mappings");
+            for(int i=0;i<2;i++){
+                ObjectNode c=all.get(0).deepCopy();c.put("mappingId",text(all.get(0),"mappingId")+"-slot"+i);ArrayNode path=(ArrayNode)c.path("memberPath");path.removeAll();
+                path.add(object().put("kind","member").put("memberId","slots"));
+                ObjectNode ix=object().put("kind","index");ix.putArray("indices").add(i);path.add(ix);
+                path.add(object().put("kind","member").put("memberId","slot"));all.add(c);
+            }
+        });
+        accepted();
+    }
+    /** A leaf nested in a Structure still counts against the definition's names. */
+    @Test void aNestedLeafSharingANameIsRefused() throws Exception {
+        change("semantics/tool.json",s->{
+            ObjectNode g=container("group","Group","Structure","");((ArrayNode)g.path("members")).add(leaf("inner","Torque"));
+            ((ArrayNode)s.path("members")).add(g);
+        });
+        refused("attribution.member-unresolved");
+    }
+    /** The tool model nests torque in a Structure and both nutrunner mappings map it at the two-step path [group, torque]. */
+    void nestTorque() throws Exception {
+        change("semantics/tool.json",s->{
+            ArrayNode members=(ArrayNode)s.path("members");ObjectNode torque=(ObjectNode)members.remove(0);
+            ObjectNode g=container("group","Group","Structure","");((ArrayNode)g.path("members")).add(torque);members.insert(0,g);
+        });
+        for(String set:List.of("mappings/nutrunner1.json","mappings/nutrunner2.json"))change(set,m->{
+            ArrayNode path=(ArrayNode)m.path("mappings").get(0).path("memberPath");path.insert(0,object().put("kind","member").put("memberId","group"));
+        });
+    }
+    @Test void aMemberMappedAtAMultiStepPathIsRefused() throws Exception {nestTorque();refused("attribution.member-unresolved");}
+    /** Two mapping sets sharing a mappingId (the rule names it): the bundle's own duplicate refusal, not a member refusal. */
+    @Test void aMappingIdSharedByTwoSetsIsADuplicate() throws Exception {
+        change("mappings/nutrunner2.json",m->((ObjectNode)m.path("mappings").get(0)).put("mappingId","nutrunner1-torque"));
+        refused("mapping.duplicate-id");
     }
     @Test void memberEquipmentOutsideTheStations() throws Exception {
         // station2 alone: nutrunner1 under station1 is neither a station nor a descendant of one
