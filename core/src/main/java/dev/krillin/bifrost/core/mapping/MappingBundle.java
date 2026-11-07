@@ -45,7 +45,7 @@ public final class MappingBundle {
             for(JsonNode e:p.path("files")){
                 String path=text(e,"path");pin(path,text(e,"sha256"));JsonNode d=read(root.resolve(path));
                 require(text(d,"kind").equals(text(e,"kind"))&&text(d,"id").equals(text(e,"id"))&&text(d,"version").equals(text(e,"version")),"bundle.identity");
-                require(Set.of("source-definition","semantic-definition","target-instance","value-graph","mapping-set","write-definition","evidence-artifact","source-observation","import-batch","semantic-lifecycle","mapping-template","template-application","record-mapping",EquipmentHierarchy.KIND,MetricDefinitions.KIND,CommandBindings.KIND,"attribution-rule","impact-rule").contains(text(d,"kind")),"capability.document-kind");
+                require(Set.of("source-definition","semantic-definition","target-instance","value-graph","mapping-set","write-definition","evidence-artifact","source-observation","import-batch","semantic-lifecycle","mapping-template","template-application","record-mapping",EquipmentHierarchy.KIND,MetricDefinitions.KIND,CommandBindings.KIND,AttributionRules.KIND,"impact-rule").contains(text(d,"kind")),"capability.document-kind");
                 schema(d,text(d,"kind"));require(docs.putIfAbsent(key(d),d)==null,"bundle.duplicate-id");
             }
             for(JsonNode d:docs.values())if(text(d,"kind").equals("evidence-artifact")){
@@ -100,6 +100,7 @@ public final class MappingBundle {
             EquipmentHierarchy.validate(docs.values(),equipment);
             MetricDefinitions.validate(docs.values());
             CommandBindings.validate(docs.values(),path->Files.readAllBytes(safe(root,path)));
+            AttributionRules.validate(docs.values(),path->Files.readAllBytes(safe(root,path)));
             if(docs.values().stream().anyMatch(d->MappingTemplates.KINDS.contains(text(d,"kind"))))MappingTemplates.validate(docs.values(),List.of());
             if(docs.values().stream().anyMatch(d->text(d,"kind").equals("record-mapping")))RecordMappings.validate(docs.values(),List.of(),this::validateDerived);
             if(docs.values().stream().anyMatch(d->text(d,"schemaVersion").equals("2.22.0")))require(Set.of("2.22.0","2.23.0","2.24.0","2.25.0","2.26.0","2.27.0").contains(text(p,"schemaVersion")),"broadcast.envelope");

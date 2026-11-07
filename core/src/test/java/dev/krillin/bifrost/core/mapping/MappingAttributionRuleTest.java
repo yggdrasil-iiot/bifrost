@@ -136,4 +136,120 @@ class MappingAttributionRuleTest {
     @Test void patternRefusesAbsurdNestingWithoutThrowing() throws Exception {patternRefused(nested(10000));}
     /** Java reads a surrogate pair as one code point, ECMA-262 without the u flag as two code units. Not common syntax. */
     @Test void patternRefusesSupplementaryCharacters() throws Exception {patternRefused("[😀]");patternRefused("a😀");}
+
+    void rule(Consumer<ObjectNode> mutation) throws Exception {change("rules/attribution-line2.json",mutation);}
+    /** The profile data file is pinned by its evidence-artifact, not by the proposal: re-pin that artifact too. */
+    void profileBytes(byte[] b) throws Exception {
+        Files.write(bundle.resolve("data/occupancy-binding-line2.json"),b);
+        change("evidence/occupancy-binding-line2.json",a->((ObjectNode)a.path("file")).put("sha256",sha0("data/occupancy-binding-line2.json")));
+    }
+    void profile(Consumer<ObjectNode> mutation) throws Exception {ObjectNode d=(ObjectNode)read(bundle.resolve("data/occupancy-binding-line2.json"));mutation.accept(d);profileBytes(bytes(d));}
+    String sha0(String rel){try{return sha(bundle.resolve(rel));}catch(Exception e){throw new IllegalStateException(e);}}
+    static ObjectNode member(ObjectNode r,int i){return (ObjectNode)r.path("members").get(i);}
+    static ObjectNode activity(ObjectNode r,int i){return (ObjectNode)r.path("activity").get(i);}
+    static ObjectNode ref(ObjectNode r,String field){return (ObjectNode)r.path(field);}
+    static ObjectNode entry(String setId,String mappingId,String semanticId,String metric){
+        ObjectNode e=object();e.set("mappingSetRef",object().put("id",setId).put("version","1.0.0"));return e.put("mappingId",mappingId).put("semanticId",semanticId).put("metric",metric);
+    }
+    static final String S1="synthetic-site:line2:station1",S2="synthetic-site:line2:station2",N1=S1+":nutrunner1",N2=S1+":nutrunner2";
+
+    // hierarchy and stations
+    @Test void hierarchyMissing() throws Exception {rule(r->ref(r,"equipmentRef").put("id","other-plant"));refused("attribution.hierarchy-missing");}
+    @Test void anInvalidHierarchyKeepsItsOwnRefusal() throws Exception {
+        // station1's parent becomes its own child: EquipmentHierarchy runs first and reports the cycle, not the rule
+        change("hierarchy/0.json",h->((ObjectNode)h.path("nodes").get(2)).put("parentEquipmentInstanceId","nutrunner1"));refused("hierarchy.cycle");
+    }
+    @Test void stationUnresolved() throws Exception {rule(r->((ArrayNode)r.path("stations")).set(1,"synthetic-site:line2:station9"));refused("attribution.station-unresolved");}
+    @Test void stationNested() throws Exception {rule(r->((ArrayNode)r.path("stations")).add("synthetic-site:line2"));refused("attribution.station-nested");}
+    @Test void aStationThatIsAToolsAncestorIsNested() throws Exception {rule(r->((ArrayNode)r.path("stations")).add(N1));refused("attribution.station-nested");}
+    @Test void duplicateStationsAreRefusedByTheSchema() throws Exception {rule(r->((ArrayNode)r.path("stations")).add(S1));refused("mapping.schema:2.27.0/attribution-rule");}
+    @Test void emptyStationsAreRefusedByTheSchema() throws Exception {rule(r->((ArrayNode)r.path("stations")).removeAll());refused("mapping.schema:2.27.0/attribution-rule");}
+    // members[]: non-empty (spec line 132), resolution, metric, semanticId, the three extra checks, duplicates
+    @Test void emptyMembersAreMemberUnresolved() throws Exception {rule(r->((ArrayNode)r.path("members")).removeAll());refused("attribution.member-unresolved");}
+    @Test void memberMappingSetUnresolved() throws Exception {rule(r->ref(member(r,0),"mappingSetRef").put("version","9.9.9"));refused("attribution.member-unresolved");}
+    @Test void memberMappingIdUnresolved() throws Exception {rule(r->member(r,0).put("mappingId","nutrunner1-speed"));refused("attribution.member-unresolved");}
+    @Test void memberMappingIdOfAnotherSet() throws Exception {rule(r->member(r,0).put("mappingId","nutrunner2-torque"));refused("attribution.member-unresolved");}
+    @Test void memberMetricMustEqualTheSemanticName() throws Exception {rule(r->member(r,0).put("metric","Torq"));refused("attribution.member-unresolved");}
+    @Test void memberSemanticIdMustEqualTheMember() throws Exception {rule(r->member(r,0).put("semanticId","urn:bifrost:sem:Tool/Speed"));refused("attribution.member-unresolved");}
+    @Test void memberListedTwice() throws Exception {rule(r->((ArrayNode)r.path("members")).add(member(r,0).deepCopy()));refused("attribution.member-unresolved");}
+    @Test void twoMembersForOneEquipmentAndMetric() throws Exception {
+        // a second mapping of nutrunner1's Torque: the rule may name only one entry per (equipment path, metric)
+        change("mappings/nutrunner1.json",s->((ArrayNode)s.path("mappings")).add(((ObjectNode)s.path("mappings").get(0).deepCopy()).put("mappingId","nutrunner1-torque-copy")));
+        rule(r->((ArrayNode)r.path("members")).add(entry("nutrunner1-mapping","nutrunner1-torque-copy","urn:bifrost:sem:Tool/Torque","Torque")));
+        refused("attribution.member-unresolved");
+    }
+    @Test void memberSourceIdentifierMustEndWithTheMetric() throws Exception {
+        change("sources/nutrunner1-torque.json",s->((ObjectNode)s.path("access")).put("identifier","Line2/Station1/Nutrunner1.Torq"));refused("attribution.member-unresolved");
+    }
+    @Test void duplicateLeafNamesInOneDefinitionAreRefused() throws Exception {
+        change("semantics/tool.json",s->((ObjectNode)s.path("members").get(1)).put("name","Torque"));refused("attribution.member-unresolved");
+    }
+    /** Spec: a station and a tool may each have a member of the same name; the fixture's station-model and tool-model both carry Running. */
+    @Test void aStationAndAToolMayEachHaveAMemberNamedRunning() throws Exception {
+        assertEquals("Running",text(read(bundle.resolve("semantics/station.json")).path("members").get(0),"name"));
+        assertEquals("Running",text(read(bundle.resolve("semantics/tool.json")).path("members").get(1),"name"));
+        accepted();
+    }
+    @Test void memberEquipmentOutsideTheStations() throws Exception {
+        // station2 alone: nutrunner1 under station1 is neither a station nor a descendant of one
+        rule(r->{ArrayNode s=(ArrayNode)r.path("stations");s.removeAll();s.add(S2);});refused("attribution.member-equipment");
+    }
+    // activity[]
+    @Test void activityMemberUnresolved() throws Exception {rule(r->activity(r,0).put("memberRef","station1-busy"));refused("attribution.activity-member");}
+    @Test void activityMemberMustBeBoolean() throws Exception {rule(r->activity(r,2).put("memberRef","nutrunner1-torque"));refused("attribution.activity-member");}
+    @Test void activityMemberMustBelongToItsEquipment() throws Exception {rule(r->activity(r,2).put("memberRef","nutrunner2-running"));refused("attribution.activity-member");}
+    @Test void activityEquipmentMustBeTheMembers() throws Exception {rule(r->activity(r,0).put("equipmentPath","synthetic-site:line2"));refused("attribution.activity-member");}
+    /** Two activity references to one mappingId (spec line 132): two activity entries for one equipment, activity-member. The
+     *  different-members variant is in MappingPlcStampedRuleTest, whose station1 has a second Boolean member. */
+    @Test void twoActivityEntriesForOneEquipment() throws Exception {rule(r->((ArrayNode)r.path("activity")).add(activity(r,0).deepCopy()));refused("attribution.activity-member");}
+    @Test void anEquipmentWithoutAnActivityEntryIsAccepted() throws Exception {rule(r->((ArrayNode)r.path("activity")).remove(1));accepted();}
+    @Test void emptyActivityIsRefusedByTheSchema() throws Exception {rule(r->((ArrayNode)r.path("activity")).removeAll());refused("mapping.schema:2.27.0/attribution-rule");}
+    // occupancy binding
+    @Test void bindingUnresolved() throws Exception {rule(r->ref(r,"occupancyBindingRef").put("version","9.9.9"));refused("attribution.binding-unresolved");}
+    @Test void bindingMustBeAnArtifact110() throws Exception {change("evidence/occupancy-binding-line2.json",a->a.put("schemaVersion","1.0.0"));refused("attribution.binding-unresolved");}
+    @Test void bindingArtifactMustCarryTheMediaType() throws Exception {
+        change("evidence/occupancy-binding-line2.json",a->((ObjectNode)a.path("file")).put("mediaType","application/json"));refused("attribution.binding-profile");
+    }
+    @Test void bindingArtifactMustCarryThePrefix() throws Exception {
+        // the artifact id must start with occupancy-binding-; rename it everywhere so only the prefix rule fails
+        change("evidence/occupancy-binding-line2.json",a->a.put("id","binding-line2"));
+        ObjectNode p=(ObjectNode)read(bundle.resolve("proposal.json"));for(JsonNode e:p.path("files"))if(text(e,"id").equals("occupancy-binding-line2"))((ObjectNode)e).put("id","binding-line2");rewrite(bundle.resolve("proposal.json"),p);reseal();
+        rule(r->ref(r,"occupancyBindingRef").put("id","binding-line2"));
+        refused("attribution.binding-profile");
+    }
+    @Test void bindingProfileWithAnExtraFieldIsRefused() throws Exception {profile(b->b.put("note","x"));refused("attribution.binding-profile");}
+    @Test void bindingProfileWithAnAnchoredPatternIsRefused() throws Exception {profile(b->((ObjectNode)b.path("identity")).put("pattern","^[A-Z0-9]{17}$"));refused("attribution.binding-profile");}
+    @Test void bindingProfileThatIsNotJsonIsRefused() throws Exception {profileBytes("not json".getBytes(java.nio.charset.StandardCharsets.UTF_8));refused("attribution.binding-profile");}
+    @Test void bindingScopeIsNotComparedWithTheStations() throws Exception {
+        change("evidence/occupancy-binding-line2.json",a->{ArrayNode s=(ArrayNode)a.path("scope");s.removeAll();s.add("station9");});accepted();
+    }
+    @Test void aProfileChangedWithoutResealIsADigestRefusal() throws Exception {
+        Files.write(bundle.resolve("data/occupancy-binding-line2.json"),"{}".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        refused("bundle.digest:data/occupancy-binding-line2.json");
+    }
+    // identity under occupancy-join: namespace is optional (spec 135), identity entries are plc-stamped only
+    @Test void aNamespaceIsAllowedUnderOccupancyJoin() throws Exception {rule(r->ref(r,"identity").put("namespace","urn:line2:visits"));accepted();}
+    @Test void identityEntriesAreSchemaBoundToPlcStamped() throws Exception {
+        rule(r->ref(r,"identity").putArray("members").addObject().put("equipmentPath",S1).put("unitMemberRef","station1-running").put("visitMemberRef","station1-running").put("presentMemberRef","station1-running"));
+        refused("mapping.schema:2.27.0/attribution-rule");
+    }
+    @Test void crossCheckOccupancyIsAllowedUnderOccupancyJoin() throws Exception {rule(r->ref(r,"identity").put("crossCheck","occupancy"));accepted();}
+    // temporal and coverage
+    @Test void temporalOrder() throws Exception {rule(r->ref(r,"temporal").put("allowedLatenessMs",10000));refused("attribution.temporal-order");}
+    @Test void temporalHorizonBelowLateness() throws Exception {rule(r->ref(r,"temporal").put("horizonMs",600000));refused("attribution.temporal-order");}
+    @Test void temporalEqualBoundsAreAccepted() throws Exception {rule(r->ref(r,"temporal").put("outOfOrdernessMs",86400000).put("allowedLatenessMs",86400000).put("horizonMs",86400000));accepted();}
+    @Test void expectedPeriodZeroIsRefusedByTheSchema() throws Exception {rule(r->ref(r,"coverage").put("expectedPeriodMs",0));refused("mapping.schema:2.27.0/attribution-rule");}
+    // release
+    @Test void releaseAndAttestationCarryBothRulesAndProfiles() throws Exception {
+        service.approve(bundle,"approval-1","proposer",proposerKey,"approver",approverKey);
+        assertEquals("mapping-release",text(service.publish(bundle,"release","1.0.0","approval-1"),"kind"));
+        Path dir=registry.resolve("mappings/releases/release/1.0.0");JsonNode release=read(dir.resolve("release.json"));
+        JsonNode statement=service.verifyAttestation("release","1.0.0",sha(dir.resolve("release.json")));
+        Set<String> subjects=new HashSet<>();for(JsonNode s:statement.path("subject"))subjects.add(text(s.path("digest"),"sha256"));
+        Map<String,String> files=new HashMap<>();for(JsonNode f:release.path("files"))files.put(text(f,"path"),text(f,"sha256"));
+        for(String p:List.of("rules/attribution-line2.json","rules/impact-line2.json","evidence/occupancy-binding-line2.json","evidence/incident-binding-line2.json","data/occupancy-binding-line2.json","data/incident-binding-line2.json")){
+            String h=files.entrySet().stream().filter(e->e.getKey().endsWith(p)).map(Map.Entry::getValue).findFirst().orElse(null);
+            assertEquals(sha(bundle.resolve(p)),h,p);assertTrue(subjects.contains(h),p);
+        }
+    }
 }
