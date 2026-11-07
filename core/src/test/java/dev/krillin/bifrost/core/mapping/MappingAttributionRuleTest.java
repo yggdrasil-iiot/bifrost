@@ -77,4 +77,63 @@ class MappingAttributionRuleTest {
         for(JsonNode e:proposal.path("files"))if(text(e,"path").equals(path))((ObjectNode)e).put("sha256",sha(file));
         rewrite(bundle.resolve("proposal.json"),proposal);reseal();
     }
+    static byte[] occupancy(java.util.function.Consumer<ObjectNode> edit) throws Exception {
+        ObjectNode b=(ObjectNode)read(Path.of(MappingAttributionRuleTest.class.getResource("/mapping-fixtures/attribution-impact/data/occupancy-binding-line2.json").toURI()));
+        edit.accept(b);return bytes(b);
+    }
+    static void occupancyRefused(byte[] profile){
+        assertEquals("attribution.binding-profile",assertThrows(IllegalArgumentException.class,()->OccupancyBindingProfile.parse(profile,"attribution.binding-profile")).getMessage());
+    }
+    static void occupancyRefused(java.util.function.Consumer<ObjectNode> edit) throws Exception {occupancyRefused(occupancy(edit));}
+    @Test void parsesTheFixtureProfile() throws Exception {
+        var p=OccupancyBindingProfile.parse(occupancy(b->{}),"x");
+        assertEquals("mfg.occupancy",p.topic());assertEquals("[A-Z0-9]{17}",p.identityPattern());assertEquals(List.of("mes-line2"),p.sources());
+        assertEquals(List.of("urn:epcglobal:cbv:er:did_not_occur","urn:epcglobal:cbv:er:incorrect_data"),p.correctionReasons());
+    }
+    @Test void profileAcceptsASingleCorrectionReason() throws Exception {
+        var p=OccupancyBindingProfile.parse(occupancy(b->((ArrayNode)b.path("correction").path("reasons")).remove(1)),"x");
+        assertEquals(List.of("urn:epcglobal:cbv:er:did_not_occur"),p.correctionReasons());
+    }
+    @Test void profileRefusesAnExtraField() throws Exception {occupancyRefused(b->b.put("note","x"));}
+    @Test void profileRefusesAMissingField() throws Exception {occupancyRefused(b->b.remove("leave"));}
+    @Test void profileRefusesAnotherVersion() throws Exception {occupancyRefused(b->b.put("profileVersion","0.2.0"));}
+    @Test void profileRefusesAnEmptyTopic() throws Exception {occupancyRefused(b->b.put("topic",""));}
+    @Test void profileRefusesATopicOfAnotherType() throws Exception {occupancyRefused(b->b.put("topic",1));}
+    @Test void profileRefusesAnotherSchemaId() throws Exception {occupancyRefused(b->((ObjectNode)b.path("format")).put("schemaId","urn:forseti:schema:occupancy:2.0.0"));}
+    @Test void profileRefusesAShortSchemaDigest() throws Exception {occupancyRefused(b->((ObjectNode)b.path("format")).put("schemaSha256","abc"));}
+    @Test void profileRefusesAnUppercaseSchemaDigest() throws Exception {occupancyRefused(b->((ObjectNode)b.path("format")).put("schemaSha256","A".repeat(64)));}
+    @Test void profileRefusesANumericSchemaDigest() throws Exception {occupancyRefused(b->((ObjectNode)b.path("format")).put("schemaSha256",new java.math.BigInteger("1".repeat(64))));}
+    @Test void profileRefusesAnotherIdentityScheme() throws Exception {occupancyRefused(b->((ObjectNode)b.path("identity")).put("scheme","vin"));}
+    @Test void profileRefusesAnotherCorrectionMode() throws Exception {occupancyRefused(b->((ObjectNode)b.path("correction")).put("errorDeclaration","tombstone"));}
+    @Test void profileRefusesAnUnknownCorrectionReason() throws Exception {occupancyRefused(b->((ArrayNode)b.path("correction").path("reasons")).add("urn:epcglobal:cbv:er:other"));}
+    @Test void profileRefusesDuplicateCorrectionReasons() throws Exception {occupancyRefused(b->((ArrayNode)b.path("correction").path("reasons")).add("urn:epcglobal:cbv:er:did_not_occur"));}
+    @Test void profileRefusesEmptyCorrectionReasons() throws Exception {occupancyRefused(b->((ArrayNode)b.path("correction").path("reasons")).removeAll());}
+    @Test void profileRefusesAnotherTimestampBasis() throws Exception {occupancyRefused(b->b.put("timestampBasis","recordTime"));}
+    @Test void profileRefusesEmptySources() throws Exception {occupancyRefused(b->((ArrayNode)b.path("sources")).removeAll());}
+    @Test void profileRefusesDuplicateSources() throws Exception {occupancyRefused(b->((ArrayNode)b.path("sources")).add("mes-line2"));}
+    @Test void profileRefusesSourcesThatAreNotAnArray() throws Exception {occupancyRefused(b->b.put("sources","mes-line2"));}
+    @Test void profileRefusesBytesThatAreNotJson() {occupancyRefused("not json".getBytes(java.nio.charset.StandardCharsets.UTF_8));}
+    @Test void profileRefusesDuplicateKeys() {occupancyRefused("{\"topic\":\"a\",\"topic\":\"b\"}".getBytes(java.nio.charset.StandardCharsets.UTF_8));}
+    // identity.pattern: the syntax common to Java and ECMA-262 only (spec 225-226)
+    static void pattern(String p) throws Exception {OccupancyBindingProfile.parse(occupancy(b->((ObjectNode)b.path("identity")).put("pattern",p)),"x");}
+    static void patternRefused(String p) throws Exception {occupancyRefused(b->((ObjectNode)b.path("identity")).put("pattern",p));}
+    @Test void patternAcceptsTheCommonSyntax() throws Exception {
+        for(String p:List.of("[A-Z0-9]{17}","KMH[A-HJ-NPR-Z0-9]{14}","(?:VIN|BODY)-[0-9]+","[^ ]+","a.c","x?y*z+","[0-9]{2,}","[0-9]{2,4}","\\.[a-z]\\-","[A-Z0-9-]+","[a&b]","\\\\x"))pattern(p);
+    }
+    @Test void patternRefusesAnchors() throws Exception {patternRefused("^[A-Z]{3}$");patternRefused("BODY$");}
+    @Test void patternRefusesLookaround() throws Exception {patternRefused("(?=A)[A-Z]{3}");patternRefused("(?<!X)[A-Z]{3}");}
+    @Test void patternRefusesBackreferences() throws Exception {patternRefused("(?:A)\\1");}
+    @Test void patternRefusesNamedAndCapturingGroups() throws Exception {patternRefused("(?<v>[A-Z]+)");patternRefused("([A-Z]+)");}
+    @Test void patternRefusesFlags() throws Exception {patternRefused("(?i)abc");patternRefused("(?i:abc)");}
+    @Test void patternRefusesClassShorthandsAndProperties() throws Exception {patternRefused("\\d{17}");patternRefused("\\p{Lu}+");patternRefused("[[:alpha:]]+");patternRefused("\\x41");}
+    @Test void patternRefusesLazyAndPossessiveQuantifiers() throws Exception {patternRefused("[A-Z]+?");patternRefused("[A-Z]*+");}
+    /** Java reads && inside brackets as class intersection; ECMA-262 reads two literal characters. Not common syntax. */
+    @Test void patternRefusesClassIntersection() throws Exception {patternRefused("[a&&b]");patternRefused("[a-z&&def]");}
+    @Test void patternRefusesMalformedSyntax() throws Exception {patternRefused("");patternRefused("[A-Z");patternRefused("(?:A");patternRefused("{3}");patternRefused("a{");patternRefused("A{4,2}");}
+    static String nested(int n){return "(?:".repeat(n)+"a"+")".repeat(n);}
+    @Test void patternAcceptsNestingUpToTheCap() throws Exception {pattern(nested(32));}
+    @Test void patternRefusesNestingBeyondTheCap() throws Exception {patternRefused(nested(33));}
+    @Test void patternRefusesAbsurdNestingWithoutThrowing() throws Exception {patternRefused(nested(10000));}
+    /** Java reads a surrogate pair as one code point, ECMA-262 without the u flag as two code units. Not common syntax. */
+    @Test void patternRefusesSupplementaryCharacters() throws Exception {patternRefused("[😀]");patternRefused("a😀");}
 }
