@@ -1,0 +1,136 @@
+{
+  "type": "object",
+  "properties": {
+    "kind": {
+      "const": "impact-rule"
+    },
+    "schemaVersion": {
+      "const": "2.27.0"
+    },
+    "id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "version": {
+      "$ref": "common.schema.json#/$defs/version"
+    },
+    "label": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "attributionRuleRef": {
+      "$ref": "common.schema.json#/$defs/documentRef"
+    },
+    "incidentScope": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 256,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9._/-]*(:[a-z][a-z0-9._/-]*)*$",
+        "maxLength": 4096
+      }
+    },
+    "incidentBindingRef": {
+      "$ref": "common.schema.json#/$defs/documentRef"
+    },
+    "interval": {
+      "type": "object",
+      "properties": {
+        "start": {
+          "const": "suspectFrom"
+        },
+        "overlap": {
+          "enum": [
+            "any-overlap",
+            "fully-within",
+            "enter-within"
+          ]
+        },
+        "openEnd": {
+          "const": "provisional-until-closed"
+        }
+      },
+      "required": [
+        "start",
+        "overlap",
+        "openEnd"
+      ],
+      "additionalProperties": false
+    },
+    "evidence": {
+      "type": "object",
+      "properties": {
+        "match": {
+          "enum": [
+            "equipment-evidence",
+            "station-visit"
+          ]
+        },
+        "onBasisRetracted": {
+          "enum": [
+            "by-cause",
+            "always-insufficient"
+          ]
+        },
+        "onWithdrawn": {
+          "enum": [
+            "not-affected",
+            "insufficient"
+          ]
+        }
+      },
+      "required": [
+        "match",
+        "onBasisRetracted",
+        "onWithdrawn"
+      ],
+      "additionalProperties": false
+    },
+    "retention": {
+      "type": "object",
+      "properties": {
+        "workRecordsMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 7776000000
+        }
+      },
+      "required": [
+        "workRecordsMs"
+      ],
+      "additionalProperties": false
+    },
+    "evidenceRefs": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/evidenceRef"
+      },
+      "maxItems": 64
+    }
+  },
+  "required": [
+    "kind",
+    "schemaVersion",
+    "id",
+    "version",
+    "label",
+    "description",
+    "attributionRuleRef",
+    "incidentScope",
+    "incidentBindingRef",
+    "interval",
+    "evidence",
+    "retention",
+    "evidenceRefs"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:tyr:contract:2.27.0:impact-rule"
+}
