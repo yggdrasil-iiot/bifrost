@@ -44,7 +44,28 @@ final class AttributionRules {
    require(evidence!=null&&text(evidence,"schemaVersion").equals("1.1.0"),"attribution.binding-unresolved");
    require(text(evidence,"id").startsWith(OccupancyBindingProfile.ID_PREFIX)&&text(evidence.path("file"),"mediaType").equals(OccupancyBindingProfile.MEDIA_TYPE),"attribution.binding-profile");
    OccupancyBindingProfile.parse(files.read(text(evidence.path("file"),"path")),"attribution.binding-profile");
-   // plc-stamped identity: Task 6
+   JsonNode identity=r.path("identity");
+   if(text(identity,"mode").equals("plc-stamped")){
+    // roles by reference (spec, members[] bullet): named by activity = activity member, named by an identity entry = identity
+    // member, every other entry = measurement member; the equipment with measurement or activity members are the activity
+    // entries' paths plus the paths of every members[] entry no identity entry names (an identity-only equipment is not covered)
+    List<String> refs=List.of("unitMemberRef","visitMemberRef","presentMemberRef");
+    Set<String> identityRefs=new HashSet<>();
+    for(JsonNode e:identity.path("members"))for(String k:refs)identityRefs.add(text(e,k));
+    Set<String> involved=new HashSet<>();for(JsonNode a:r.path("activity"))involved.add(text(a,"equipmentPath"));
+    for(Map.Entry<String,Member> m:rule.entrySet())if(!identityRefs.contains(m.getKey()))involved.add(m.getValue().equipmentPath());
+    Set<String> covered=new HashSet<>();
+    for(JsonNode e:identity.path("members"))require(covered.add(text(e,"equipmentPath")),"attribution.identity-equipment");
+    require(covered.equals(involved),"attribution.identity-equipment");
+    // one role per mappingId: no identity reference may name an activity member or a member another identity reference names
+    Set<String> roles=new HashSet<>();for(JsonNode a:r.path("activity"))roles.add(text(a,"memberRef"));
+    for(JsonNode e:identity.path("members"))for(String k:refs)require(roles.add(text(e,k)),"attribution.identity-member");
+    for(JsonNode e:identity.path("members")){
+     String path=text(e,"equipmentPath");
+     require(typed(rule,text(e,"unitMemberRef"),path,"String")&&typed(rule,text(e,"visitMemberRef"),path,"String")
+      &&typed(rule,text(e,"presentMemberRef"),path,"Boolean"),"attribution.identity-member");
+    }
+   }
    JsonNode t=r.path("temporal");
    require(t.path("outOfOrdernessMs").asLong()<=t.path("allowedLatenessMs").asLong()&&t.path("allowedLatenessMs").asLong()<=t.path("horizonMs").asLong(),"attribution.temporal-order");
   }
@@ -53,6 +74,9 @@ final class AttributionRules {
  static boolean within(List<String> stations,String path){
   for(String s:stations)if(path.equals(s)||path.startsWith(s+":"))return true;
   return false;
+ }
+ private static boolean typed(Map<String,Member> rule,String ref,String path,String type){
+  Member x=rule.get(ref);return x!=null&&x.equipmentPath().equals(path)&&text(x.leaf(),"valueType").equals(type);
  }
  static String key(JsonNode ref){return text(ref,"id")+"@"+text(ref,"version");}
  /** Every mapping of the bundle by mappingId (unique across sets: mapping.duplicate-id). A mapping whose target, semantic
