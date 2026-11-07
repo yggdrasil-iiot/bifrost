@@ -27,6 +27,52 @@ class MappingImpactRuleTest {
         Files.writeString(registry.resolve("identity/activation-policy.json"),"{\"version\":\"1.0.0\",\"default\":\"deny\",\"rules\":[{\"id\":\"publish-map\",\"principal\":\"proposer\",\"action\":\"publish\",\"target\":\"mapping-publication\",\"kind\":\"mapping-release\",\"ref\":\"line2\"},{\"id\":\"approve-map\",\"principal\":\"approver\",\"action\":\"approve\",\"target\":\"mapping-publication\",\"kind\":\"mapping-release\",\"ref\":\"line2\"}]}");
         service=new MappingRegistry(registry,CLOCK,()->{});
     }
+    @Test void acceptsTyrBundle() {var c=new MappingBundle().validate(bundle);assertTrue(c.accepted(),c.report().toString());}
+    void rewrite(Path p,JsonNode doc) throws Exception {Files.write(p,bytes(doc));}
+    void reseal() throws Exception {ObjectNode s=(ObjectNode)read(bundle.resolve("submission.json"));s.put("proposalSha256",sha(bundle.resolve("proposal.json")));rewrite(bundle.resolve("submission.json"),s);}
+    List<String> codes(){return new MappingBundle().validate(bundle).report().path("findings").findValuesAsText("ruleCode");}
+    void refused(String code){assertEquals(List.of(code),codes());}
+    void accepted(){assertEquals(List.of(),codes());}
+    /** Changes one listed file and re-pins it in the proposal and the submission, so only the rule under test fails. */
+    void change(String path,Consumer<ObjectNode> mutation) throws Exception {
+        Path file=bundle.resolve(path);ObjectNode d=(ObjectNode)read(file);mutation.accept(d);rewrite(file,d);
+        ObjectNode proposal=(ObjectNode)read(bundle.resolve("proposal.json"));
+        for(JsonNode e:proposal.path("files"))if(text(e,"path").equals(path))((ObjectNode)e).put("sha256",sha(file));
+        rewrite(bundle.resolve("proposal.json"),proposal);reseal();
+    }
+    void rule(Consumer<ObjectNode> mutation) throws Exception {change("rules/impact-line2.json",mutation);}
+    /** The profile data file is pinned by its evidence-artifact, not by the proposal: re-pin that artifact too. */
+    void profileBytes(byte[] b) throws Exception {
+        Files.write(bundle.resolve("data/incident-binding-line2.json"),b);
+        change("evidence/incident-binding-line2.json",a->((ObjectNode)a.path("file")).put("sha256",sha0("data/incident-binding-line2.json")));
+    }
+    void profile(Consumer<ObjectNode> mutation) throws Exception {ObjectNode d=(ObjectNode)read(bundle.resolve("data/incident-binding-line2.json"));mutation.accept(d);profileBytes(bytes(d));}
+    String sha0(String rel){try{return sha(bundle.resolve(rel));}catch(Exception e){throw new IllegalStateException(e);}}
+    static ObjectNode ref(ObjectNode r,String field){return (ObjectNode)r.path(field);}
+    @Test void attributionMissing() throws Exception {rule(r->ref(r,"attributionRuleRef").put("version","9.9.9"));refused("impact.attribution-missing");}
+    @Test void scopeMustBeInTheHierarchy() throws Exception {rule(r->((ArrayNode)r.path("incidentScope")).add("synthetic-site:line2:station1:nutrunner9"));refused("impact.scope-containment");}
+    @Test void scopeMustBeUnderAnAttributionStation() throws Exception {rule(r->((ArrayNode)r.path("incidentScope")).add("synthetic-site:line2"));refused("impact.scope-containment");}
+    @Test void aStationItselfIsInScope() throws Exception {rule(r->((ArrayNode)r.path("incidentScope")).add("synthetic-site:line2:station2"));accepted();}
+    @Test void duplicateScopePathsAreRefusedByTheSchema() throws Exception {rule(r->((ArrayNode)r.path("incidentScope")).add("synthetic-site:line2:station1:nutrunner1"));refused("mapping.schema:2.27.0/impact-rule");}
+    @Test void emptyScopeIsRefusedByTheSchema() throws Exception {rule(r->((ArrayNode)r.path("incidentScope")).removeAll());refused("mapping.schema:2.27.0/impact-rule");}
+    @Test void bindingUnresolved() throws Exception {rule(r->ref(r,"incidentBindingRef").put("id","incident-binding-absent"));refused("impact.binding-unresolved");}
+    @Test void bindingMustBeAnArtifact110() throws Exception {change("evidence/incident-binding-line2.json",a->a.put("schemaVersion","1.0.0"));refused("impact.binding-unresolved");}
+    @Test void bindingArtifactMustCarryTheMediaType() throws Exception {change("evidence/incident-binding-line2.json",a->((ObjectNode)a.path("file")).put("mediaType","application/json"));refused("impact.binding-profile");}
+    @Test void bindingArtifactMustCarryThePrefix() throws Exception {
+        change("evidence/incident-binding-line2.json",a->a.put("id","binding-line2"));
+        ObjectNode p=(ObjectNode)read(bundle.resolve("proposal.json"));for(JsonNode e:p.path("files"))if(text(e,"id").equals("incident-binding-line2"))((ObjectNode)e).put("id","binding-line2");rewrite(bundle.resolve("proposal.json"),p);reseal();
+        rule(r->ref(r,"incidentBindingRef").put("id","binding-line2"));
+        refused("impact.binding-profile");
+    }
+    @Test void bindingProfileWithEmptyKindsIsRefused() throws Exception {profile(b->((ArrayNode)b.path("kinds")).removeAll());refused("impact.binding-profile");}
+    @Test void bindingProfileWithAnotherBasisIsRefused() throws Exception {profile(b->b.put("equipmentRefBasis","node-id"));refused("impact.binding-profile");}
+    @Test void retentionOrder() throws Exception {rule(r->ref(r,"retention").put("workRecordsMs",3600000));refused("impact.retention-order");}
+    @Test void retentionEqualToTheHorizonIsAccepted() throws Exception {rule(r->ref(r,"retention").put("workRecordsMs",86400000));accepted();}
+    @Test void retentionAbove90DaysIsRefusedByTheSchema() throws Exception {rule(r->ref(r,"retention").put("workRecordsMs",7776000001L));refused("mapping.schema:2.27.0/impact-rule");}
+    @Test void olderEnvelopeRefused() throws Exception {
+        ObjectNode p=(ObjectNode)read(bundle.resolve("proposal.json"));p.put("schemaVersion","2.26.0");rewrite(bundle.resolve("proposal.json"),p);reseal();
+        refused("mapping.schema:2.26.0/mapping-proposal");
+    }
     static byte[] incident(java.util.function.Consumer<ObjectNode> edit) throws Exception {
         ObjectNode b=(ObjectNode)read(Path.of(MappingImpactRuleTest.class.getResource("/mapping-fixtures/attribution-impact/data/incident-binding-line2.json").toURI()));
         edit.accept(b);return bytes(b);
