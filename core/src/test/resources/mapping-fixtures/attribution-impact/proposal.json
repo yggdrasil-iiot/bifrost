@@ -1,0 +1,170 @@
+{
+  "kind": "mapping-proposal",
+  "schemaVersion": "2.27.0",
+  "id": "local-workspace",
+  "version": "1.0.0",
+  "baseRelease": null,
+  "files": [
+    {
+      "path": "hierarchy/0.json",
+      "kind": "equipment-hierarchy",
+      "id": "line2-plant",
+      "version": "1.0.0",
+      "sha256": "1a69a49f19aba78df31a23b16e6e19dea8387ef94c3c2c1f3dcc988ea33adf17"
+    },
+    {
+      "path": "evidence/hierarchy-0.json",
+      "kind": "evidence-artifact",
+      "id": "hierarchy-plant-register",
+      "version": "1.0.0",
+      "sha256": "f3fcaf4d7140884c2a52defac39511968c8ff6c30391aac95a921e1c9bc897b6"
+    },
+    {
+      "path": "evidence/manual-line2.json",
+      "kind": "evidence-artifact",
+      "id": "manual-line2",
+      "version": "1.0.0",
+      "sha256": "2686c221443a72a0801fb64c2ddd72b426353032f3d46f110bd37cb5de010af7"
+    },
+    {
+      "path": "evidence/occupancy-binding-line2.json",
+      "kind": "evidence-artifact",
+      "id": "occupancy-binding-line2",
+      "version": "1.0.0",
+      "sha256": "24712d2e9eb1f1c4bf319c383e9bcbca0710b97b7fd9906170e4fcf711ec90c2"
+    },
+    {
+      "path": "evidence/incident-binding-line2.json",
+      "kind": "evidence-artifact",
+      "id": "incident-binding-line2",
+      "version": "1.0.0",
+      "sha256": "f4d10aa1c32137bc0a5004837a7d150f576f8e59426ea4c8cc2d444a9ac30bb8"
+    },
+    {
+      "path": "semantics/station.json",
+      "kind": "semantic-definition",
+      "id": "station-model",
+      "version": "1.0.0",
+      "sha256": "4ebbf2b8284b9edb36fbdb75e984863a3968aea177eab2282ef6ef64795e6350"
+    },
+    {
+      "path": "semantics/tool.json",
+      "kind": "semantic-definition",
+      "id": "tool-model",
+      "version": "1.0.0",
+      "sha256": "2d06dafd4879485f535e3d9578b21df8e441ab5be09f4e390fd5a020e59ee7e3"
+    },
+    {
+      "path": "sources/station1-running.json",
+      "kind": "source-definition",
+      "id": "station1-running",
+      "version": "1.0.0",
+      "sha256": "bc64ed7c5e114491897ddf785c513797863f6b0acbcc44f64ebe9669823622a4"
+    },
+    {
+      "path": "sources/station2-running.json",
+      "kind": "source-definition",
+      "id": "station2-running",
+      "version": "1.0.0",
+      "sha256": "c9a9244905d2524d744353342e18babdcb4bd48acfccb4adabe843f66d59e1c4"
+    },
+    {
+      "path": "sources/nutrunner1-torque.json",
+      "kind": "source-definition",
+      "id": "nutrunner1-torque",
+      "version": "1.0.0",
+      "sha256": "c08d3516c10a6ce17707bbb0da57d6cb7405238f4d5bcab5e3939f4b6544f9fa"
+    },
+    {
+      "path": "sources/nutrunner1-running.json",
+      "kind": "source-definition",
+      "id": "nutrunner1-running",
+      "version": "1.0.0",
+      "sha256": "1277e1409f8fb063b489e4736f0152d8c7cc021c047699325c81736481711626"
+    },
+    {
+      "path": "sources/nutrunner2-torque.json",
+      "kind": "source-definition",
+      "id": "nutrunner2-torque",
+      "version": "1.0.0",
+      "sha256": "cbee23467a01e053eed2f30b6fefe89e7d4d01557c6ec9dc7ef4b044b7883f44"
+    },
+    {
+      "path": "sources/nutrunner2-running.json",
+      "kind": "source-definition",
+      "id": "nutrunner2-running",
+      "version": "1.0.0",
+      "sha256": "c691191984fb7f4cd069a19c34d3abc22d88ba8ca3ded1c9586ff8d671bbc61b"
+    },
+    {
+      "path": "targets/station1.json",
+      "kind": "target-instance",
+      "id": "station1",
+      "version": "1.0.0",
+      "sha256": "3aee099a6bb6d578bbb113f88bf2d73dc7914532a34eff5866dc95f97f583080"
+    },
+    {
+      "path": "targets/station2.json",
+      "kind": "target-instance",
+      "id": "station2",
+      "version": "1.0.0",
+      "sha256": "6f3feb0527d32e51f620d01362e5786a12898ec75a378b263e14790980bef9e4"
+    },
+    {
+      "path": "targets/nutrunner1.json",
+      "kind": "target-instance",
+      "id": "nutrunner1",
+      "version": "1.0.0",
+      "sha256": "cb8506489de80723ddfa09a1ff20123f76cac0829e928400bb2f23cdf26773b4"
+    },
+    {
+      "path": "targets/nutrunner2.json",
+      "kind": "target-instance",
+      "id": "nutrunner2",
+      "version": "1.0.0",
+      "sha256": "d27188faced693b9e606910e67a87d0d8e40677b9d76adacf15a0da668a7e5a2"
+    },
+    {
+      "path": "mappings/station1.json",
+      "kind": "mapping-set",
+      "id": "station1-mapping",
+      "version": "1.0.0",
+      "sha256": "cd75eb28f29b18215370701d1f455c81994e76b539cb5bcba6a504eddeadfa35"
+    },
+    {
+      "path": "mappings/station2.json",
+      "kind": "mapping-set",
+      "id": "station2-mapping",
+      "version": "1.0.0",
+      "sha256": "294de2d0d4690dbfee36df683c420179eb57176bb64dd34bc3167fd40dffe5fc"
+    },
+    {
+      "path": "mappings/nutrunner1.json",
+      "kind": "mapping-set",
+      "id": "nutrunner1-mapping",
+      "version": "1.0.0",
+      "sha256": "92d8447d4f2876d3e9d2e6fef13fd9937405e8896904be1cc7fd20884463b583"
+    },
+    {
+      "path": "mappings/nutrunner2.json",
+      "kind": "mapping-set",
+      "id": "nutrunner2-mapping",
+      "version": "1.0.0",
+      "sha256": "a6c66b950183e2589dffe320d5de55281574af964d9bac2486645b4cd8e00e8f"
+    },
+    {
+      "path": "rules/attribution-line2.json",
+      "kind": "attribution-rule",
+      "id": "line2-attribution",
+      "version": "1.0.0",
+      "sha256": "ed64ed7f49654c520597a7d2983fb152679522cd1c3875c44bbe2f2f737d12dd"
+    },
+    {
+      "path": "rules/impact-line2.json",
+      "kind": "impact-rule",
+      "id": "line2-impact",
+      "version": "1.0.0",
+      "sha256": "58a158c36f43cbd87c62ccf5b1cf8ea1dce1fc32606bfc74ec78cb97117bfd9d"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "profileVersion": "0.1.0",
+  "topic": "mfg.incidents",
+  "format": {
+    "schemaId": "urn:forseti:schema:incident:1.0.0",
+    "schemaSha256": "0000000000000000000000000000000000000000000000000000000000000002"
+  },
+  "kinds": [
+    "tool-check-failed",
+    "gauge-drift"
+  ],
+  "equipmentRefBasis": "isa95-path"
+}
