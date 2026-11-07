@@ -1,0 +1,21 @@
+{
+  "kind": "target-instance",
+  "schemaVersion": "2.0.0",
+  "id": "nutrunner1",
+  "version": "1.0.0",
+  "equipmentInstanceId": "nutrunner1",
+  "label": "Nutrunner 1",
+  "semanticDefinitionRef": {
+    "id": "tool-model",
+    "version": "1.0.0"
+  },
+  "evidenceRefs": [
+    {
+      "artifactId": "manual-line2",
+      "locator": {
+        "kind": "text-line",
+        "line": 3
+      }
+    }
+  ]
+}

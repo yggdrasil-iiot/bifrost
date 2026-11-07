@@ -1,0 +1,20 @@
+{
+  "kind": "evidence-artifact",
+  "schemaVersion": "1.0.0",
+  "id": "manual-line2",
+  "version": "1.0.0",
+  "origin": "synthetic",
+  "file": {
+    "path": "data/manual-line2.txt",
+    "sha256": "89f9c3c6642c8672f50eda9068cf3bc5c27e5ae248b49291882ddce1f994ad81",
+    "mediaType": "text/plain"
+  },
+  "capturedAt": "2026-11-06T00:00:00Z",
+  "product": null,
+  "scope": [
+    "station1",
+    "station2",
+    "nutrunner1",
+    "nutrunner2"
+  ]
+}
