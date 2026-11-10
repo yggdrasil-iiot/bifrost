@@ -129,9 +129,9 @@ wait_broker "$BROKER_BOOTS" || fail "HiveMQ CE never reported 'Started HiveMQ'"
 echo "[GATE] step 2: mint the governed and the untrusted identities"
 rm -rf "$PKI_GOOD" "$PKI_BAD" "$TRUST"
 APP_URI="urn:bifrost:heimdall:Bifrost-Line1:$EDGE_A"
-GOOD_THUMB="$(java -cp "$HEIMDALL_JAR_WIN" dev.krillin.bifrost.heimdall.EdgeIdentity \
+GOOD_THUMB="$(java -cp "$HEIMDALL_JAR_WIN" yggdrasil.bifrost.heimdall.EdgeIdentity \
     --print-thumbprint "$PKI_GOOD" "$APP_URI" 2>/dev/null | tr -d '\r')"
-BAD_THUMB="$(java -cp "$HEIMDALL_JAR_WIN" dev.krillin.bifrost.heimdall.EdgeIdentity \
+BAD_THUMB="$(java -cp "$HEIMDALL_JAR_WIN" yggdrasil.bifrost.heimdall.EdgeIdentity \
     --print-thumbprint "$PKI_BAD" "$APP_URI" 2>/dev/null | tr -d '\r')"
 [ -n "$GOOD_THUMB" ] || fail "could not mint the governed identity"
 [ "$GOOD_THUMB" != "$BAD_THUMB" ] || fail "the two identities share a thumbprint - X4 would prove nothing"
@@ -172,12 +172,12 @@ wait_line() { for _ in $(seq 1 "$3"); do grep -qE "$2" "$1" 2>/dev/null && retur
 count_in()  { grep -c "$1" "$2" 2>/dev/null || true; }
 apply_count() { count_in "\[BRIDGE\] APPLY cmd=$1 ok=true" "$2"; }
 
-pub() { java -cp "$HEIMDALL_JAR_WIN" dev.krillin.bifrost.heimdall.RogueNcmd "$1" "$2" Double >>"$PUB_LOG" 2>&1; }
+pub() { java -cp "$HEIMDALL_JAR_WIN" yggdrasil.bifrost.heimdall.RogueNcmd "$1" "$2" Double >>"$PUB_LOG" 2>&1; }
 
 anon() {  # $1 = value to attempt; appends READ + WRITE lines to ANON_LOG
   # stderr is KEPT: swallowing it once hid an AnonymousWriter that never connected at all, and
   # set -e killed the gate with no assertion message to say why.
-  java -cp "$HEIMDALL_JAR_WIN" dev.krillin.bifrost.heimdall.AnonymousWriter "$RPM_NODE" "$1" >>"$ANON_LOG" 2>&1     || fail "the anonymous client did not run - see $ANON_LOG"
+  java -cp "$HEIMDALL_JAR_WIN" yggdrasil.bifrost.heimdall.AnonymousWriter "$RPM_NODE" "$1" >>"$ANON_LOG" 2>&1     || fail "the anonymous client did not run - see $ANON_LOG"
 }
 last_anon() { grep "\[ANON\] $1 " "$ANON_LOG" | tail -1; }
 

@@ -1,6 +1,6 @@
 # Command proposal
 
-A command proposal is how an AI agent asks for one OPC UA Method call on the plant through Bifrost's governed write path. The agent signs it; a different, named approver co-signs it with `gates command approve`. Design: yggdrasil-iiot/vor `docs/superpowers/specs/2026-11-02-vor-m2-governed-write-design.md`. Code: `core/src/main/java/dev/krillin/bifrost/core/command/CommandProposal.java` and the CLI `gates command`. The agent-side signer `vor-propose` lives in the vor repository. `gates command publish` delivers the approved envelope and Heimdall checks it again and executes it, as described below.
+A command proposal is how an AI agent asks for one OPC UA Method call on the plant through Bifrost's governed write path. The agent signs it; a different, named approver co-signs it with `gates command approve`. Design: yggdrasil-iiot/vor `docs/superpowers/specs/2026-11-02-vor-m2-governed-write-design.md`. Code: `core/src/main/java/yggdrasil/bifrost/core/command/CommandProposal.java` and the CLI `gates command`. The agent-side signer `vor-propose` lives in the vor repository. `gates command publish` delivers the approved envelope and Heimdall checks it again and executes it, as described below.
 
 ## Envelope
 

@@ -94,9 +94,9 @@ PKI_WIN="$(cygpath -m "$(pwd)/$PKI")"
 # recipe-writer  : registered AND named by every rule in policy.json  -> C1
 # other-writer   : registered but named by NO rule                    -> C5
 # stranger       : never registered at all                            -> C4
-java -cp "$G" dev.krillin.bifrost.gates.IdentityGate keygen recipe-writer --out "$PKI_WIN" 2>/dev/null | head -1  > "$REG/identity/authorized-keys.jsonl"
-java -cp "$G" dev.krillin.bifrost.gates.IdentityGate keygen other-writer  --out "$PKI_WIN" 2>/dev/null | head -1 >> "$REG/identity/authorized-keys.jsonl"
-java -cp "$G" dev.krillin.bifrost.gates.IdentityGate keygen stranger      --out "$PKI_WIN" 2>/dev/null >/dev/null   # deliberately NOT registered
+java -cp "$G" yggdrasil.bifrost.gates.IdentityGate keygen recipe-writer --out "$PKI_WIN" 2>/dev/null | head -1  > "$REG/identity/authorized-keys.jsonl"
+java -cp "$G" yggdrasil.bifrost.gates.IdentityGate keygen other-writer  --out "$PKI_WIN" 2>/dev/null | head -1 >> "$REG/identity/authorized-keys.jsonl"
+java -cp "$G" yggdrasil.bifrost.gates.IdentityGate keygen stranger      --out "$PKI_WIN" 2>/dev/null >/dev/null   # deliberately NOT registered
 [ "$(wc -l < "$REG/identity/authorized-keys.jsonl")" = "2" ] || fail "expected exactly two registered principals"
 grep -q "stranger" "$REG/identity/authorized-keys.jsonl" && fail "stranger must NOT be in the trust anchor - C4 would prove nothing"
 echo "[GATE] anchor: recipe-writer + other-writer registered; stranger deliberately absent"
@@ -138,13 +138,13 @@ wait_line()   { for _ in $(seq 1 "$3"); do grep -qE "$2" "$1" 2>/dev/null && ret
 count_in()    { grep -c "$1" "$2" 2>/dev/null || true; }
 apply_count() { count_in "\[BRIDGE\] APPLY cmd=$RPM ok=true" "$1"; }
 
-pub_unsigned() { java -cp "$H" dev.krillin.bifrost.heimdall.RogueNcmd "$RPM" "$1" Double >>"$PUB_LOG" 2>&1; }
+pub_unsigned() { java -cp "$H" yggdrasil.bifrost.heimdall.RogueNcmd "$RPM" "$1" Double >>"$PUB_LOG" 2>&1; }
 pub_signed()   { # $1=value $2=principal $3=keyfile [$4=cmdId]
   if [ -n "${4:-}" ]; then
-    java -cp "$H" dev.krillin.bifrost.heimdall.RogueNcmd "$RPM" "$1" Double \
+    java -cp "$H" yggdrasil.bifrost.heimdall.RogueNcmd "$RPM" "$1" Double \
       --sign "$2" "$PKI_WIN/$3" --cmd-id "$4" >>"$PUB_LOG" 2>&1
   else
-    java -cp "$H" dev.krillin.bifrost.heimdall.RogueNcmd "$RPM" "$1" Double \
+    java -cp "$H" yggdrasil.bifrost.heimdall.RogueNcmd "$RPM" "$1" Double \
       --sign "$2" "$PKI_WIN/$3" >>"$PUB_LOG" 2>&1
   fi
 }

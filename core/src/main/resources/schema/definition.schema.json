@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://bifrost.krillin.dev/schema/definition.schema.json",
+  "$id": "urn:yggdrasil:bifrost:schema:definition",
   "title": "Bifrost UDT Definition",
   "description": "Protocol-independent UDT data contract (Sparkplug Template-shaped, AAS-vocabulary aligned): the unit of source of truth in the Bifrost registry. A definition ≈ AAS Submodel; its members ≈ AAS Property. Language-neutral — any consumer can validate a definition document against this schema without depending on Bifrost code.",
   "type": "object",

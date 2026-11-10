@@ -233,7 +233,7 @@ echo "[GATE] Heimdall ready (pid $BRIDGE_PID)"
 
 pub() {  # $1=nodeId $2=value $3=dataType
   MQTT_URL="$MQTT" SPB_GROUP="$GROUP" SPB_EDGE="$CMD_EDGE" \
-    java -cp "$HEIMDALL_JAR_WIN" dev.krillin.bifrost.heimdall.RogueNcmd "$1" "$2" "$3" >>"$WORK/pub.log" 2>&1
+    java -cp "$HEIMDALL_JAR_WIN" yggdrasil.bifrost.heimdall.RogueNcmd "$1" "$2" "$3" >>"$WORK/pub.log" 2>&1
 }
 apply_count() { grep -c "\[BRIDGE\] APPLY cmd=$1" "$WORK/bridge.log" 2>/dev/null || echo 0; }
 

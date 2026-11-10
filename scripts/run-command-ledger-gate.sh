@@ -89,7 +89,7 @@ echo "[GATE] step 1: stage a registry with a trust anchor"
 rm -rf "$PKI" "$REG" "$LED"; mkdir -p "$PKI" "$REG/identity"
 cp -r heimdall/registry/* "$REG/"
 PKI_WIN="$(cygpath -m "$(pwd)/$PKI")"
-java -cp "$G" dev.krillin.bifrost.gates.IdentityGate keygen recipe-writer --out "$PKI_WIN" 2>/dev/null | head -1 > "$REG/identity/authorized-keys.jsonl"
+java -cp "$G" yggdrasil.bifrost.gates.IdentityGate keygen recipe-writer --out "$PKI_WIN" 2>/dev/null | head -1 > "$REG/identity/authorized-keys.jsonl"
 
 export MQTT_URL="tcp://localhost:1883"
 export OPCUA_URL="opc.tcp://localhost:48400"
@@ -130,11 +130,11 @@ count_in() { grep -c "$1" "$2" 2>/dev/null || true; }
 
 seg_file() { ls "$SEG_DIR"/*.jsonl 2>/dev/null | head -1; }
 seg_count() { local f; f="$(seg_file)"; [ -n "$f" ] && wc -l < "$f" | tr -d ' ' || echo 0; }
-verify_seg() { java -cp "$G" dev.krillin.bifrost.gates.CommandLogGate verify "$(cygpath -m "$(seg_file)")" "$@"; }
+verify_seg() { java -cp "$G" yggdrasil.bifrost.gates.CommandLogGate verify "$(cygpath -m "$(seg_file)")" "$@"; }
 
-pub_signed() { java -cp "$H" dev.krillin.bifrost.heimdall.RogueNcmd "$1" "$2" Double \
+pub_signed() { java -cp "$H" yggdrasil.bifrost.heimdall.RogueNcmd "$1" "$2" Double \
   --sign recipe-writer "$PKI_WIN/recipe-writer.key" >>"$PUB_LOG" 2>&1; }
-pub_plain()  { java -cp "$H" dev.krillin.bifrost.heimdall.RogueNcmd "$1" "$2" Double >>"$PUB_LOG" 2>&1; }
+pub_plain()  { java -cp "$H" yggdrasil.bifrost.heimdall.RogueNcmd "$1" "$2" Double >>"$PUB_LOG" 2>&1; }
 
 # ---------------------------------------------------------------------------
 echo "[GATE] ===== D1/D2: an applied command and a refusal, both recorded ====="
@@ -257,7 +257,7 @@ NEW="$(ls "$SEG_DIR"/*.jsonl | grep -v 2026-01-01 | head -1)"
 [ -n "$NEW" ] || fail "D8 no new segment was created"
 head -1 "$NEW" | grep -q "\"prevHash\":\"$TAIL\"" \
   || fail "D8 the new segment restarted at genesis - it could be deleted with nothing to contradict it"
-java -cp "$G" dev.krillin.bifrost.gates.CommandLogGate verify "$(cygpath -m "$SEG_DIR/2026-01-01.jsonl")" >/dev/null \
+java -cp "$G" yggdrasil.bifrost.gates.CommandLogGate verify "$(cygpath -m "$SEG_DIR/2026-01-01.jsonl")" >/dev/null \
   || fail "D8 the archived segment no longer verifies on its own"
 echo "[GATE] D8 OK: the new segment links to the previous tail, and the old one still verifies"
 stop_edge D8b
