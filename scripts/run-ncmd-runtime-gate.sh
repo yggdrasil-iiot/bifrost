@@ -175,7 +175,7 @@ echo "[GATE] Heimdall ready, enforcing (pid $BRIDGE_PID)"
 # Rogue/legit NCMD publisher — RogueNcmd is the general single-metric NCMD publisher.
 pub() {  # $1=nodeId $2=value $3=dataType
   MQTT_URL="tcp://localhost:1883" SPB_GROUP="Bifrost:Line1" SPB_EDGE="recipe-edge" \
-    java -cp "$HEIMDALL_JAR_WIN" dev.krillin.bifrost.heimdall.RogueNcmd "$1" "$2" "$3" >>"$PUB_LOG" 2>&1
+    java -cp "$HEIMDALL_JAR_WIN" yggdrasil.bifrost.heimdall.RogueNcmd "$1" "$2" "$3" >>"$PUB_LOG" 2>&1
 }
 # `grep -c` PRINTS 0 and EXITS 1 when it matches nothing, so an `|| echo 0` fallback prints a
 # SECOND zero and every comparison against a literal 0 then fails. T3 never noticed because it

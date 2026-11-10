@@ -4,7 +4,7 @@ This document describes the manifest emitted when a canonical (a "recipe" or oth
 publishable artifact) is published into the Bifrost registry, and the hashing scheme any
 consumer — regardless of language — must reimplement to independently verify it. It
 documents what the current Java implementation (`RecipeManifest` / `RecipePublish` /
-`RecipeDefinitionStore` in `dev.krillin.bifrost.core.schema`) actually does; it is not an
+`RecipeDefinitionStore` in `yggdrasil.bifrost.core.schema`) actually does; it is not an
 aspirational spec.
 
 ## On-disk layout

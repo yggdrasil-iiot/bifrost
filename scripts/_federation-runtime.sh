@@ -146,7 +146,7 @@ stop_heimdall() {  # $1=pid $2=healthPort
 }
 pub() {  # $1=mqtt $2=group $3=node $4=val $5=type
   MQTT_URL="$1" SPB_GROUP="$2" SPB_EDGE="recipe-edge" \
-    java -cp "$HEIMDALL_JAR_WIN" dev.krillin.bifrost.heimdall.RogueNcmd "$3" "$4" "$5" >>"$WORK/pub.log" 2>&1 || true
+    java -cp "$HEIMDALL_JAR_WIN" yggdrasil.bifrost.heimdall.RogueNcmd "$3" "$4" "$5" >>"$WORK/pub.log" 2>&1 || true
 }
 wait_grep() {  # $1=file $2=pattern $3=tries
   local t=0; while [ "$t" -lt "${3:-15}" ]; do grep -q "$2" "$1" 2>/dev/null && return 0; sleep 1; t=$((t+1)); done; return 1

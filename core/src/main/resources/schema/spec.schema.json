@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://bifrost.krillin.dev/schema/spec.schema.json",
+  "$id": "urn:yggdrasil:bifrost:schema:spec",
   "title": "Bifrost Spec (ISA-88 two-layer)",
   "description": "Protocol-independent recipe/spec contract describing BOTH ISA-88 layers: a general recipe (product-domain, equipment-independent, carrying setpoint intents) and a master recipe (a general recipe bound to a site's equipment, carrying concrete setpoints addressed to equipment members). A document is exactly one of the two. Language-neutral — any consumer can validate a spec document against this schema without depending on Bifrost code.",
   "oneOf": [

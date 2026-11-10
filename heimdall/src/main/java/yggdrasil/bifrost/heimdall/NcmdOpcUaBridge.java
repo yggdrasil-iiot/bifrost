@@ -1,0 +1,1061 @@
+package yggdrasil.bifrost.heimdall;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
+import org.eclipse.paho.client.mqttv3.MqttCallbackExtended;
+import org.eclipse.paho.client.mqttv3.MqttClient;
+import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
+import org.eclipse.paho.client.mqttv3.MqttMessage;
+import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
+import org.eclipse.tahu.message.SparkplugBPayloadDecoder;
+import org.eclipse.tahu.message.SparkplugBPayloadEncoder;
+import org.eclipse.tahu.message.model.Metric;
+import org.eclipse.tahu.message.model.Metric.MetricBuilder;
+import org.eclipse.tahu.message.model.MetricDataType;
+import org.eclipse.tahu.message.model.PropertySet;
+import org.eclipse.tahu.message.model.PropertyValue;
+import org.eclipse.tahu.message.model.SparkplugBPayload;
+import org.eclipse.tahu.message.model.SparkplugBPayload.SparkplugBPayloadBuilder;
+
+import yggdrasil.bifrost.core.acl.CommandAuthorizer;
+import yggdrasil.bifrost.core.acl.CommandEnvelope;
+import yggdrasil.bifrost.core.acl.CommandPolicy;
+import yggdrasil.bifrost.core.acl.CommandRequest;
+import yggdrasil.bifrost.core.acl.Constraint;
+import yggdrasil.bifrost.core.acl.Decision;
+import yggdrasil.bifrost.core.acl.Rule;
+import yggdrasil.bifrost.core.acl.Target;
+import yggdrasil.bifrost.core.acl.opa.OpaMethodAuthorizer;
+import yggdrasil.bifrost.core.activation.ActivationAction;
+import yggdrasil.bifrost.core.activation.ActivationAuthorizer;
+import yggdrasil.bifrost.core.activation.ActivationPolicy;
+import yggdrasil.bifrost.core.activation.ActivationPolicyStore;
+import yggdrasil.bifrost.core.command.CommandEvent;
+import yggdrasil.bifrost.core.command.CommandLedger;
+import yggdrasil.bifrost.core.command.CommandLink;
+import yggdrasil.bifrost.core.command.CommandProposal;
+import yggdrasil.bifrost.core.conformance.ConformanceEvaluator;
+import yggdrasil.bifrost.core.conformance.ConformancePolicy;
+import yggdrasil.bifrost.core.conformance.ConformanceVerdict;
+import yggdrasil.bifrost.core.conformance.CrossConstraint;
+import yggdrasil.bifrost.core.conformance.NodeBinding;
+import yggdrasil.bifrost.core.schema.MasterSpec;
+import yggdrasil.bifrost.core.schema.Member;
+import yggdrasil.bifrost.core.schema.Setpoint;
+import yggdrasil.bifrost.core.schema.UdtDefinition;
+
+/**
+ * Self-bridge: receives Sparkplug NCMD commands over MQTT, authorizes them deny-by-default at the
+ * edge, applies them to OPC-UA via an injected {@link Applier}, confirms by read-back, and
+ * publishes a correlated response on {@code bifrost/<group>/RESULT/<edge>}.
+ *
+ * <p>Heimdall is its own Sparkplug edge node, the command edge ({@link CommandNode}): NBIRTH on every
+ * connect, an NDEATH Will with the same bdSeq, and a rebirth on {@code Node Control/Rebirth}. The
+ * data edge belongs to Muninn and Heimdall publishes nothing on its topics. NCMD dispatch: no metric
+ * or more than one metric is {@code command.malformed}; a payload of node controls and properties
+ * only goes to the session (one Boolean Rebirth acts, anything else is logged and unanswered); one
+ * metric goes to {@link #handle} (setpoint, Method or read).
+ *
+ * <p>The core is the pure, broker-free {@link #handle(String, SparkplugBPayload)} — unit-tested with
+ * a fake applier + the real {@link CommandAuthorizer}/policy. The Paho wiring ({@link #connect},
+ * {@link #messageArrived}) is a thin shell that decodes, dispatches {@code handle} off the callback
+ * thread, and publishes the encoded response. The QUERY topic and response encoding follow
+ * Heimdall's own Sparkplug command/response wire contract: property keys {@code op}/
+ * {@code doneNode}/{@code timeoutMs}, response metrics {@code ok}/{@code value}/{@code good}/
+ * {@code detail}.
+ */
+public final class NcmdOpcUaBridge implements MqttCallbackExtended {
+
+    private final String group;
+    private final String edge;
+    private final CommandPolicy policy;
+    private final Applier applier;
+    private final CommandAuthorizer authorizer = new CommandAuthorizer();
+
+    /**
+     * Rollout mode (env {@code ENFORCEMENT_LOG_ONLY}, default OFF). When ON, a command that ①authz or
+     * ②conformance would refuse is logged as {@code LOG-ONLY would-deny} and then APPLIED anyway.
+     * It exists so an edge can be introduced at a running plant without the possibility of stopping
+     * the line on day one (see {@code docs/ADOPTION.md} phase 4); enforcement then arrives by
+     * removing allowlist rules, not by flipping a switch.
+     * <p>Deliberately NOT covered: the malformed-payload rejection below. There is no command in a
+     * payload that carries no command metric, so there is nothing to let through — shadowing it would
+     * turn a decode failure into a silent no-op reported as success.
+     */
+    private final boolean logOnly;
+
+    // Governed conformance deps, loaded at startup (nullable => ② conformance OFF; pure authz).
+    // Loaded and stored here in B1; the ② check that consumes them is wired in B2.
+    private final UdtDefinition conformanceDef;
+    private final ConformancePolicy conformancePolicy;
+    private final MasterSpec activeRecipe;
+
+    private final String ncmdTopic;
+    private final String queryTopic;
+
+    /**
+     * Where every correlated response goes: command outcomes, QUERY read-backs and overload
+     * refusals, under the command edge. Not Sparkplug: Sparkplug defines no reply to NCMD, and an
+     * outcome published as node data would be historized by hosts as a process value. Heimdall's
+     * only Sparkplug messages are its own NBIRTH and NDEATH ({@link CommandNode}); it publishes
+     * nothing on the data edge's topics, whose session Muninn owns.
+     */
+    private final String resultTopic;
+
+    /**
+     * Heimdall's Sparkplug edge node, required before {@link #connect}. Its NDEATH Will replaces the
+     * former retained {@code bifrost/<group>/STATUS/<edge>} liveness topic, so a Sparkplug-only host
+     * learns the write boundary's liveness from {@code spBv1.0/} alone.
+     */
+    private CommandNode node;
+
+    void commandNode(CommandNode node) {
+        this.node = node;
+    }
+
+    private final SparkplugBPayloadEncoder encoder = new SparkplugBPayloadEncoder();
+    private final SparkplugBPayloadDecoder decoder = new SparkplugBPayloadDecoder();
+    private MqttClient client;
+
+    /** Every publish goes through here, so a test can see the whole outbound topic set without a broker. */
+    interface Outbound {
+        void publish(String topic, byte[] payload, int qos, boolean retained) throws Exception;
+    }
+
+    private Outbound outbound = (topic, payload, qos, retained) -> client.publish(topic, payload, qos, retained);
+
+    void outbound(Outbound o) {
+        this.outbound = o;
+    }
+
+    /** Per-node ordered, bounded dispatch for applies. See {@link CommandExecutor}. */
+    private final CommandExecutor executor;
+
+    /** Counters + the /healthz state. Owned by the caller in production so main can serve it. */
+    private final EdgeHealth health;
+
+    /**
+     * R1: require every command to carry a verified signature (env {@code REQUIRE_SIGNED_COMMAND},
+     * default OFF). OFF is the pre-R1 path exactly, which is what keeps the seven existing NCMD
+     * gates meaningful.
+     */
+    private final boolean requireSignedCommand;
+
+    /** Principal name to registered public key, or null for an unregistered name. */
+    private final java.util.function.Function<String, java.util.List<java.security.PublicKey>> trustAnchor;
+
+    /**
+     * Recently-seen command ids, for replay refusal. Consulted only when the bar is on.
+     *
+     * <p><b>Synchronized because the apply path is striped.</b> Commands for different nodes run on
+     * different {@link CommandExecutor} threads, so this map is genuinely written concurrently.
+     *
+     * <p><b>This is a window, not a proof.</b> An attacker who waits until an id has aged out can
+     * replay; a bridge restart empties it entirely; and it does nothing for a payload with no
+     * command id, which is why a blank one is refused outright instead. Durable freshness needs a
+     * timestamp and a clock the site trusts, and OT sites frequently have neither.
+     */
+    private final java.util.Map<String, Boolean> seenCmdIds;
+
+    /**
+     * R2: the tamper-evident record of commands. Null means no record, which is the pre-R2
+     * behaviour and the default.
+     */
+    private final yggdrasil.bifrost.core.command.CommandLedger commandLedger;
+
+    /**
+     * When on, an unwritable INTENT entry refuses the command rather than letting it reach the plant
+     * unrecorded. A failed OUTCOME entry cannot refuse anything — the plant has already moved — so it
+     * is logged loudly and counted instead. That asymmetry is inherent, not an oversight.
+     */
+    private final boolean requireCommandLedger;
+
+    /** The metric an approved Method proposal arrives on, as the whole DSSE envelope in one String. */
+    public static final String METHOD_METRIC = "bifrost/command/v1";
+
+    /**
+     * What the governed Method path needs beyond the bridge's own fields: the registry it admits
+     * proposals against (keys, grants, mapping heads and releases), the compiled OPA policy, and the
+     * clock both the validity window and the precondition's age are measured on. {@code identity}
+     * says whether the OPC-UA session presents the edge's application certificate; without it every
+     * Method command is refused, because an anonymous session cannot be told apart at the server.
+     */
+    public record MethodPath(java.nio.file.Path registry, OpaMethodAuthorizer opa, java.time.Clock clock,
+                             boolean identity) {}
+
+    /** Null refuses every Method command; the write and call paths do not depend on it. */
+    private final MethodPath methodPath;
+
+    /** Exposed so {@code NcmdOpcUaBridgeMain} can start the HTTP endpoint over the same instance. */
+    public EdgeHealth health() {
+        return health;
+    }
+
+    /** Enforcing bridge — the default everywhere except an explicit rollout deployment. */
+    public NcmdOpcUaBridge(String group, String edge, CommandPolicy policy, Applier applier,
+                           UdtDefinition conformanceDef, ConformancePolicy conformancePolicy, MasterSpec activeRecipe) {
+        this(group, edge, policy, applier, conformanceDef, conformancePolicy, activeRecipe, false);
+    }
+
+    public NcmdOpcUaBridge(String group, String edge, CommandPolicy policy, Applier applier,
+                           UdtDefinition conformanceDef, ConformancePolicy conformancePolicy, MasterSpec activeRecipe,
+                           boolean logOnly) {
+        this(group, edge, policy, applier, conformanceDef, conformancePolicy, activeRecipe, logOnly,
+                new EdgeHealth(), 4, 64);
+    }
+
+    /**
+     * The widest constructor; the two above delegate here with the field defaults, so no existing
+     * caller or test had to change when health and the apply stripes were added.
+     */
+    public NcmdOpcUaBridge(String group, String edge, CommandPolicy policy, Applier applier,
+                           UdtDefinition conformanceDef, ConformancePolicy conformancePolicy, MasterSpec activeRecipe,
+                           boolean logOnly, EdgeHealth health, int applyThreads, int applyQueueDepth) {
+        this(group, edge, policy, applier, conformanceDef, conformancePolicy, activeRecipe, logOnly,
+                health, applyThreads, applyQueueDepth, false, 1024, null);
+    }
+
+    /**
+     * The widest constructor. {@code requireSignedCommand} is the R1 bar; {@code trustAnchor} maps a
+     * principal name to its registered Ed25519 public key, or null when it is not registered.
+     *
+     * <p>The anchor is a function rather than an {@code AuthorizedKeys} because that is the shape
+     * {@code CommandEnvelope.verify} wants, and because it keeps the resolution decision with the
+     * caller: {@code NcmdOpcUaBridgeMain} loads the file ONCE at startup, so revocation latency is
+     * the next edge restart. That is the boundary {@code ENTERPRISE.md} section 2 already documents
+     * for policy and the ledger, rather than a second and quieter rule invented here.
+     */
+    public NcmdOpcUaBridge(String group, String edge, CommandPolicy policy, Applier applier,
+                           UdtDefinition conformanceDef, ConformancePolicy conformancePolicy, MasterSpec activeRecipe,
+                           boolean logOnly, EdgeHealth health, int applyThreads, int applyQueueDepth,
+                           boolean requireSignedCommand, int replayWindow,
+                           java.util.function.Function<String, java.util.List<java.security.PublicKey>> trustAnchor) {
+        this(group, edge, policy, applier, conformanceDef, conformancePolicy, activeRecipe, logOnly,
+                health, applyThreads, applyQueueDepth, requireSignedCommand, replayWindow, trustAnchor,
+                null, false);
+    }
+
+    /**
+     * The widest constructor. {@code commandLedger} is nullable — null is the pre-R2 behaviour, no
+     * record at all. {@code requireCommandLedger} decides what an unwritable INTENT entry means: with
+     * it on, the command is refused and the plant is never touched.
+     */
+    public NcmdOpcUaBridge(String group, String edge, CommandPolicy policy, Applier applier,
+                           UdtDefinition conformanceDef, ConformancePolicy conformancePolicy, MasterSpec activeRecipe,
+                           boolean logOnly, EdgeHealth health, int applyThreads, int applyQueueDepth,
+                           boolean requireSignedCommand, int replayWindow,
+                           java.util.function.Function<String, java.util.List<java.security.PublicKey>> trustAnchor,
+                           yggdrasil.bifrost.core.command.CommandLedger commandLedger,
+                           boolean requireCommandLedger) {
+        this(group, edge, policy, applier, conformanceDef, conformancePolicy, activeRecipe, logOnly,
+                health, applyThreads, applyQueueDepth, requireSignedCommand, replayWindow, trustAnchor,
+                commandLedger, requireCommandLedger, null);
+    }
+
+    /**
+     * The widest constructor. {@code methodPath} enables {@code op=method}; null refuses it, which
+     * leaves every pre-M2 caller exactly as it was.
+     */
+    public NcmdOpcUaBridge(String group, String edge, CommandPolicy policy, Applier applier,
+                           UdtDefinition conformanceDef, ConformancePolicy conformancePolicy, MasterSpec activeRecipe,
+                           boolean logOnly, EdgeHealth health, int applyThreads, int applyQueueDepth,
+                           boolean requireSignedCommand, int replayWindow,
+                           java.util.function.Function<String, java.util.List<java.security.PublicKey>> trustAnchor,
+                           yggdrasil.bifrost.core.command.CommandLedger commandLedger,
+                           boolean requireCommandLedger, MethodPath methodPath) {
+        this.methodPath = methodPath;
+        this.commandLedger = commandLedger;
+        this.requireCommandLedger = requireCommandLedger;
+        this.requireSignedCommand = requireSignedCommand;
+        this.trustAnchor = trustAnchor;
+        this.seenCmdIds = java.util.Collections.synchronizedMap(
+                new java.util.LinkedHashMap<String, Boolean>(16, 0.75f, true) {
+                    @Override protected boolean removeEldestEntry(java.util.Map.Entry<String, Boolean> e) {
+                        return size() > Math.max(1, replayWindow);
+                    }
+                });
+        this.health = health;
+        this.executor = new CommandExecutor(applyThreads, applyQueueDepth);
+        this.logOnly = logOnly;
+        this.group = group;
+        this.edge = edge;
+        this.policy = policy;
+        this.applier = applier;
+        this.conformanceDef = conformanceDef;
+        this.conformancePolicy = conformancePolicy;
+        this.activeRecipe = activeRecipe;
+        this.ncmdTopic = "spBv1.0/" + group + "/NCMD/" + edge;
+        this.queryTopic = "bifrost/" + group + "/QUERY/" + edge;
+        this.resultTopic = "bifrost/" + group + "/RESULT/" + edge;
+    }
+
+    // ----- pure core (no broker / no live OPC-UA) -----
+
+    /**
+     * Decode the single command metric, authorize (deny-by-default) unless it is a read, apply
+     * through the {@link Applier}, and return the correlated response. Reads (QUERY topic or
+     * {@code op=read}) bypass authorization — observation, not command.
+     */
+    public NcmdResponse handle(String topic, SparkplugBPayload req) {
+        String cmdId = req.getUuid();
+        if (req.getMetrics() == null || req.getMetrics().isEmpty()) {
+            // Fail-closed: a malformed payload carrying no command metric is rejected, not crashed.
+            return malformed(cmdId, "no command metric");
+        }
+        if (req.getMetrics().size() > 1) {
+            // A Bifrost restriction, not a Sparkplug rule (Sparkplug 3.0 allows several metrics in an
+            // NCMD). The command signature covers only one metric, so a second one would ride along
+            // unsigned; it used to be accepted and silently dropped. This also refuses a Rebirth mixed
+            // with a command and two setpoints in one payload.
+            return malformed(cmdId, "more than one metric");
+        }
+        Metric m = req.getMetrics().get(0);
+        String name = m.getName();
+        Object value = m.getValue();
+        String dataType = m.getDataType().toString();
+
+        PropertySet props = m.getProperties();
+        String op = propString(props, "op");
+        String doneNode = propString(props, "doneNode");
+        long timeoutMs = propLong(props, "timeoutMs", 30_000L);
+
+        // Node control reaches handle() only on the QUERY topic (messageArrived routes it on NCMD):
+        // there it is neither a rebirth nor a read of a node named after the control.
+        if (isNodeControl(req)) {
+            return malformed(cmdId, "node control on " + topic);
+        }
+
+        // Routed before the read check: a Method command on the QUERY topic is malformed, not a read.
+        if (METHOD_METRIC.equals(name) || "method".equals(op)) {
+            return handleMethod(topic, req);
+        }
+
+        boolean isRead = topic.equals(queryTopic) || "read".equals(op);
+        if (isRead) {
+            try {
+                Applier.ReadBack rb = applier.read(name);
+                return NcmdResponse.read(cmdId, rb.value(), rb.good());
+            } catch (Exception e) {
+                return new NcmdResponse(cmdId, false, null, false, "read error: " + e.getMessage());
+            }
+        }
+
+        // ----- R1: the signature bar, before any verdict is formed -----
+        //
+        // Every refusal below returns DIRECTLY and must never be routed through refuse(). Under
+        // ENFORCEMENT_LOG_ONLY, refuse() returns null and its caller falls through and APPLIES, so a
+        // shadowed unsigned command would reach authorize() with a null subject and skip the
+        // principal check entirely. That is not what log-only is for: log-only inverts policy
+        // VERDICTS so a rollout cannot stop the line, and this bar is an authentication question --
+        // whether there is an identity to judge at all. It is the same orthogonality that
+        // NcmdOpcUaBridgeMain already documents for the REQUIRE_*_ACTIVATION bars, and the same
+        // reasoning that keeps the malformed-payload rejection above outside log-only.
+        String subject = null;
+        if (requireSignedCommand) {
+            String sub = propString(props, "sub");
+            String sig = propString(props, "sig");
+            if (cmdId == null || cmdId.isBlank() || sub == null || sub.isBlank() || sig == null || sig.isBlank()) {
+                // A blank cmdId is refused here too: with nothing to bind, one signature would be
+                // valid for every other id-less payload - a replay hole, not an inconvenience.
+                return refuseUnverified(cmdId, name, value, "command.unsigned");
+            }
+            if (seenCmdIds.putIfAbsent(cmdId, Boolean.TRUE) != null) {
+                return refuseUnverified(cmdId, name, value, "command.replay");
+            }
+            CommandEnvelope.Verdict v = CommandEnvelope.verify(
+                    trustAnchor == null ? n -> null : trustAnchor,
+                    sub, sig, group, edge, cmdId, name, value, dataType);
+            if (v == CommandEnvelope.Verdict.UNKNOWN_PRINCIPAL) {
+                return refuseUnverified(cmdId, name, value, "command.principal.unknown");
+            }
+            if (v != CommandEnvelope.Verdict.OK) {
+                return refuseUnverified(cmdId, name, value, "command.sig.invalid");
+            }
+            subject = sub;
+        }
+
+        // The first reason this command WOULD have been refused, when log-only let it through anyway.
+        // Null in the normal enforcing case, which is what keeps the response identical to before.
+        String shadowed = null;
+
+        CommandRequest cr = new CommandRequest(new Target(group, edge, null), name, value, dataType, subject);
+        Decision d = authorizer.authorize(policy, cr);
+        if (!d.allowed()) {
+            NcmdResponse refused = refuse(cmdId, name, value, d.reason());
+            if (refused != null) {
+                record(cmdId, subject, name, value, dataType, "intent", "denied", d.reason());
+                return refused;
+            }
+            shadowed = d.reason();
+            // fall through to ② as well: in log-only the point is to learn every reason, not the first.
+        }
+
+        // ① authz already passed (d.allowed()). ② conformance (opt-in: only when a policy is loaded):
+        if (conformancePolicy != null && conformanceDef != null) {
+            NodeBinding binding = conformancePolicy.nodeBindings().stream()
+                    .filter(b -> name.equals(b.opcNodeId())).findFirst().orElse(null);
+            if (binding != null) {
+                try {
+                    List<Setpoint> state = new ArrayList<>();
+                    state.add(new Setpoint(binding.member(), dataType, ((Number) value).doubleValue()));
+                    Set<String> needed = new LinkedHashSet<>();
+                    for (CrossConstraint c : conformancePolicy.crossConstraints()) {
+                        needed.add(c.ifMember()); needed.add(c.thenMember());
+                    }
+                    needed.remove(binding.member());
+                    for (String sibMember : needed) {
+                        NodeBinding sb = conformancePolicy.nodeBindings().stream()
+                                .filter(b -> sibMember.equals(b.member()) && b.readNodeId() != null).findFirst().orElse(null);
+                        // Fail-closed: a needed cross-member with no numeric readNodeId cannot be verified,
+                        // so DON'T silently skip it (that would leave the antecedent absent => not-triggered => fail-open).
+                        if (sb == null) throw new IllegalStateException(
+                                "cross-constraint member '" + sibMember + "' has no readNodeId binding - cannot verify");
+                        // Derive the sibling's type from the governed model (not hardcoded "Double") so a
+                        // non-Double numeric sibling doesn't spuriously trip spec.type.mismatch.
+                        String sibType = conformanceDef.members().stream()
+                                .filter(dm -> dm.name().equals(sibMember)).map(Member::type)
+                                .findFirst().orElse("Double");
+                        state.add(new Setpoint(sibMember, sibType, applier.readDouble(sb.readNodeId())));
+                    }
+                    ConformanceVerdict cv = new ConformanceEvaluator()
+                            .evaluate(conformanceDef, conformancePolicy, activeRecipe, state);
+                    if (!cv.ok()) {
+                        String reason = cv.violations().get(0).rule() + ": " + cv.violations().get(0).detail();
+                        NcmdResponse refused = refuse(cmdId, name, value, reason);
+                        if (refused != null) {
+                            record(cmdId, subject, name, value, dataType, "intent", "denied", reason);
+                            return refused;
+                        }
+                        if (shadowed == null) shadowed = reason;
+                    }
+                } catch (PlantUnreachableException unreachable) {
+                    // NOT a verdict. The plant is not visible, so ② could not be evaluated at all.
+                    // Reported separately so an operator is never sent to look at the model because
+                    // a server restarted, and counted separately so /healthz can go unhealthy.
+                    //
+                    // The log line is printed in BOTH unreachable catches on purpose. Today's
+                    // shipped fixture (registry/conformance/Line1-Mixer/1.0.0.json) has no cross
+                    // constraints, so readDouble is never called there and an outage always lands
+                    // on the apply path below; logging only there would make the resilience gate
+                    // green for a reason unrelated to this branch.
+                    System.out.println("[BRIDGE] UNREACHABLE cmd=" + name + " reason=" + unreachable.getMessage());
+                    record(cmdId, subject, name, value, dataType, "intent", "unreachable",
+                            unreachable.getMessage());
+                    health.plantUnreachable();
+                    return NcmdResponse.apply(cmdId, false,
+                            detail(shadowed, "plant-unreachable: " + unreachable.getMessage()));
+                } catch (Exception confEx) {   // fail-closed: any conformance/read error DENIES
+                    String reason = "conformance-error: " + confEx.getMessage();
+                    NcmdResponse refused = refuse(cmdId, name, value, reason);
+                    if (refused != null) {
+                        record(cmdId, subject, name, value, dataType, "intent", "denied", reason);
+                        return NcmdResponse.apply(cmdId, false, "denied: conformance-error");
+                    }
+                    if (shadowed == null) shadowed = reason;
+                }
+            }
+        }
+
+        // THE intent entry. Written before the applier so that "no command reaches the plant
+        // without a record" is a claim this code can keep. With REQUIRE_COMMAND_LEDGER on, a failed
+        // append refuses here - and refuses DIRECTLY, not through refuse(), for the same reason R1's
+        // signature bar does: log-only inverts verdicts, and "I could not record this" is not one.
+        if (!record(cmdId, subject, name, value, dataType, "intent", "pending", shadowed)
+                && requireCommandLedger) {
+            return refuseUnverified(cmdId, name, value, "command.ledger.unwritable");
+        }
+
+        try {
+            Applier.Result r;
+            if ("call".equals(op)) {
+                r = applier.call(name, doneNode, timeoutMs);
+            } else {
+                r = applier.write(name, ((Number) value).doubleValue());
+            }
+            if (r.ok()) {
+                health.applied();
+            }
+            // The outcome cannot refuse anything: the plant has already moved.
+            record(cmdId, subject, name, value, dataType, "outcome",
+                    r.ok() ? "applied" : "apply-failed", r.ok() ? null : r.detail());
+            System.out.println("[BRIDGE] APPLY cmd=" + name + " ok=" + r.ok());
+            return NcmdResponse.apply(cmdId, r.ok(), detail(shadowed, r.detail()));
+        } catch (PlantUnreachableException unreachable) {
+            // Same rule as the ② catch above: a refusal, but never reported as a verdict.
+            System.out.println("[BRIDGE] UNREACHABLE cmd=" + name + " reason=" + unreachable.getMessage());
+            record(cmdId, subject, name, value, dataType, "outcome", "unreachable", unreachable.getMessage());
+            health.plantUnreachable();
+            return NcmdResponse.apply(cmdId, false,
+                    detail(shadowed, "plant-unreachable: " + unreachable.getMessage()));
+        } catch (Exception e) {
+            record(cmdId, subject, name, value, dataType, "outcome", "apply-error", e.getMessage());
+            System.out.println("[BRIDGE] APPLY cmd=" + name + " ok=false");
+            return NcmdResponse.apply(cmdId, false, detail(shadowed, "apply error: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * The governed Method path: an approved two-signature proposal, checked in the spec's order and
+     * executed at most once. Every refusal here returns directly and is never shadowed by log-only:
+     * {@code ENFORCEMENT_LOG_ONLY} and {@code REQUIRE_SIGNED_COMMAND} do not apply to {@code op=method}.
+     *
+     * <ol>
+     *   <li>transport: exactly one {@link #METHOD_METRIC} String metric with {@code op=method} on this
+     *       edge's NCMD topic, naming this group and edge as its target, and a command ledger;</li>
+     *   <li>both signatures, on distinct keys, by {@code proposedBy} and {@code approvedBy};</li>
+     *   <li>{@code notBefore <= now < notAfter} on this edge's clock;</li>
+     *   <li>the head and release this registry serves now, usable evidence, and the precondition
+     *       node and freshness bound the pinned release names for it;</li>
+     *   <li>no earlier reservation of the {@code cmdId};</li>
+     *   <li>{@link CommandAuthorizer}, then the OPA Method policy;</li>
+     *   <li>a live read of the precondition node: Good, and no older than its binding's maxAgeMs;</li>
+     *   <li>the reservation, forced to disk;</li>
+     *   <li>the Method call, then its outcome.</li>
+     * </ol>
+     *
+     * Nothing before step 8 consumes the {@code cmdId}. After it, the command is never retried: a
+     * failed or unconfirmed call needs a new proposal with a new {@code cmdId}.
+     */
+    private NcmdResponse handleMethod(String topic, SparkplugBPayload req) {
+        String cmdId = req.getUuid();
+        if (!topic.equals(ncmdTopic) || req.getMetrics().size() != 1) {
+            return refuseMethod(cmdId, null, null, null, "command.malformed");
+        }
+        Metric m = req.getMetrics().get(0);
+        if (!METHOD_METRIC.equals(m.getName()) || !"method".equals(propString(m.getProperties(), "op"))
+                || m.getDataType() != MetricDataType.String || !(m.getValue() instanceof String body)) {
+            return refuseMethod(cmdId, null, null, null, "command.malformed");
+        }
+        com.fasterxml.jackson.databind.JsonNode envelope;
+        CommandProposal.Proposal claimed;
+        try {
+            envelope = new com.fasterxml.jackson.databind.ObjectMapper().readTree(body);
+            claimed = CommandProposal.parse(java.util.Base64.getDecoder().decode(envelope.path("payload").asText()));
+        } catch (IllegalArgumentException refusal) {
+            String code = refusal.getMessage();
+            return refuseMethod(cmdId, null, null, null,
+                    code != null && (code.startsWith("command.") || code.startsWith("identity.")) ? code : "command.malformed");
+        } catch (Exception malformed) {
+            return refuseMethod(cmdId, null, null, null, "command.malformed");
+        }
+        String outerUuid = cmdId;
+        cmdId = claimed.cmdId();
+        // The payload uuid is what the requester correlates the RESULT answer by; it must be the signed cmdId.
+        if (!cmdId.equals(outerUuid)) {
+            return refuseMethod(cmdId, null, claimed, "uuid " + outerUuid, "command.malformed");
+        }
+        if (!group.equals(claimed.target().group()) || !edge.equals(claimed.target().edge())) {
+            return refuseMethod(cmdId, null, claimed, "target " + claimed.target().group() + "/" + claimed.target().edge(),
+                    "command.malformed");
+        }
+        if (commandLedger == null) {
+            return refuseMethod(cmdId, null, claimed, null, "command.ledger.required");
+        }
+        if (methodPath == null) {
+            return refuseMethod(cmdId, null, claimed, null, "command.method.unconfigured");
+        }
+        if (!methodPath.identity()) {
+            return refuseMethod(cmdId, null, claimed, null, "command.identity.required");
+        }
+
+        // (2)-(4): signatures, window, head and release, evidence, and the precondition the release binds.
+        java.time.Clock clock = methodPath.clock();
+        CommandProposal.Admitted admitted;
+        try {
+            admitted = CommandProposal.admit(methodPath.registry(), envelope, clock);
+        } catch (CommandLink.Refusal refusal) {
+            return refuseMethod(cmdId, null, claimed, refusal.detail(), refusal.getMessage());
+        } catch (IllegalArgumentException refusal) {
+            return refuseMethod(cmdId, null, claimed, null, refusal.getMessage());
+        } catch (Exception e) {
+            return refuseMethod(cmdId, null, claimed, e.getMessage(), "command.malformed");
+        }
+        CommandProposal.Proposal p = admitted.proposal();
+        String subject = p.proposedBy();
+        // The published link names the command node that may call its Method; that node is this edge or nothing.
+        CommandLink.Link link = admitted.link();
+        if (!group.equals(link.group()) || !edge.equals(link.edge())) {
+            return refuseMethod(cmdId, subject, p, "command.node " + link.group() + "/" + link.edge(), "command.link.mismatch");
+        }
+
+        // (5) replay. The reservation at (8) checks again under the ledger's lock.
+        try {
+            if (commandLedger.reserved(group, edge, cmdId, p.notBefore())) {
+                return refuseMethod(cmdId, subject, p, null, "command.replay");
+            }
+        } catch (Exception e) {
+            return refuseMethod(cmdId, subject, p, e.getMessage(), "command.ledger.required");
+        }
+
+        // (6) both policies; either one denies.
+        Decision d = authorizer.authorize(policy, new CommandRequest(p.target(), p.methodNodeId(), p.value(), "Double", subject));
+        if (!d.allowed()) {
+            return refuseMethod(cmdId, subject, p, d.reason(), "command.policy.denied");
+        }
+        Decision opa;
+        try {
+            ActivationPolicy grants = ActivationPolicyStore.load(methodPath.registry());
+            opa = methodPath.opa().authorize(new OpaMethodAuthorizer.MethodFacts(
+                    p.proposedBy(), grants(grants, p.proposedBy(), p.streamId()),
+                    p.approvedBy(), grants(grants, p.approvedBy(), p.streamId()),
+                    true, p.notBefore(), p.notAfter(), clock.instant(), true, true,
+                    p.target(), p.methodNodeId(), p.input(), "Double", p.value(), methods(link, d.ruleId())));
+        } catch (Exception e) {
+            opa = Decision.deny("opa-input-error: " + e.getMessage());
+        }
+        if (!opa.allowed()) {
+            return refuseMethod(cmdId, subject, p, opa.reason(), "command.opa.denied");
+        }
+
+        // (7) the live precondition, over this edge's own session.
+        try {
+            Applier.Sample s = applier.sample(admitted.preconditionNodeId());
+            long age = s.sourceTime() == null ? -1 : java.time.Duration.between(s.sourceTime(), clock.instant()).toMillis();
+            if (!s.good() || s.sourceTime() == null || age < 0 || age > admitted.maxAgeMs()) {
+                return refuseMethod(cmdId, subject, p, admitted.preconditionNodeId() + " good=" + s.good() + " ageMs=" + age
+                        + " maxAgeMs=" + admitted.maxAgeMs(), "command.precondition");
+            }
+        } catch (Exception e) {
+            return refuseMethod(cmdId, subject, p, admitted.preconditionNodeId() + ": " + e.getMessage(), "command.precondition");
+        }
+
+        // (7b) the endpoint. The precondition read opened the session; it must be on the server the link names, not on any
+        // server the trust list accepts. Admission already refused a link that names none.
+        CommandLink.Endpoint endpoint = link.requireEndpoint();
+        try {
+            Applier.Peer peer = applier.peer();
+            String why = endpoint.refusal(peer.certificate(), peer.applicationUri());
+            if (why != null) {
+                return refuseMethod(cmdId, subject, p, why, "command.link.endpoint");
+            }
+        } catch (Exception e) {
+            return refuseMethod(cmdId, subject, p, e.getMessage(), "command.link.endpoint");
+        }
+
+        // (8) the reservation. From here on the cmdId is consumed whatever happens.
+        try {
+            if (!commandLedger.reserve(new CommandEvent(group, edge, cmdId, subject, p.methodNodeId(),
+                    String.valueOf(p.value()), "Double", CommandEvent.INTENT, CommandLedger.RESERVED, null,
+                    clock.instant().toString()), p.notBefore())) {
+                return refuseMethod(cmdId, subject, p, null, "command.replay");
+            }
+        } catch (Exception e) {
+            // Not recorded: the ledger is what just failed.
+            health.denied();
+            System.out.println("[BRIDGE] DENY cmd=" + METHOD_METRIC + " cmdId=" + cmdId + " reason=command.ledger.required (" + e + ")");
+            return NcmdResponse.apply(cmdId, false, "denied: command.ledger.required");
+        }
+
+        // (9) the call, on a client compared again: a reconnect since (7b) may have reached another server.
+        String outcome;
+        String detail;
+        Applier.MethodResult r = null;
+        try {
+            r = applier.method(p.objectNodeId(), p.methodNodeId(), p.value(),
+                    peer -> endpoint.refusal(peer.certificate(), peer.applicationUri()));
+            outcome = r.ok() ? "applied" : "method-failed";
+            detail = r.detail();
+        } catch (Applier.EndpointRefused e) {
+            // Not called. The cmdId stays consumed: the reservation stands and the outcome says why nothing happened.
+            String full = "command.link.endpoint: " + e.getMessage();
+            record(cmdId, subject, p.methodNodeId(), String.valueOf(p.value()), "Double", CommandEvent.OUTCOME, "denied", full);
+            health.denied();
+            System.out.println("[BRIDGE] DENY cmd=" + METHOD_METRIC + " cmdId=" + cmdId + " reason=command.link.endpoint ("
+                    + e.getMessage() + ") after reservation");
+            return NcmdResponse.apply(cmdId, false, "denied: " + full);
+        } catch (Exception e) {
+            // The call may or may not have reached the plant. The reservation stands either way.
+            outcome = "unknown";
+            detail = e.getMessage();
+        }
+        boolean ok = r != null && r.ok();
+        record(cmdId, subject, p.methodNodeId(), String.valueOf(p.value()), "Double", CommandEvent.OUTCOME, outcome, ok ? null : detail);
+        if (ok) {
+            health.applied();
+        }
+        System.out.println("[BRIDGE] METHOD cmdId=" + cmdId + " " + p.methodNodeId() + "(" + p.value() + ") ok=" + ok
+                + (ok ? "" : " reason=command.method.failed outcome=" + outcome));
+        return new NcmdResponse(cmdId, ok, ok ? r.output() : null, null,
+                ok ? detail : "failed: command.method.failed (" + outcome + "): " + detail);
+    }
+
+    /** The OPA method table for this call: the linked Method, its input as the release names it, and the bounds of the
+     *  command-policy rule that allowed it. No entry when that rule leaves a bound open, so OPA denies. */
+    private Map<String, OpaMethodAuthorizer.MethodEntry> methods(CommandLink.Link link, String ruleId) {
+        for (Rule r : policy.rules()) {
+            Constraint c = r.constraint();
+            if (r.id().equals(ruleId) && c != null && c.min() != null && c.max() != null) {
+                return Map.of(link.methodNodeId(), new OpaMethodAuthorizer.MethodEntry(link.inputName(), link.inputType(), c.min(), c.max()));
+            }
+        }
+        return Map.of();
+    }
+
+    /** The command grants a principal holds on this stream, by their JSON names, for the OPA input. */
+    private static List<String> grants(ActivationPolicy policy, String principal, String stream) {
+        List<String> held = new ArrayList<>();
+        ActivationAuthorizer authz = new ActivationAuthorizer();
+        for (ActivationAction a : List.of(ActivationAction.PROPOSE_COMMAND, ActivationAction.APPROVE_COMMAND)) {
+            if (authz.authorize(policy, principal, a, CommandProposal.GRANT_TARGET, CommandProposal.GRANT_KIND, stream).allowed()) {
+                held.add(a.json());
+            }
+        }
+        return held;
+    }
+
+    /** A Method refusal before the reservation: one audit entry, outcome denied, and the cmdId stays unreserved. */
+    /**
+     * A payload that is not one command: refused before any verdict, never shadowed by log-only
+     * (there is no command to let through), and worded like the Method path's refusals.
+     */
+    private NcmdResponse malformed(String cmdId, String why) {
+        record(cmdId, null, null, null, null, CommandEvent.INTENT, "denied", "command.malformed: " + why);
+        System.out.println("[BRIDGE] MALFORMED cmdId=" + cmdId + " (" + why + ")");
+        return NcmdResponse.apply(cmdId, false, "denied: command.malformed: " + why);
+    }
+
+    private NcmdResponse refuseMethod(String cmdId, String subject, CommandProposal.Proposal p, String why, String reason) {
+        String full = why == null ? reason : reason + ": " + why;
+        record(cmdId, subject, p == null ? METHOD_METRIC : p.methodNodeId(), p == null ? null : String.valueOf(p.value()),
+                p == null ? null : "Double", CommandEvent.INTENT, "denied", full);
+        health.denied();
+        System.out.println("[BRIDGE] DENY cmd=" + METHOD_METRIC + " cmdId=" + cmdId + " reason=" + reason
+                + (why == null ? "" : " (" + why + ")"));
+        return NcmdResponse.apply(cmdId, false, "denied: " + full);
+    }
+
+    /**
+     * Refuse a command, or — in log-only mode — record the verdict and let it through by returning
+     * null. The two log tokens are deliberately distinct and neither is a substring of the other,
+     * so a log scraper counting {@code [BRIDGE] DENY} never counts a shadowed verdict as a block.
+     *
+     * @return the refusal response, or {@code null} when the caller should carry on and apply.
+     */
+    /**
+     * Refuse a command that could not be authenticated. <b>Never shadowed by log-only.</b>
+     *
+     * <p>Deliberately not {@link #refuse}: that one returns null under log-only so the caller
+     * applies the command anyway, which is right for a policy verdict during a rollout and wrong
+     * here. There is no identity to judge, so there is no verdict to shadow. Same reason the
+     * malformed-payload rejection sits outside log-only.
+     */
+    /**
+     * Append one fact to the command ledger.
+     *
+     * <p>Recording is scattered across {@code handle()}'s return sites rather than centralised,
+     * because the outcomes are not alternatives: under log-only a command is BOTH would-denied and
+     * applied, and {@code applied} is only knowable after the applier has already moved the plant.
+     * Two entries per applied command is the price of both facts being true.
+     *
+     * @return false when the append failed, so an intent site can refuse before touching the plant
+     */
+    private boolean record(String cmdId, String subject, String name, Object value, String dataType,
+                           String phase, String outcome, String reason) {
+        if (commandLedger == null) {
+            return true;
+        }
+        try {
+            commandLedger.append(new yggdrasil.bifrost.core.command.CommandEvent(
+                    group, edge, cmdId, subject, name,
+                    value == null ? null : String.valueOf(value), dataType,
+                    phase, outcome, reason, java.time.Instant.now().toString()));
+            return true;
+        } catch (Exception e) {
+            System.out.println("[BRIDGE] LEDGER-WRITE-FAILED phase=" + phase + " cmd=" + name + ": " + e);
+            return false;
+        }
+    }
+
+    private NcmdResponse refuseUnverified(String cmdId, String name, Object value, String reason) {
+        // No subject: that is what "unverified" means here.
+        record(cmdId, null, name, value, null, "intent", "unverified", reason);
+        health.denied();
+        System.out.println("[BRIDGE] DENY cmd=" + name + " val=" + value + " reason=" + reason);
+        return NcmdResponse.apply(cmdId, false, "denied: " + reason);
+    }
+
+    private NcmdResponse refuse(String cmdId, String name, Object value, String reason) {
+        if (logOnly) {
+            System.out.println("[BRIDGE] LOG-ONLY would-deny cmd=" + name + " val=" + value + " reason=" + reason);
+            return null;
+        }
+        // Counted only here, on the enforcing path. A log-only would-deny is not a denial, which is
+        // the same reason the two log tokens above are kept distinct.
+        health.denied();
+        System.out.println("[BRIDGE] DENY cmd=" + name + " val=" + value + " reason=" + reason);
+        return NcmdResponse.apply(cmdId, false, "denied: " + reason);
+    }
+
+    /**
+     * The shadowed verdict also rides back on the response, not only into the ops log — the operator
+     * who issued the command is the person who most needs to know it would have been blocked. The
+     * APPLIED EFFECT is unchanged; only this string differs from an enforcing run.
+     */
+    private static String detail(String shadowed, String applied) {
+        return shadowed == null ? applied : "log-only would-deny: " + shadowed + " | " + applied;
+    }
+
+    // ----- Paho shell (exercised only by the live gate) -----
+
+    /**
+     * MQTT client id for this edge. It MUST be per-edge: two bridges sharing an id take each
+     * other's session in a loop, which is exactly what the previous constant caused. ':' and '/'
+     * are folded because a group such as "Bifrost:Line1" carries the Sparkplug topic separator,
+     * which brokers reject inside a client id.
+     *
+     * <p>The result can exceed the 23 characters MQTT 3.1 guaranteed; 3.1.1 removed that limit and
+     * HiveMQ accepts it. If another broker is ever targeted, this is the line to shorten.
+     */
+    static String clientId(String group, String edge) {
+        return ("heimdall-" + group + "-" + edge).replaceAll("[:/]", "-");
+    }
+
+    private volatile String broker;
+    private volatile boolean closed;
+    private final java.util.concurrent.ScheduledExecutorService reconnector =
+            java.util.concurrent.Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "heimdall-reconnect");
+                t.setDaemon(true);
+                return t;
+            });
+
+    /**
+     * Connect once, as the command node. A failure here propagates (startup refuses); losses after
+     * that are handled by Heimdall's own reconnect loop, not Paho's automatic reconnect, because
+     * Paho would reuse the first CONNECT's options and with them a Will carrying a stale bdSeq.
+     */
+    public void connect(String broker) throws Exception {
+        if (node == null) {
+            throw new IllegalStateException("command.node: no CommandNode configured");
+        }
+        this.broker = broker;
+        client = new MqttClient(broker, clientId(group, edge), new MemoryPersistence());
+        client.setCallback(this);
+        connectOnce();
+        System.out.println("[BRIDGE] subscribed NCMD=" + ncmdTopic + " QUERY=" + queryTopic
+                + " (policy rules=" + policy.rules().size() + ")");
+    }
+
+    /**
+     * One Sparkplug session start: advance and persist bdSeq, CONNECT with the NDEATH Will carrying
+     * it, subscribe, then NBIRTH. Subscribing before the birth means no command addressed to the
+     * newly born node can arrive unheard.
+     */
+    private synchronized void connectOnce() throws Exception {
+        int bdSeq = node.advance();
+        MqttConnectOptions opts = new MqttConnectOptions();
+        opts.setCleanSession(true);
+        opts.setAutomaticReconnect(false);
+        // Explicit, because the Will's latency IS this value: the broker cannot declare the node dead
+        // until ~1.5x the keepalive lapses, and the 60s default makes a death take ~90s to appear.
+        opts.setKeepAliveInterval(20);
+        // Sparkplug 3.0: NDEATH Will at QoS 1, not retained.
+        opts.setWill(node.deathTopic(), node.death(), 1, false);
+        client.connect(opts);
+        subscribeAll();
+        // Sparkplug 3.0: NBIRTH at QoS 0, not retained.
+        outbound.publish(node.birthTopic(), node.birth(), 0, false);
+        System.out.println("[BRIDGE] NBIRTH " + node.birthTopic() + " bdSeq=" + bdSeq);
+    }
+
+    private void subscribeAll() throws Exception {
+        client.subscribe(ncmdTopic, 1);
+        client.subscribe(queryTopic, 1);
+    }
+
+    @Override
+    public void connectComplete(boolean reconnect, String serverURI) {
+        health.brokerConnected();
+    }
+
+    /** Rebirth without CONNECT: a new NBIRTH, seq 0, the same bdSeq. */
+    private void rebirth() {
+        try {
+            outbound.publish(node.birthTopic(), node.birth(), 0, false);
+            System.out.println("[BRIDGE] REBIRTH " + node.birthTopic() + " bdSeq=" + node.bdSeq());
+        } catch (Exception e) {
+            System.out.println("[BRIDGE] rebirth publish failed: " + e);
+        }
+    }
+
+    public void close() throws Exception {
+        closed = true;
+        reconnector.shutdownNow();
+        executor.close();
+        if (client != null) {
+            synchronized (this) {
+                if (client.isConnected()) {
+                    // An orderly stop is a death the node announces itself, with the same bdSeq the
+                    // Will carries; a hard kill leaves the broker to publish the Will instead.
+                    try {
+                        outbound.publish(node.deathTopic(), node.death(), 1, false);
+                    } catch (Exception e) {
+                        System.out.println("[BRIDGE] NDEATH publish failed: " + e);
+                    }
+                    client.disconnect();
+                }
+            }
+            client.close();
+        }
+    }
+
+    @Override public void connectionLost(Throwable cause) {
+        health.brokerDisconnected();
+        System.out.println("[BRIDGE] connection lost: " + cause + " (reconnecting)");
+        scheduleReconnect(1);
+    }
+
+    /**
+     * Retry with a doubling delay capped at 30 s. Every attempt advances bdSeq, so a number can be
+     * skipped but never reused: a Will from an earlier CONNECT can never kill a later birth.
+     */
+    private void scheduleReconnect(long delaySeconds) {
+        if (closed) {
+            return;
+        }
+        try {
+            reconnector.schedule(() -> {
+                if (closed) {
+                    return;
+                }
+                try {
+                    connectOnce();
+                    System.out.println("[BRIDGE] reconnected to " + broker + ", resubscribed and reborn");
+                } catch (Exception e) {
+                    System.out.println("[BRIDGE] reconnect failed: " + e);
+                    scheduleReconnect(Math.min(delaySeconds * 2, 30));
+                }
+            }, delaySeconds, java.util.concurrent.TimeUnit.SECONDS);
+        } catch (java.util.concurrent.RejectedExecutionException closing) {
+            // close() won the race; nothing to reconnect.
+        }
+    }
+
+    @Override public void deliveryComplete(IMqttDeliveryToken token) { }
+
+    @Override public void messageArrived(String topic, MqttMessage message) {
+        // Publishing from the MQTT callback thread is not allowed; dispatch off-thread. The stripe
+        // key is the command's node id, so two setpoints for one node keep their arrival order.
+        byte[] payload = message.getPayload();
+        final SparkplugBPayload req;
+        try {
+            req = decoder.buildFromByteArray(payload, null);
+        } catch (Exception decodeFailure) {
+            // Previously this threw on a throwaway thread and printed a stack trace with no context.
+            System.out.println("[BRIDGE] DROP undecodable payload on " + topic + ": " + decodeFailure);
+            return;
+        }
+        if (topic.equals(ncmdTopic) && isNodeControl(req)) {
+            // Addressed to this node's session, not a command: no answer on RESULT, which would reply
+            // to the node owner's protocol on the requester's channel.
+            if (isRebirth(req)) {
+                if (Boolean.TRUE.equals(req.getMetrics().get(0).getValue())) {
+                    reconnector.execute(this::rebirth);   // never publish on the Paho callback thread
+                }
+                return;
+            }
+            System.out.println("[BRIDGE] IGNORE node control " + metricNames(req));
+            return;
+        }
+        String stripeKey = (req.getMetrics() == null || req.getMetrics().isEmpty())
+                ? "" : String.valueOf(req.getMetrics().get(0).getName());
+        boolean accepted = executor.submit(stripeKey, () -> {
+            try {
+                NcmdResponse resp = handle(topic, req);
+                outbound.publish(resultTopic, encodeResponse(resp), 1, false);
+            } catch (Exception e) {
+                System.out.println("[BRIDGE] response publish failed for " + stripeKey + ": " + e);
+            }
+        });
+        if (!accepted) {
+            System.out.println("[BRIDGE] OVERLOAD cmd=" + stripeKey + " - queue full, command refused");
+            try {
+                outbound.publish(resultTopic, encodeResponse(overloaded(req.getUuid())), 1, false);
+            } catch (Exception e) {
+                System.out.println("[BRIDGE] overload response publish failed: " + e);
+            }
+        }
+    }
+
+    /**
+     * True when EVERY metric is a Sparkplug node control or property ({@code Node Control/*},
+     * {@code Properties/*}), e.g. the Rebirth a host sends after a seq gap. Those address the node's
+     * session; authorizing one would answer a host's Rebirth with a refusal, and under log-only
+     * would hand it to the applier as a write to a node named after the control. A payload that
+     * mixes one with anything else is not node control; {@link #handle} refuses it as malformed.
+     */
+    static boolean isNodeControl(SparkplugBPayload req) {
+        if (req.getMetrics() == null || req.getMetrics().isEmpty()) {
+            return false;
+        }
+        for (Metric m : req.getMetrics()) {
+            String name = m.getName();
+            if (name == null || !(name.startsWith("Node Control/") || name.startsWith("Properties/"))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** Exactly one Boolean {@code Node Control/Rebirth}: the only node control the session acts on. */
+    static boolean isRebirth(SparkplugBPayload req) {
+        if (req.getMetrics() == null || req.getMetrics().size() != 1) {
+            return false;
+        }
+        Metric m = req.getMetrics().get(0);
+        return CommandNode.REBIRTH.equals(m.getName()) && m.getDataType() == MetricDataType.Boolean
+                && m.getValue() instanceof Boolean;
+    }
+
+    private static String metricNames(SparkplugBPayload req) {
+        List<String> names = new ArrayList<>();
+        for (Metric m : req.getMetrics()) {
+            names.add(m.getName());
+        }
+        return names.toString();
+    }
+
+    /**
+     * The overload refusal, extracted so a unit test can assert its wording without a broker.
+     * A dropped command that nobody is told about is worse than a refused one.
+     */
+    static NcmdResponse overloaded(String cmdId) {
+        return NcmdResponse.apply(cmdId, false, "overloaded: edge queue full");
+    }
+
+    /** Encode a response payload per Heimdall's response wire contract (metric names/types below). */
+    byte[] encodeResponse(NcmdResponse r) throws Exception {
+        SparkplugBPayloadBuilder b = new SparkplugBPayloadBuilder()
+                .setUuid(r.cmdId())
+                .setTimestamp(new Date())
+                .addMetric(new MetricBuilder("ok", MetricDataType.Boolean, r.ok()).createMetric())
+                .addMetric(new MetricBuilder("detail", MetricDataType.String, r.detail()).createMetric());
+        if (r.value() != null) {
+            b.addMetric(new MetricBuilder("value", MetricDataType.String, r.value()).createMetric());
+        }
+        if (r.good() != null) {
+            b.addMetric(new MetricBuilder("good", MetricDataType.Boolean, r.good()).createMetric());
+        }
+        return encoder.getBytes(b.createPayload(), false);
+    }
+
+    private static String propString(PropertySet props, String key) {
+        if (props == null) return null;
+        PropertyValue pv = props.getPropertyValue(key);
+        if (pv == null || pv.getValue() == null) return null;
+        return pv.getValue().toString();
+    }
+
+    private static long propLong(PropertySet props, String key, long dflt) {
+        if (props == null) return dflt;
+        PropertyValue pv = props.getPropertyValue(key);
+        if (pv == null || !(pv.getValue() instanceof Number n)) return dflt;
+        return n.longValue();
+    }
+}

@@ -159,7 +159,7 @@ WELD_NODE="ns=2;s=Weld/WeldCurrent"
 # the Sparkplug identity (Bifrost:Line1 / recipe-edge) matches what the weld authz policy allows.
 pub() {  # $1=nodeId $2=value $3=dataType
   MQTT_URL="tcp://localhost:1883" SPB_GROUP="Bifrost:Line1" SPB_EDGE="recipe-edge" \
-    java -cp "$HEIMDALL_JAR_WIN" dev.krillin.bifrost.heimdall.RogueNcmd "$1" "$2" "$3" >>"$PUB_LOG" 2>&1
+    java -cp "$HEIMDALL_JAR_WIN" yggdrasil.bifrost.heimdall.RogueNcmd "$1" "$2" "$3" >>"$PUB_LOG" 2>&1
 }
 
 start_bridge() {  # $1=CONFORMANCE_PATH(win)  $2=bridge log

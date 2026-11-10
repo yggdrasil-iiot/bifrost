@@ -362,7 +362,7 @@ PKI="$WORK/pki"
 rm -rf "$PKI"
 PKI_WIN="$(cygpath -m "$(pwd)/$PKI")"
 APP_URI="urn:bifrost:heimdall:Bifrost-Line1:recipe-edge"
-identity_cli() { java -cp "$HEIMDALL_JAR_WIN" dev.krillin.bifrost.heimdall.EdgeIdentity "$@"; }
+identity_cli() { java -cp "$HEIMDALL_JAR_WIN" yggdrasil.bifrost.heimdall.EdgeIdentity "$@"; }
 
 set +e
 identity_cli show "$PKI_WIN" "$APP_URI" >"$WORK/k9-show-empty.txt" 2>&1; rc=$?
@@ -482,7 +482,7 @@ else
     for i in $(seq 1 45); do grep -q "\[BRIDGE\] ready" "$1" 2>/dev/null && return 0; sleep 2; done
     return 1
   }
-  pub() { SPB_EDGE="recipe-edge" java -cp "$HEIMDALL_JAR_WIN" dev.krillin.bifrost.heimdall.RogueNcmd "$RPM_NODE" "$1" Double >>"$PUB_LOG" 2>&1; }
+  pub() { SPB_EDGE="recipe-edge" java -cp "$HEIMDALL_JAR_WIN" yggdrasil.bifrost.heimdall.RogueNcmd "$RPM_NODE" "$1" Double >>"$PUB_LOG" 2>&1; }
   applies() { grep -c "\[BRIDGE\] APPLY cmd=$RPM_NODE ok=true" "$1" 2>/dev/null || true; }
 
   # --- the PREDECESSOR still writes: this is the overlap ---

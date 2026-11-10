@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://bifrost.krillin.dev/schema/policy.schema.json",
+  "$id": "urn:yggdrasil:bifrost:schema:policy",
   "title": "Bifrost Command Policy",
   "description": "Deny-by-default command authorization policy-as-code. Language-neutral — any consumer can validate a policy document against this schema without depending on Bifrost code.",
   "type": "object",

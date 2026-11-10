@@ -121,7 +121,7 @@ H="$(cygpath -m "$(pwd)/heimdall/target/bifrost-heimdall.jar")"
 S="$(cygpath -m "$(pwd)/sim/target/bifrost-sim.jar")"
 G="$(cygpath -m "$(pwd)/gates/target/bifrost-gates.jar")"
 gates() { java -jar "$G" "$@" >>"$CLI_LOG" 2>&1; }
-fixture() { java -cp "$G" dev.krillin.bifrost.gates.ProposalFixture "$@" 2>>"$CLI_LOG"; }
+fixture() { java -cp "$G" yggdrasil.bifrost.gates.ProposalFixture "$@" 2>>"$CLI_LOG"; }
 
 echo "[GATE] step 1: keys, grants, an edge policy rule for the Method, and a published mapping release"
 rm -rf "$PKI" "$REG" "$LED" "$PROP"; mkdir -p "$PKI" "$REG/identity" "$PROP"
@@ -130,7 +130,7 @@ PKI_WIN="$(cygpath -m "$(pwd)/$PKI")"
 REG_WIN="$(cygpath -m "$(pwd)/$REG")"
 : > "$REG/identity/authorized-keys.jsonl"
 for who in proposer approver agent operator; do
-  java -cp "$G" dev.krillin.bifrost.gates.IdentityGate keygen "$who" --out "$PKI_WIN" 2>/dev/null | head -1 \
+  java -cp "$G" yggdrasil.bifrost.gates.IdentityGate keygen "$who" --out "$PKI_WIN" 2>/dev/null | head -1 \
     >> "$REG/identity/authorized-keys.jsonl"
 done
 [ "$(wc -l < "$REG/identity/authorized-keys.jsonl" | tr -d ' ')" = "4" ] || fail "expected four registered keys"
@@ -191,7 +191,7 @@ export HEALTH_PORT=0
 
 echo "[GATE] step 2: the edge identity, then HiveMQ CE and the sim trusting only that identity"
 rm -rf "$EDGE_PKI" "$TRUST" "$SIM_CERT" "$ROGUE_CERT"
-THUMB="$(java -cp "$H" dev.krillin.bifrost.heimdall.EdgeIdentity --print-thumbprint "$HEIMDALL_IDENTITY_DIR" \
+THUMB="$(java -cp "$H" yggdrasil.bifrost.heimdall.EdgeIdentity --print-thumbprint "$HEIMDALL_IDENTITY_DIR" \
     "urn:bifrost:heimdall:Bifrost-Line1:$EDGE" 2>/dev/null | tr -d '\r')"
 [ -n "$THUMB" ] || fail "could not mint the edge identity"
 broker_boots() { docker compose -f "$COMPOSE_WIN" logs hivemq-ce 2>/dev/null | grep -c "Started HiveMQ in" || true; }
@@ -255,10 +255,10 @@ grep -q "OPC-UA identity $THUMB" "$EDGE_LOG" || fail "Heimdall is not presenting
 grep -q "OPC-UA server trust list .* (1 trusted certificate" "$EDGE_LOG" || fail "Heimdall did not load the one-entry server trust list"
 
 : > "$WATCH_LOG"
-java -cp "$H" dev.krillin.bifrost.heimdall.TopicWatcher "bifrost/$GROUP/RESULT/$EDGE" 900 >"$WATCH_LOG" 2>&1 &
+java -cp "$H" yggdrasil.bifrost.heimdall.TopicWatcher "bifrost/$GROUP/RESULT/$EDGE" 900 >"$WATCH_LOG" 2>&1 &
 wait_line "$WATCH_LOG" "\[WATCH\] subscribed" 15 || fail "the RESULT watcher did not subscribe"
 : > "$SPB_LOG"
-java -cp "$H" dev.krillin.bifrost.heimdall.TopicWatcher "spBv1.0/$GROUP/+/$DATA_EDGE" 900 >"$SPB_LOG" 2>&1 &
+java -cp "$H" yggdrasil.bifrost.heimdall.TopicWatcher "spBv1.0/$GROUP/+/$DATA_EDGE" 900 >"$SPB_LOG" 2>&1 &
 wait_line "$SPB_LOG" "\[WATCH\] subscribed" 15 || fail "the data-edge watcher did not subscribe"
 
 # ---------------------------------------------------------------------------
@@ -272,7 +272,7 @@ wait_line "$EDGE_LOG" "METHOD cmdId=$C1 .* ok=true" 20 || fail "M1 the Method wa
 SEG="$(ls "$SEG_DIR"/*.jsonl | head -1)"
 grep "\"cmdId\":\"$C1\"" "$SEG" | grep -q '"phase":"intent".*"outcome":"reserved"' || fail "M1 no reservation in the ledger"
 grep "\"cmdId\":\"$C1\"" "$SEG" | grep -q '"phase":"outcome".*"outcome":"applied"' || fail "M1 no applied outcome in the ledger"
-java -cp "$G" dev.krillin.bifrost.gates.CommandLogGate verify "$(cygpath -m "$SEG")" >/dev/null || fail "M1 the ledger chain is broken"
+java -cp "$G" yggdrasil.bifrost.gates.CommandLogGate verify "$(cygpath -m "$SEG")" >/dev/null || fail "M1 the ledger chain is broken"
 # The watcher prints raw Sparkplug bytes: the detail metric precedes the uuid and the bytes carry
 # newlines, so one answer is joined back into one line and matched within itself.
 result_has() { for _ in $(seq 1 10); do tr -d '\r\n' < "$WATCH_LOG" | grep -aqE "$1" && return 0; sleep 2; done; return 1; }
@@ -361,13 +361,13 @@ echo "[GATE] M5 OK: refused command.signature"
 echo "[GATE] ===== M6: a Bad precondition ====="
 C6="$(propose m6 45.0 -60 600)"
 approve m6 || fail "M6 approval refused"
-java -cp "$H" dev.krillin.bifrost.heimdall.SimStatusWriter "$STATUS_NODE" 2147483648 >>"$CLI_LOG" 2>&1 \
+java -cp "$H" yggdrasil.bifrost.heimdall.SimStatusWriter "$STATUS_NODE" 2147483648 >>"$CLI_LOG" 2>&1 \
   || fail "M6 could not set the Temp StatusCode Bad"
 sleep 2
 publish m6.approved || fail "M6 publish failed"
 denied "$C6" command.precondition || fail "M6 a Bad Temp sample was not refused command.precondition"
 [ "$(transfers 45.0)" = "0" ] || fail "M6 the sim was touched"
-java -cp "$H" dev.krillin.bifrost.heimdall.SimStatusWriter "$STATUS_NODE" 0 >>"$CLI_LOG" 2>&1 \
+java -cp "$H" yggdrasil.bifrost.heimdall.SimStatusWriter "$STATUS_NODE" 0 >>"$CLI_LOG" 2>&1 \
   || fail "M6 could not restore the Temp StatusCode"
 echo "[GATE] M6 OK: refused command.precondition"
 

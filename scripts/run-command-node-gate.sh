@@ -103,10 +103,10 @@ sed 's/"edge": "recipe-edge"/"edge": "recipe-edge-cmd"/' heimdall/registry/polic
 sed 's/"edge": "recipe-edge"/"edge": "recipe-edge-cmd2"/' heimdall/registry/policy.json > "$REG/policy-renamed.json"
 grep -q "\"edge\": \"$CMD_EDGE\"" "$REG/policy.json" || fail "could not derive the command-edge policy"
 PKI_WIN="$(cygpath -m "$(pwd)/$PKI")"
-java -cp "$G" dev.krillin.bifrost.gates.IdentityGate keygen recipe-writer --out "$PKI_WIN" 2>/dev/null | head -1 \
+java -cp "$G" yggdrasil.bifrost.gates.IdentityGate keygen recipe-writer --out "$PKI_WIN" 2>/dev/null | head -1 \
   > "$REG/identity/authorized-keys.jsonl"
 [ -s "$REG/identity/authorized-keys.jsonl" ] || fail "could not register recipe-writer"
-THUMB="$(java -cp "$H" dev.krillin.bifrost.heimdall.EdgeIdentity --print-thumbprint \
+THUMB="$(java -cp "$H" yggdrasil.bifrost.heimdall.EdgeIdentity --print-thumbprint \
     "$(cygpath -m "$(pwd)/$EDGE_PKI")" "$CMD_URI" 2>/dev/null | tr -d '\r')"
 [ -n "$THUMB" ] || fail "could not mint the edge identity"
 echo "[GATE] edge identity $THUMB ($CMD_URI)"
@@ -164,7 +164,7 @@ refused_start() {  # $1 tag $2 edge $3 policy $4 override $5 identity dir
   echo "$rc"
 }
 pub() {  # $1 edge, then RogueNcmd arguments
-  SPB_EDGE="$1" java -cp "$H" dev.krillin.bifrost.heimdall.RogueNcmd "${@:2}" >>"$PUB_LOG" 2>&1
+  SPB_EDGE="$1" java -cp "$H" yggdrasil.bifrost.heimdall.RogueNcmd "${@:2}" >>"$PUB_LOG" 2>&1
 }
 signed() {  # $1 edge $2 node $3 value $4 cmdId [extra RogueNcmd arguments]
   pub "$1" "$2" "$3" Double --sign recipe-writer "$PKI_WIN/recipe-writer.key" --cmd-id "$4" "${@:5}"
@@ -176,7 +176,7 @@ result_has() { for _ in $(seq 1 10); do tr -d '\r\n' < "$RESULT_LOG" | grep -aq 
 
 watch() {  # $1 log, then TopicWatcher arguments
   : > "$1"
-  java -cp "$H" dev.krillin.bifrost.heimdall.TopicWatcher "${@:2}" >"$1" 2>&1 &
+  java -cp "$H" yggdrasil.bifrost.heimdall.TopicWatcher "${@:2}" >"$1" 2>&1 &
   wait_line "$1" "\[WATCH\] subscribed" 15 || fail "the watcher for ${*: -2:1} did not subscribe"
 }
 watch "$SPB_LOG" --sparkplug "spBv1.0/$GROUP/+/$CMD_EDGE" 900
@@ -267,7 +267,7 @@ grep -q "identity.uri.mismatch" "$N9_LOG" || fail "N9 no identity.uri.mismatch"
 ! grep -qE "NBIRTH|subscribed NCMD|OPC-UA connected|OPC-UA not reachable" "$N9_LOG" \
   || fail "N9 Heimdall connected before refusing"
 [ "$(count_in "^\[WATCH\] spBv1.0/" "$REN_LOG")" = "0" ] || fail "N9 something was published on the renamed edge"
-[ "$(java -cp "$H" dev.krillin.bifrost.heimdall.EdgeIdentity show "$(cygpath -m "$(pwd)/$EDGE_PKI")" x 2>/dev/null \
+[ "$(java -cp "$H" yggdrasil.bifrost.heimdall.EdgeIdentity show "$(cygpath -m "$(pwd)/$EDGE_PKI")" x 2>/dev/null \
     | tr -d '\r' | grep -o "$THUMB" | head -1)" = "$THUMB" ] || fail "N9 the certificate changed"
 echo "[GATE] N9 OK: refused identity.uri.mismatch before any connect; the certificate is unchanged"
 

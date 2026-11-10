@@ -164,7 +164,7 @@ apply_count() {  # $1=node $2=log
 
 pub() {  # $1=node $2=value $3=type $4=edge
   MQTT_URL="tcp://localhost:1883" SPB_GROUP="$GROUP" SPB_EDGE="$4" \
-    java -cp "$HEIMDALL_JAR_WIN" dev.krillin.bifrost.heimdall.RogueNcmd "$1" "$2" "$3" >>"$PUB_LOG" 2>&1
+    java -cp "$HEIMDALL_JAR_WIN" yggdrasil.bifrost.heimdall.RogueNcmd "$1" "$2" "$3" >>"$PUB_LOG" 2>&1
 }
 
 health_code() { curl -s -m 5 -o /dev/null -w "%{http_code}" "http://localhost:$1/healthz" 2>/dev/null || echo "000"; }
@@ -213,7 +213,7 @@ echo "[GATE] E1 OK: reconnected, resubscribed, and a new command was applied"
 echo "[GATE] ===== E3: an OPC-UA outage is a refusal, never a denial ====="
 kill_by_mainclass "bifrost-sim.jar"
 sleep 3
-java -cp "$HEIMDALL_JAR_WIN" dev.krillin.bifrost.heimdall.TopicWatcher "bifrost/$GROUP/RESULT/$EDGE_A" 60 >>"$WATCH_LOG" 2>&1 &
+java -cp "$HEIMDALL_JAR_WIN" yggdrasil.bifrost.heimdall.TopicWatcher "bifrost/$GROUP/RESULT/$EDGE_A" 60 >>"$WATCH_LOG" 2>&1 &
 wait_line "$WATCH_LOG" "\[WATCH\] subscribed bifrost/$GROUP/RESULT/$EDGE_A" 10 || fail "E3 the RESULT watcher did not subscribe"
 DENY_BEFORE="$(count_in "\[BRIDGE\] DENY cmd=" "$A_LOG")"
 pub "$RPM_NODE" 1500.0 Double "$EDGE_A"
@@ -268,7 +268,7 @@ BDSEQ_A="$(grep -o "\[BRIDGE\] \(NBIRTH\|REBIRTH\) spBv1.0/$GROUP/NBIRTH/$EDGE_A
 [ -n "$BDSEQ_A" ] || fail "E2 edge A logged no NBIRTH"
 [ "$(count_in "\[BRIDGE\] NBIRTH spBv1.0/$GROUP/NBIRTH/$EDGE_A" "$A_LOG")" -ge 2 ] \
   || fail "E2 edge A did not birth again after the E1 broker restart"
-java -cp "$HEIMDALL_JAR_WIN" dev.krillin.bifrost.heimdall.TopicWatcher --sparkplug "spBv1.0/$GROUP/+/$EDGE_A" 120 >>"$WATCH_LOG" 2>&1 &
+java -cp "$HEIMDALL_JAR_WIN" yggdrasil.bifrost.heimdall.TopicWatcher --sparkplug "spBv1.0/$GROUP/+/$EDGE_A" 120 >>"$WATCH_LOG" 2>&1 &
 wait_line "$WATCH_LOG" "\[WATCH\] subscribed spBv1.0/$GROUP/\+/$EDGE_A" 15 || fail "E2 the Sparkplug watcher did not subscribe"
 # taskkill //F is a hard kill: the JVM shutdown hook does NOT run, so bridge.close()'s own NDEATH
 # cannot be published. An NDEATH that arrives now came from the BROKER's Will.

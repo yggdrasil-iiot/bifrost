@@ -93,7 +93,7 @@ H="$(cygpath -m "$(pwd)/heimdall/target/bifrost-heimdall.jar")"
 S="$(cygpath -m "$(pwd)/sim/target/bifrost-sim.jar")"
 G="$(cygpath -m "$(pwd)/gates/target/bifrost-gates.jar")"
 gates() { java -jar "$G" "$@" >>"$CLI_LOG" 2>&1; }
-fixture() { java -cp "$G" dev.krillin.bifrost.gates.ProposalFixture "$@" 2>>"$CLI_LOG"; }
+fixture() { java -cp "$G" yggdrasil.bifrost.gates.ProposalFixture "$@" 2>>"$CLI_LOG"; }
 
 echo "[GATE] step 1: keys, grants and an edge policy rule for Mixer1's Method"
 rm -rf "$PKI" "$REG" "$LED" "$PROP"; mkdir -p "$PKI" "$REG/identity" "$PROP"
@@ -102,7 +102,7 @@ PKI_WIN="$(cygpath -m "$(pwd)/$PKI")"
 REG_WIN="$(cygpath -m "$(pwd)/$REG")"
 : > "$REG/identity/authorized-keys.jsonl"
 for who in proposer approver agent operator; do
-  java -cp "$G" dev.krillin.bifrost.gates.IdentityGate keygen "$who" --out "$PKI_WIN" 2>/dev/null | head -1 \
+  java -cp "$G" yggdrasil.bifrost.gates.IdentityGate keygen "$who" --out "$PKI_WIN" 2>/dev/null | head -1 \
     >> "$REG/identity/authorized-keys.jsonl"
 done
 [ "$(wc -l < "$REG/identity/authorized-keys.jsonl" | tr -d ' ')" = "4" ] || fail "expected four registered keys"
@@ -136,7 +136,7 @@ export HEALTH_PORT=0
 
 echo "[GATE] step 2: the edge identity, HiveMQ CE, and two sims trusting only that identity"
 rm -rf "$EDGE_PKI" "$TRUST" "$TRUST_A" "$CERT_A" "$CERT_B"
-THUMB="$(java -cp "$H" dev.krillin.bifrost.heimdall.EdgeIdentity --print-thumbprint "$HEIMDALL_IDENTITY_DIR" \
+THUMB="$(java -cp "$H" yggdrasil.bifrost.heimdall.EdgeIdentity --print-thumbprint "$HEIMDALL_IDENTITY_DIR" \
     "urn:bifrost:heimdall:Bifrost-Line1:$EDGE" 2>/dev/null | tr -d '\r')"
 [ -n "$THUMB" ] || fail "could not mint the edge identity"
 broker_boots() { docker compose -f "$COMPOSE_WIN" logs hivemq-ce 2>/dev/null | grep -c "Started HiveMQ in" || true; }

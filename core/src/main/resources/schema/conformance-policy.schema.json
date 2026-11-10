@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://bifrost.krillin.dev/schema/conformance-policy.schema.json",
+  "$id": "urn:yggdrasil:bifrost:schema:conformance-policy",
   "title": "Bifrost Conformance Policy (governed conformance artifact)",
   "description": "Protocol-independent, governed declarative conformance config: the IAM-like policy artifact binding a governed equipment definition to a strictness dial, a set of conditional cross-member constraints, and the OPC-UA node bindings that address governed members. Language-neutral — any consumer can validate a policy document against this schema without depending on Bifrost code. Bifrost itself deserializes with a lenient mapper, so this schema is documentary.",
   "type": "object",

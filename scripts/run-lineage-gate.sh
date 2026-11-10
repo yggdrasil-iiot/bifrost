@@ -267,7 +267,7 @@ echo "[LINEAGE] OPC-UA sim listening (pid $SIM_PID)"
 # Helpers — reused verbatim from run-activation-gate.sh (A4 plumbing).
 pub() {  # $1=nodeId $2=value $3=dataType
   MQTT_URL="tcp://localhost:1883" SPB_GROUP="Bifrost:Line1" SPB_EDGE="recipe-edge" \
-    java -cp "$HEIMDALL_JAR_WIN" dev.krillin.bifrost.heimdall.RogueNcmd "$1" "$2" "$3" >>"$PUB_LOG" 2>&1
+    java -cp "$HEIMDALL_JAR_WIN" yggdrasil.bifrost.heimdall.RogueNcmd "$1" "$2" "$3" >>"$PUB_LOG" 2>&1
 }
 
 start_bridge() {  # $1=bridge log
