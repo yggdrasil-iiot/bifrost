@@ -4,8 +4,8 @@
   "id": "attribution-plc-stamped-fixture",
   "streamId": "line2",
   "version": "1.0.0",
-  "workspaceSha256": "cd88636726a03729dd4086338d4da9227501542030a653cb28b2a89e7ebcb82e",
-  "proposalSha256": "cd88636726a03729dd4086338d4da9227501542030a653cb28b2a89e7ebcb82e",
+  "workspaceSha256": "569f6e654b68c53e2bb5bc757f7bcc786aa0cc48842423ee448dcd10dd167cc2",
+  "proposalSha256": "569f6e654b68c53e2bb5bc757f7bcc786aa0cc48842423ee448dcd10dd167cc2",
   "baseRelease": null,
   "proposedBy": "proposer",
   "execution": "excluded",
@@ -28,6 +28,10 @@
         "label": "Station 2"
       },
       {
+        "id": "station3",
+        "label": "Station 3"
+      },
+      {
         "id": "nutrunner1",
         "label": "Nutrunner 1"
       },
@@ -47,6 +51,12 @@
         "id": "sim-opcua-station2",
         "label": "Bifrost OPC-UA sim",
         "equipmentInstanceId": "station2",
+        "accessProfileRef": "s7-1500-opcua-v1"
+      },
+      {
+        "id": "sim-opcua-station3",
+        "label": "Bifrost OPC-UA sim",
+        "equipmentInstanceId": "station3",
         "accessProfileRef": "s7-1500-opcua-v1"
       },
       {

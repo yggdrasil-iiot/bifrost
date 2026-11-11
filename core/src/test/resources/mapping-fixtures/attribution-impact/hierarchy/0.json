@@ -95,6 +95,21 @@
           }
         }
       ]
+    },
+    {
+      "equipmentInstanceId": "station3",
+      "label": "Station 3",
+      "equipmentLevel": "WORKCELL_6",
+      "parentEquipmentInstanceId": "line2",
+      "evidenceRefs": [
+        {
+          "artifactId": "hierarchy-plant-register",
+          "locator": {
+            "kind": "text-line",
+            "line": 8
+          }
+        }
+      ]
     }
   ],
   "evidenceRefs": []

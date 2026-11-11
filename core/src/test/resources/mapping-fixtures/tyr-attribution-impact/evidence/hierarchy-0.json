@@ -6,7 +6,7 @@
   "origin": "synthetic",
   "file": {
     "path": "data/hierarchy-0.csv",
-    "sha256": "afb8a6ddc0e9a8eb8c703ba83bb354b66259b904c86e07666a343822035b3aa3",
+    "sha256": "a8c71ff576f380c6fe301b1bff10597a67994035f3d01d8eb57b700fb47f6859",
     "mediaType": "text/csv"
   },
   "capturedAt": "2026-11-07T00:00:00Z",
@@ -17,6 +17,7 @@
     "station1",
     "station2",
     "nutrunner1",
-    "nutrunner2"
+    "nutrunner2",
+    "station3"
   ]
 }
