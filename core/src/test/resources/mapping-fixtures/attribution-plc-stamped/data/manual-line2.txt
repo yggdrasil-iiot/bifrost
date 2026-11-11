@@ -5,10 +5,11 @@ Nutrunner1 running: nsu=urn:bifrost:opcua:sim;s=Line2/Station1/Nutrunner1.Runnin
 Nutrunner2 torque: nsu=urn:bifrost:opcua:sim;s=Line2/Station1/Nutrunner2.Torque, Double, N.m
 Nutrunner2 running: nsu=urn:bifrost:opcua:sim;s=Line2/Station1/Nutrunner2.Running, Boolean
 Occupancy: topic mfg.occupancy, EPCIS ObjectEvent field names, MES unit ids
-Incidents: topic mfg.incidents, kinds tool-check-failed and gauge-drift
+Incidents: topic quality.incidents, kinds tool-check-failed and gauge-drift
 Station1 unit id: nsu=urn:bifrost:opcua:sim;s=Line2/Station1.UnitId, String
 Station1 visit id: nsu=urn:bifrost:opcua:sim;s=Line2/Station1.VisitId, String
 Station1 visit present: nsu=urn:bifrost:opcua:sim;s=Line2/Station1.VisitPresent, Boolean
 Nutrunner1 unit id: nsu=urn:bifrost:opcua:sim;s=Line2/Station1/Nutrunner1.UnitId, String
 Nutrunner1 visit id: nsu=urn:bifrost:opcua:sim;s=Line2/Station1/Nutrunner1.VisitId, String
 Nutrunner1 visit present: nsu=urn:bifrost:opcua:sim;s=Line2/Station1/Nutrunner1.VisitPresent, Boolean
+Station3 running: nsu=urn:bifrost:opcua:sim;s=Line2/Station3.Running, Boolean

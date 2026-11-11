@@ -83,7 +83,7 @@ class MappingImpactRuleTest {
     static void incidentRefused(java.util.function.Consumer<ObjectNode> edit) throws Exception {incidentRefused(incident(edit));}
     @Test void parsesTheFixtureProfile() throws Exception {
         var p=IncidentBindingProfile.parse(incident(b->{}),"x");
-        assertEquals("mfg.incidents",p.topic());assertEquals(List.of("tool-check-failed","gauge-drift"),p.kinds());assertEquals("isa95-path",p.equipmentRefBasis());
+        assertEquals("quality.incidents",p.topic());assertEquals(List.of("tool-check-failed","gauge-drift"),p.kinds());assertEquals("isa95-path",p.equipmentRefBasis());
     }
     @Test void profileAcceptsASingleKind() throws Exception {assertEquals(List.of("tool-check-failed"),IncidentBindingProfile.parse(incident(b->((ArrayNode)b.path("kinds")).remove(1)),"x").kinds());}
     @Test void profileRefusesAnExtraField() throws Exception {incidentRefused(b->b.put("note","x"));}
@@ -101,7 +101,7 @@ class MappingImpactRuleTest {
     /** The fixture's own profile bytes with one key repeated: valid but for the duplicate. The same bytes without it are accepted. */
     @Test void profileRefusesDuplicateKeys() throws Exception {
         byte[] original=Files.readAllBytes(Path.of(MappingImpactRuleTest.class.getResource("/mapping-fixtures/attribution-impact/data/incident-binding-line2.json").toURI()));
-        assertEquals("mfg.incidents",IncidentBindingProfile.parse(original,"x").topic());
+        assertEquals("quality.incidents",IncidentBindingProfile.parse(original,"x").topic());
         String text=new String(original,java.nio.charset.StandardCharsets.UTF_8);int end=text.lastIndexOf('}');
         incidentRefused((text.substring(0,end)+",\"topic\":\"x\""+text.substring(end)).getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }

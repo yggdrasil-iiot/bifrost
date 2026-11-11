@@ -6,7 +6,7 @@
   "origin": "synthetic",
   "file": {
     "path": "data/manual-line2.txt",
-    "sha256": "89f9c3c6642c8672f50eda9068cf3bc5c27e5ae248b49291882ddce1f994ad81",
+    "sha256": "0f3533c89471259265318b636634c800da72eed13cc3b18da01b7ee87fa59e0f",
     "mediaType": "text/plain"
   },
   "capturedAt": "2026-11-06T00:00:00Z",
@@ -14,6 +14,7 @@
   "scope": [
     "station1",
     "station2",
+    "station3",
     "nutrunner1",
     "nutrunner2"
   ]

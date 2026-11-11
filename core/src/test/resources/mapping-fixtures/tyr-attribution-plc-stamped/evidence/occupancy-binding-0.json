@@ -6,13 +6,14 @@
   "origin": "synthetic",
   "file": {
     "path": "data/occupancy-binding-0.json",
-    "sha256": "a954eec3a2f4a37a626883fd3b85dc6c3fa815ddd3bcfd1db07a611d73756328",
+    "sha256": "149dc29ea119f4bd8987f3b12afe2d8d4d91f90e91416d70ff9c1145b2d80e6b",
     "mediaType": "application/vnd.forseti.occupancy-binding+json"
   },
   "capturedAt": "2026-11-07T00:00:00Z",
   "product": null,
   "scope": [
     "station1",
-    "station2"
+    "station2",
+    "station3"
   ]
 }

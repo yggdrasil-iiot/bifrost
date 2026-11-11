@@ -21,12 +21,13 @@ class MappingTyrAttributionRuleTest {
     Path bundle(String fixture) throws Exception {
         Path b=tmp.resolve("bundle");MappingBroadcastTest.copy(Path.of(getClass().getResource("/mapping-fixtures/"+fixture).toURI()),b);return b;
     }
-    MappingRegistry service(Path registry,Path proposerKey,Path approverKey) throws Exception {
+    /** The publication policy names the bundle's own stream: Tyr writes the plc-stamped bundle for stream line2-plc. */
+    MappingRegistry service(Path registry,Path proposerKey,Path approverKey,String stream) throws Exception {
         Files.createDirectories(registry.resolve("identity"));
         var a=Ed25519Keys.generate();var b=Ed25519Keys.generate();
         Files.writeString(proposerKey,Ed25519Keys.privateKeyB64(a.getPrivate()));Files.writeString(approverKey,Ed25519Keys.privateKeyB64(b.getPrivate()));
         Files.writeString(registry.resolve("identity/authorized-keys.jsonl"),JSON.writeValueAsString(new AuthorizedKey("proposer",Ed25519Keys.publicKeyB64(a.getPublic())))+"\n"+JSON.writeValueAsString(new AuthorizedKey("approver",Ed25519Keys.publicKeyB64(b.getPublic())))+"\n");
-        Files.writeString(registry.resolve("identity/activation-policy.json"),"{\"version\":\"1.0.0\",\"default\":\"deny\",\"rules\":[{\"id\":\"publish-map\",\"principal\":\"proposer\",\"action\":\"publish\",\"target\":\"mapping-publication\",\"kind\":\"mapping-release\",\"ref\":\"line2\"},{\"id\":\"approve-map\",\"principal\":\"approver\",\"action\":\"approve\",\"target\":\"mapping-publication\",\"kind\":\"mapping-release\",\"ref\":\"line2\"}]}");
+        Files.writeString(registry.resolve("identity/activation-policy.json"),"{\"version\":\"1.0.0\",\"default\":\"deny\",\"rules\":[{\"id\":\"publish-map\",\"principal\":\"proposer\",\"action\":\"publish\",\"target\":\"mapping-publication\",\"kind\":\"mapping-release\",\"ref\":\""+stream+"\"},{\"id\":\"approve-map\",\"principal\":\"approver\",\"action\":\"approve\",\"target\":\"mapping-publication\",\"kind\":\"mapping-release\",\"ref\":\""+stream+"\"}]}");
         return new MappingRegistry(registry,CLOCK,()->{});
     }
     static long count(MappingBundle.Checked c,String field,String value){return c.documents().values().stream().filter(d->text(d,field).equals(value)).count();}
@@ -48,7 +49,7 @@ class MappingTyrAttributionRuleTest {
     @ParameterizedTest @ValueSource(strings={"tyr-attribution-impact","tyr-attribution-plc-stamped"})
     void releaseAndAttestationCarryBothRulesAndBothProfiles(String fixture) throws Exception {
         Path bundle=bundle(fixture),registry=tmp.resolve("registry"),pk=tmp.resolve("proposer.key"),ak=tmp.resolve("approver.key");
-        MappingRegistry service=service(registry,pk,ak);
+        MappingRegistry service=service(registry,pk,ak,text(read(bundle.resolve("submission.json")),"streamId"));
         service.approve(bundle,"approval-1","proposer",pk,"approver",ak);
         assertEquals("mapping-release",text(service.publish(bundle,"release","1.0.0","approval-1"),"kind"));
         Path dir=registry.resolve("mappings/releases/release/1.0.0");JsonNode release=read(dir.resolve("release.json"));

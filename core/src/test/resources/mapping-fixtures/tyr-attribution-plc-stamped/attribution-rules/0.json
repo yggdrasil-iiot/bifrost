@@ -11,7 +11,8 @@
   },
   "stations": [
     "synthetic-site:line2:station1",
-    "synthetic-site:line2:station2"
+    "synthetic-site:line2:station2",
+    "synthetic-site:line2:station3"
   ],
   "members": [
     {

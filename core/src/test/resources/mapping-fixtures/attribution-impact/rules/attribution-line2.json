@@ -4,14 +4,15 @@
   "id": "line2-attribution",
   "version": "1.0.0",
   "label": "Line 2 occupancy-join attribution",
-  "description": "Joins nutrunner torque samples with MES occupancy at station 1 and station 2 by event time.",
+  "description": "Joins nutrunner torque samples with MES occupancy at stations 1, 2 and 3 by event time.",
   "equipmentRef": {
     "id": "line2-plant",
     "version": "1.0.0"
   },
   "stations": [
     "synthetic-site:line2:station1",
-    "synthetic-site:line2:station2"
+    "synthetic-site:line2:station2",
+    "synthetic-site:line2:station3"
   ],
   "members": [
     {
@@ -52,6 +53,15 @@
     },
     {
       "mappingSetRef": {
+        "id": "station3-mapping",
+        "version": "1.0.0"
+      },
+      "mappingId": "station3-running",
+      "semanticId": "urn:bifrost:sem:Station/Running",
+      "metric": "Running"
+    },
+    {
+      "mappingSetRef": {
         "id": "nutrunner1-mapping",
         "version": "1.0.0"
       },
@@ -78,6 +88,11 @@
     {
       "equipmentPath": "synthetic-site:line2:station2",
       "memberRef": "station2-running",
+      "activeWhen": true
+    },
+    {
+      "equipmentPath": "synthetic-site:line2:station3",
+      "memberRef": "station3-running",
       "activeWhen": true
     },
     {
