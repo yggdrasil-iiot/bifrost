@@ -191,7 +191,7 @@ needs a timestamp and a clock the site trusts, and OT sites frequently have neit
 For a worked example of a consumer on the other side of this contract — a Kotlin control
 application that verifies a Bifrost-published provenance manifest with **zero Bifrost code on its
 classpath** — see
-[`resequence-twin-lab`](https://github.com/LivingLikeKrillin/resequence-twin-lab).
+[`resequence-twin-lab`](https://github.com/yggdrasil-iiot/resequence-twin-lab).
 
 ### The broker
 
