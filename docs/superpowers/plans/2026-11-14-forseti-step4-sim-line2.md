@@ -4,7 +4,7 @@
 
 **Goal:** The Bifrost OPC UA sim (module `sim`) gains a `Line2` folder with three stations and two nutrunners under Station1, value control nodes and a configurable scan period, so forseti's step-5 scenario driver can drive plc-stamped attribution through the sim. Existing Mixer1 behaviour and the existing address space stay unchanged.
 **Architecture:** All changes are in `sim/src/main/java/yggdrasil/bifrost/sim/EmbeddedMiloSim.java` (inner class `SimNamespace`) and `SimMain.java`, plus new tests under `sim/src/test/java/yggdrasil/bifrost/sim/` and one test resource. `GovernedWriteFilter.java` is unchanged. Mimir, Muninn and vor are unchanged.
-**Tech Stack:** Java 17, Maven module `sim`, Eclipse Milo 1.0.0 server API as already used in EmbeddedMiloSim, JUnit 5. Branch `feat/sim-line2` off `main` (`4d79b87`). Files use LF.
+**Tech Stack:** Java 17, Maven module `sim`, Eclipse Milo 1.1.8 server API (`milo.version` in the root POM) as already used in EmbeddedMiloSim, JUnit 5. Branch `feat/sim-line2` off `main` (`4d79b87`). Files use LF.
 
 ---
 
@@ -54,7 +54,7 @@
    - Reason: Preserves live snapshot stability between scans and aligns control updates with the discrete scan boundary, while leaving legacy Mixer1 controls unaffected.
 4. Control validation: A write to a Line2 control is validated before anything changes. A wrong DataType, a null or an array is rejected with Bad_TypeMismatch, without numeric coercion. A rejected write changes neither the requested nor the pending state.
    - Reason: The rejection semantics then do not depend on Milo defaults.
-5. Write-request atomicity: The namespace's Write dispatch runs under the same lock as the scan, so the accepted items of one Write request cannot straddle a scan. Separate requests can. Read is not serialized: a Read that straddles a scan shows unequal source timestamps, which forseti's `incoherent-snapshot` rule already covers. The exact Milo 1.0.0 override signature is checked against the jar in Task 5.
+5. Write-request atomicity: The namespace's Write dispatch runs under the same lock as the scan, so the accepted items of one Write request cannot straddle a scan. Separate requests can. Read is not serialized: a Read that straddles a scan shows unequal source timestamps, which forseti's `incoherent-snapshot` rule already covers. The exact Milo 1.1.8 override signature is checked against the jar in Task 5.
    - Reason: The step-5 driver writes one equipment snapshot per Write request, and that snapshot must reach the members in one scan; a straddling Read is already detectable by its unequal source timestamps.
 6. Snapshots: The Line2 scan takes one timestamp, builds all 22 DataValues, then sets them in a fixed order (stations, then each tool's five members contiguously) under the lock, with SourceTimestamp = ServerTimestamp = that time. Successive Line2 scan timestamps are strictly increasing: if the clock returns a time not after the previous scan's, the scan uses the previous time plus one tick. The startup values form one initial snapshot with one shared timestamp. The five existing nodes keep their unchanged `stamped()` loop.
    - Reason: OPC UA monitoring is per variable, so a subscriber sees one snapshot as members with equal source timestamps; row 4 already defines coherence this way, so no owner decision remains.
@@ -137,7 +137,7 @@
 
 ### Task 5: Write-request atomicity and control validation
 
-- [ ] Verify Eclipse Milo 1.0.0 server API jar to confirm the exact method signature for overriding namespace Write dispatch.
+- [ ] Verify the Eclipse Milo 1.1.8 server API jar to confirm the exact method signature for overriding namespace Write dispatch.
 - [ ] Write tests in `sim/src/test/java/yggdrasil/bifrost/sim/Line2ControlTest.java` and `sim/src/test/java/yggdrasil/bifrost/sim/Line2SnapshotTest.java` testing:
   - Write validation rejecting wrong DataType, null, or array with `Bad_TypeMismatch`.
   - No numeric coercion (rejecting Int32 write to Double control).
@@ -165,6 +165,7 @@
 - The forseti scenario driver must write each equipment snapshot (all member values and statuses for a given station or tool) in a single Write request to ensure atomic commit at the sim's scan boundary.
 - The sim's scan period is set with `bifrost.sim.scanMs` when the sim is started.
 - The full-loop configuration must set the Muninn sampling period at or below the sim scan period and must record repeated source timestamps.
+- Milo 1.1.8 returns the time of the read as the ServerTimestamp of a variable value, so only the source timestamp identifies a scan's snapshot.
 
 ## Verification
 
