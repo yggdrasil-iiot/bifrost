@@ -81,4 +81,68 @@ class EmbeddedMiloSimConfigTest {
             assertTrue(e.getMessage().contains("SIM_REQUIRE_IDENTITY"), e.getMessage());
         }
     }
+
+    // ----- bifrost.sim.scanMs: the one scan period, resolved before startup, no silent fallback -----
+
+    @Test void scanMs_absentDefaultsTo1000() {
+        assertEquals(1000L, SimMain.resolveScanMs(null));
+        assertEquals(EmbeddedMiloSim.SimNamespace.SCAN_MS, SimMain.resolveScanMs(null));
+    }
+
+    @Test void scanMs_acceptsTheWholeRange() {
+        assertEquals(250L, SimMain.resolveScanMs("250"));
+        assertEquals(1L, SimMain.resolveScanMs("1"));
+        assertEquals(86_400_000L, SimMain.resolveScanMs("86400000"));
+    }
+
+    /** Blank, malformed, overflowing and out-of-range values fail the start, naming the property. */
+    @Test void scanMs_rejectsEveryBadValueWithAMessage() {
+        for (String bad : new String[] {"", "   ", "abc", "1.5", "10ms", "0", "-5", "86400001",
+                "99999999999999999999"}) {
+            IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                    () -> SimMain.resolveScanMs(bad), "'" + bad + "' must be refused");
+            assertTrue(e.getMessage().contains("bifrost.sim.scanMs"), e.getMessage());
+        }
+    }
+
+    @Test void scanMs_defaultCtorKeepsTheLegacyPeriod() {
+        assertEquals(1000L, new EmbeddedMiloSim().scanMs());
+        assertEquals(1000L, new EmbeddedMiloSim(48401, "localhost").scanMs());
+        assertEquals(1000L, new EmbeddedMiloSim(48401, "localhost", false, null).scanMs());
+        assertEquals(40L, new EmbeddedMiloSim(48401, "localhost", false, null, 40).scanMs());
+    }
+
+    @Test void scanMs_ctorRefusesAnOutOfRangePeriod() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new EmbeddedMiloSim(48401, "localhost", false, null, 0));
+        assertThrows(IllegalArgumentException.class,
+                () -> new EmbeddedMiloSim(48401, "localhost", false, null, 86_400_001L));
+    }
+
+    /**
+     * The configured period drives the shared scheduler: at 20 ms, Mixer1's member is re-stamped
+     * several times within a window in which the 1000 ms default could not re-stamp it once.
+     */
+    @Test void scanMs_smallPeriodIsHonouredByTheScheduler() throws Exception {
+        try (EmbeddedMiloSim sim = new EmbeddedMiloSim(EmbeddedMiloSim.BIND_PORT, EmbeddedMiloSim.DEFAULT_BIND_HOST,
+                false, null, 20).start()) {
+            var client = SimStatusControlTest.connect();
+            try {
+                long last = SimStatusControlTest.read(client, SimStatusControlTest.TEMP).getSourceTime().getUtcTime();
+                int restamps = 0;
+                long deadline = System.currentTimeMillis() + 800;
+                while (restamps < 3 && System.currentTimeMillis() < deadline) {
+                    Thread.sleep(5);
+                    long t = SimStatusControlTest.read(client, SimStatusControlTest.TEMP).getSourceTime().getUtcTime();
+                    if (t > last) {
+                        restamps++;
+                        last = t;
+                    }
+                }
+                assertTrue(restamps >= 3, "re-stamped " + restamps + " times in 800 ms at a 20 ms period");
+            } finally {
+                client.disconnect();
+            }
+        }
+    }
 }
