@@ -9,15 +9,19 @@ import java.util.Map;
  * OPC-UA server (endpoint configurable via SIM_BIND_PORT / SIM_BIND_HOST env, default
  * opc.tcp://localhost:48400), prints the ready line the gate waits on, then blocks forever.
  *
- * <p>Run: {@code java -jar bifrost-sim.jar}  (or {@code SIM_BIND_PORT=48401 java -jar bifrost-sim.jar})
+ * <p>Run: {@code java -jar bifrost-sim.jar}  (or {@code SIM_BIND_PORT=48401 java -jar bifrost-sim.jar});
+ * the scan period is {@code java -Dbifrost.sim.scanMs=50 -jar bifrost-sim.jar}.
  */
 public final class SimMain {
 
     public static void main(String[] args) throws Exception {
         int port = resolvePort(System.getenv());
         String host = resolveHost(System.getenv());
+        // Resolved once, before anything starts: a bad value stops the process here with a message.
+        long scanMs = resolveScanMs(System.getProperty(SCAN_MS_PROPERTY));
         EmbeddedMiloSim sim = new EmbeddedMiloSim(port, host,
-                resolveRequireIdentity(System.getenv()), resolveGovernedThumbprint(System.getenv())).start();
+                resolveRequireIdentity(System.getenv()), resolveGovernedThumbprint(System.getenv()),
+                scanMs).start();
         Runtime.getRuntime().addShutdownHook(new Thread(sim::close));
         String certOut = System.getenv("SIM_SERVER_CERT_OUT");
         if (certOut != null && !certOut.isBlank()) {
@@ -28,6 +32,36 @@ public final class SimMain {
         System.out.println("OPC-UA sim listening on opc.tcp://" + host + ":" + port);
 
         Thread.currentThread().join();
+    }
+
+    static final String SCAN_MS_PROPERTY = "bifrost.sim.scanMs";
+
+    /**
+     * {@code -Dbifrost.sim.scanMs=<ms>} - the scan period, integer milliseconds 1..86400000. Absent
+     * means the default {@link EmbeddedMiloSim.SimNamespace#SCAN_MS} (1000).
+     *
+     * <p>Every other value is either accepted exactly or refused with a message naming the
+     * property; there is no fallback. Unlike {@code SIM_REQUIRE_IDENTITY}, a wrong scan period has
+     * no safe default to fall to: the scenario driver writes against the scan boundary, and a sim
+     * that quietly ran at 1000 ms when 50 was asked would make every timing assertion downstream
+     * fail for a reason that is not in the system under test.
+     */
+    static long resolveScanMs(String raw) {
+        if (raw == null) {
+            return EmbeddedMiloSim.SimNamespace.SCAN_MS;
+        }
+        long v;
+        try {
+            v = Long.parseLong(raw.trim());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException(SCAN_MS_PROPERTY + "='" + raw
+                    + "' is not an integer number of milliseconds", e);
+        }
+        if (v < EmbeddedMiloSim.MIN_SCAN_MS || v > EmbeddedMiloSim.MAX_SCAN_MS) {
+            throw new IllegalArgumentException(SCAN_MS_PROPERTY + "=" + v + " is outside "
+                    + EmbeddedMiloSim.MIN_SCAN_MS + ".." + EmbeddedMiloSim.MAX_SCAN_MS);
+        }
+        return v;
     }
 
     static int resolvePort(Map<String, String> env) {

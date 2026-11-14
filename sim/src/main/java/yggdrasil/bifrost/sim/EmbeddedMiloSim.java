@@ -4,14 +4,18 @@ import java.security.KeyPair;
 import java.security.cert.X509Certificate;
 import java.time.Period;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.function.LongSupplier;
 
 import org.eclipse.milo.opcua.sdk.core.Reference;
+import org.eclipse.milo.opcua.sdk.server.AddressSpace;
 import org.eclipse.milo.opcua.sdk.server.EndpointConfig;
 import org.eclipse.milo.opcua.sdk.server.ManagedNamespaceWithLifecycle;
 import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
@@ -21,12 +25,14 @@ import org.eclipse.milo.opcua.sdk.server.identity.CompositeValidator;
 import org.eclipse.milo.opcua.sdk.server.identity.X509IdentityValidator;
 import org.eclipse.milo.opcua.sdk.server.items.DataItem;
 import org.eclipse.milo.opcua.sdk.server.items.MonitoredItem;
+import org.eclipse.milo.opcua.sdk.server.nodes.UaFolderNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaMethodNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaObjectNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaObjectTypeNode;
 import org.eclipse.milo.opcua.sdk.server.nodes.UaVariableNode;
 import org.eclipse.milo.opcua.stack.core.AttributeId;
 import org.eclipse.milo.opcua.stack.core.NodeIds;
+import org.eclipse.milo.opcua.stack.core.StatusCodes;
 import org.eclipse.milo.opcua.stack.core.security.CertificateGroup;
 import org.eclipse.milo.opcua.stack.core.security.CertificateValidator;
 import org.eclipse.milo.opcua.stack.core.security.DefaultApplicationGroup;
@@ -53,6 +59,7 @@ import org.eclipse.milo.opcua.stack.core.types.structured.Argument;
 import org.eclipse.milo.opcua.stack.core.types.structured.BuildInfo;
 import org.eclipse.milo.opcua.stack.core.types.structured.Range;
 import org.eclipse.milo.opcua.stack.core.types.structured.UserTokenPolicy;
+import org.eclipse.milo.opcua.stack.core.types.structured.WriteValue;
 import org.eclipse.milo.opcua.stack.transport.server.tcp.OpcTcpServerTransport;
 import org.eclipse.milo.opcua.stack.transport.server.tcp.OpcTcpServerTransportConfig;
 
@@ -70,6 +77,17 @@ import org.eclipse.milo.opcua.stack.transport.server.tcp.OpcTcpServerTransportCo
  * + {@code connect()}) expects. Bind address/hostname are both {@code localhost} to avoid Milo's
  * endpoint-discovery hostname mismatch (the client re-resolves the advertised endpoint after
  * discovery; it must be reachable as exactly {@code localhost:48400}).
+ *
+ * <p><b>Line2</b> is the scenario-driven part, for forseti's plc-stamped attribution. A FolderType
+ * {@code Line2} under Objects organizes three {@code StationType} instances
+ * ({@code Running, UnitId, VisitId, VisitPresent}); two {@code ToolType} nutrunners
+ * ({@code Torque, Running, UnitId, VisitId, VisitPresent}) hang under {@code Line2/Station1} by
+ * Organizes. The 22 members are client-read-only and run no pattern of their own: each has a
+ * {@code Sim/<member>.Value} and a {@code Sim/<member>.StatusCode} control, writable anonymously,
+ * and every scan commits all controls to all members as one snapshot with one strictly increasing
+ * timestamp. A Write request is never split across a scan. The scan period is the
+ * {@code bifrost.sim.scanMs} system property (default 1000 ms) and also sets Mixer1's re-stamp
+ * period. The pre-Line2 address space is unchanged node for node ({@code LegacySimCompatibilityTest}).
  */
 final class EmbeddedMiloSim implements AutoCloseable {
 
@@ -98,12 +116,40 @@ final class EmbeddedMiloSim implements AutoCloseable {
     EmbeddedMiloSim(int bindPort, String bindHost) { this(bindPort, bindHost, false, null); }
 
     EmbeddedMiloSim(int bindPort, String bindHost, boolean requireIdentity, String governedThumbprint) {
+        this(bindPort, bindHost, requireIdentity, governedThumbprint, SimNamespace.SCAN_MS);
+    }
+
+    /**
+     * @param scanMs the scan period in milliseconds, {@value #MIN_SCAN_MS}..{@value #MAX_SCAN_MS}.
+     *               It drives the one shared scan thread, so it sets Mixer1's re-stamp period and
+     *               Line2's commit boundary alike. Out of range is refused here as well as in
+     *               {@link SimMain#resolveScanMs}, so no caller can start a sim with a period the
+     *               property could not have produced.
+     */
+    EmbeddedMiloSim(int bindPort, String bindHost, boolean requireIdentity, String governedThumbprint,
+                    long scanMs) {
+        if (scanMs < MIN_SCAN_MS || scanMs > MAX_SCAN_MS) {
+            throw new IllegalArgumentException("scan period " + scanMs + " ms is outside "
+                    + MIN_SCAN_MS + ".." + MAX_SCAN_MS);
+        }
         this.bindPort = bindPort;
         this.bindHost = bindHost;
         this.requireIdentity = requireIdentity;
         this.governedThumbprint = governedThumbprint;
+        this.scanMs = scanMs;
     }
 
+    static final long MIN_SCAN_MS = 1;
+    /** One day: a longer period is a misconfiguration, not a slow line. */
+    static final long MAX_SCAN_MS = 86_400_000L;
+
+    private final long scanMs;
+
+    long scanMs() { return scanMs; }
+    /** The sim's namespace, for tests that look at the server side directly; null before start. */
+    SimNamespace namespace() { return namespace; }
+    /** Run one scan now, on the caller's thread: a deterministic scan boundary for tests. */
+    void scanNow() { namespace.scan(); }
     int bindPort() { return bindPort; }
     X509Certificate serverCertificate() { return serverCertificate; }
     String bindHost() { return bindHost; }
@@ -236,7 +282,8 @@ final class EmbeddedMiloSim implements AutoCloseable {
         // Pre-register the namespace URI so the custom namespace gets index 2 deterministically
         // (index 0 = OPC-UA foundation, index 1 = server application URI).
         server.getNamespaceTable().add(NAMESPACE_URI);
-        namespace = new SimNamespace(server, requireIdentity ? new GovernedWriteFilter(governedThumbprint) : null);
+        namespace = new SimNamespace(server, requireIdentity ? new GovernedWriteFilter(governedThumbprint) : null,
+                scanMs);
         namespace.startup();
         server.startup().get(30, TimeUnit.SECONDS);
 
@@ -280,6 +327,10 @@ final class EmbeddedMiloSim implements AutoCloseable {
          * StatusCode and fresh timestamps, as a PLC re-samples a sensor whose reading has not
          * changed. Without it a member's source timestamp would stay at the last write, and a
          * reader with a max-age policy on source time would refuse a steady value as stale.
+         *
+         * <p>This is the DEFAULT; {@code bifrost.sim.scanMs} overrides it (see
+         * {@link SimMain#resolveScanMs}). At the default the schedule is exactly the
+         * {@code scheduleAtFixedRate(1000, 1000)} it always was.
          */
         static final long SCAN_MS = 1000;
 
@@ -293,12 +344,12 @@ final class EmbeddedMiloSim implements AutoCloseable {
         /** Null when identity is not required, in which case the nodes keep UserAccessLevel 3. */
         private final GovernedWriteFilter writeFilter;
 
-        SimNamespace(OpcUaServer server, GovernedWriteFilter writeFilter) {
+        SimNamespace(OpcUaServer server, GovernedWriteFilter writeFilter, long scanMs) {
             super(server, NAMESPACE_URI);
             this.writeFilter = writeFilter;
             getLifecycleManager().addStartupTask(this::createNodes);
             getLifecycleManager().addStartupTask(() -> scanner.scheduleAtFixedRate(
-                    this::scan, SCAN_MS, SCAN_MS, TimeUnit.MILLISECONDS));
+                    this::scan, scanMs, scanMs, TimeUnit.MILLISECONDS));
             getLifecycleManager().addShutdownTask(scanner::shutdownNow);
         }
 
@@ -384,6 +435,221 @@ final class EmbeddedMiloSim implements AutoCloseable {
 
             createWeldType();
             createWeldInstance();
+
+            createLine2();
+        }
+
+        // ----- Line2: three stations and two nutrunners, driven entirely by the Sim/ controls -----
+
+        /** StationType's members, in browse and scan order: name, DataType, neutral default. */
+        static final List<Line2Member> STATION_MEMBERS = List.of(
+                new Line2Member("Running", NodeIds.Boolean, Boolean.FALSE),
+                new Line2Member("UnitId", NodeIds.String, ""),
+                new Line2Member("VisitId", NodeIds.String, ""),
+                new Line2Member("VisitPresent", NodeIds.Boolean, Boolean.FALSE));
+
+        /** ToolType's members, in browse and scan order. */
+        static final List<Line2Member> TOOL_MEMBERS = List.of(
+                new Line2Member("Torque", NodeIds.Double, 0.0),
+                new Line2Member("Running", NodeIds.Boolean, Boolean.FALSE),
+                new Line2Member("UnitId", NodeIds.String, ""),
+                new Line2Member("VisitId", NodeIds.String, ""),
+                new Line2Member("VisitPresent", NodeIds.Boolean, Boolean.FALSE));
+
+        /**
+         * One member of a Line2 type. The defaults are neutral on purpose: the sim runs no pattern
+         * of its own, the step-5 scenario driver sets every value, and the empty string (never null)
+         * keeps a typed String read valid before the driver has written anything.
+         */
+        record Line2Member(String name, NodeId dataType, Object initial) {}
+
+        /** A live Line2 member and its two controls, {@code Sim/<member>.Value} and {@code .StatusCode}. */
+        record Line2Slot(UaVariableNode member, UaVariableNode value, UaVariableNode status) {}
+
+        /**
+         * The 22 Line2 slots in the scan's fixed order: the three stations' four members, then each
+         * tool's five members contiguously, so a tool's snapshot is set in one run.
+         */
+        private final List<Line2Slot> line2Slots = new ArrayList<>();
+
+        /** UtcTime (100 ns ticks) of the last committed Line2 snapshot; guarded by {@code this}. */
+        private long line2SnapshotTicks;
+
+        /**
+         * {@code Line2}: a FolderType organized by Objects (inverse Organizes, the pattern Mixer1
+         * uses) organizing Station1..3 of {@code StationType}; Nutrunner1 and Nutrunner2 of
+         * {@code ToolType} hang under Station1 by Organizes, not HasComponent.
+         *
+         * <p>Why Organizes for the tools: an instance's components stay exactly its type's members,
+         * so a browser deriving a definition from an instance sees the type, and the ISA-95
+         * hierarchy forseti and Muninn use comes from the published hierarchy fixture, not from this
+         * address space. Nothing here adds a reference or member to MixerType or Line1. Torque has
+         * no EURange; its unit (N.m) lives in the mapping fixture.
+         *
+         * <p>The startup values are one snapshot: every member carries the same source and server
+         * timestamp, the one later scans advance from.
+         */
+        private void createLine2() {
+            createLine2Type("StationType", STATION_MEMBERS);
+            createLine2Type("ToolType", TOOL_MEMBERS);
+
+            UaFolderNode line2 = new UaFolderNode(getNodeContext(), newNodeId("Line2"),
+                    newQualifiedName("Line2"), LocalizedText.english("Line2"));
+            getNodeManager().addNode(line2);
+            line2.addReference(new Reference(line2.getNodeId(), NodeIds.Organizes,
+                    NodeIds.ObjectsFolder.expanded(), false));
+
+            DateTime initial = DateTime.now();
+            line2SnapshotTicks = initial.getUtcTime();
+            UaObjectNode station1 = null;
+            for (int i = 1; i <= 3; i++) {
+                UaObjectNode station = createLine2Instance("Line2/Station" + i, "Station" + i,
+                        "StationType", STATION_MEMBERS, initial);
+                line2.addOrganizes(station);
+                if (i == 1) {
+                    station1 = station;
+                }
+            }
+            for (int i = 1; i <= 2; i++) {
+                UaObjectNode tool = createLine2Instance("Line2/Station1/Nutrunner" + i, "Nutrunner" + i,
+                        "ToolType", TOOL_MEMBERS, initial);
+                station1.addReference(new Reference(station1.getNodeId(), NodeIds.Organizes,
+                        tool.getNodeId().expanded(), true));
+            }
+        }
+
+        /** A non-abstract ObjectType, subtype of BaseObjectType, with one HasComponent per member. */
+        private void createLine2Type(String typeName, List<Line2Member> members) {
+            UaObjectTypeNode type = new UaObjectTypeNode.UaObjectTypeNodeBuilder(getNodeContext())
+                    .setNodeId(newNodeId(typeName))
+                    .setBrowseName(newQualifiedName(typeName))
+                    .setDisplayName(LocalizedText.english(typeName))
+                    .setIsAbstract(false)
+                    .buildAndAdd();
+            type.addReference(new Reference(type.getNodeId(), NodeIds.HasSubtype,
+                    NodeIds.BaseObjectType.expanded(), false));
+            for (Line2Member m : members) {
+                type.addComponent(typeMember(typeName + "." + m.name(), m.name(), m.dataType(), m.initial()));
+            }
+        }
+
+        /**
+         * One Line2 instance. Its members are client-read-only (access level 1, as
+         * {@link #typeMember} builds them), carry no {@code govern()} and no Method: they change
+         * only through their {@code Sim/} controls, at a scan.
+         */
+        private UaObjectNode createLine2Instance(String id, String browseName, String typeName,
+                                                 List<Line2Member> members, DateTime initial) {
+            UaObjectNode instance = new UaObjectNode.UaObjectNodeBuilder(getNodeContext())
+                    .setNodeId(newNodeId(id))
+                    .setBrowseName(newQualifiedName(browseName))
+                    .setDisplayName(LocalizedText.english(browseName))
+                    .setTypeDefinition(newNodeId(typeName))
+                    .buildAndAdd();
+            for (Line2Member m : members) {
+                UaVariableNode member = typeMember(id + "." + m.name(), m.name(), m.dataType(), m.initial());
+                member.setValue(new DataValue(new Variant(m.initial()), StatusCode.GOOD, initial, initial));
+                instance.addComponent(member);
+                line2Slots.add(new Line2Slot(member,
+                        line2Control(id + "." + m.name() + VALUE_SUFFIX, m.dataType(), m.initial()),
+                        line2Control(id + "." + m.name() + STATUS_SUFFIX, NodeIds.UInt32, Unsigned.uint(0))));
+            }
+            return instance;
+        }
+
+        static final String VALUE_SUFFIX = ".Value";
+
+        /** The one Java type a scalar of each Line2 control DataType decodes to. */
+        private static final Map<NodeId, Class<?>> LINE2_JAVA_TYPES = Map.of(
+                NodeIds.Boolean, Boolean.class,
+                NodeIds.String, String.class,
+                NodeIds.Double, Double.class,
+                NodeIds.UInt32, UInteger.class);
+
+        /** Every Line2 control and the Java type its Value must carry; filled at startup, then read-only. */
+        private final Map<NodeId, Class<?>> line2ControlTypes = new HashMap<>();
+
+        /**
+         * Write dispatch for the whole namespace, under the scan's lock.
+         *
+         * <p><b>Why the lock.</b> The step-5 scenario driver writes one equipment snapshot - every
+         * value and status of one station or tool - per Write request, and that snapshot must reach
+         * the members in one scan. Holding the lock the scan takes means the accepted items of one
+         * request are all in the controls before a scan reads them, or all after; separate requests
+         * can still straddle a scan, which is the driver's unit of atomicity. Read is not serialized:
+         * a Read straddling a scan shows unequal source timestamps, which forseti's
+         * {@code incoherent-snapshot} rule already detects.
+         *
+         * <p><b>Why the validation.</b> A Line2 control item is checked before anything changes: a
+         * value of the wrong DataType, a null or an array is refused with Bad_TypeMismatch, with no
+         * numeric coercion, and a refused item never reaches the node, so neither the requested
+         * setting nor what the next scan commits moves. Milo's own checks are not relied on: they
+         * refuse some of these and accept others (a Double[] into a scalar Double control), and the
+         * contract with the driver must not depend on them. Every other item - Mixer1's controls,
+         * the Recipe setpoints, the live members - goes to Milo exactly as before.
+         *
+         * <p>Signature checked against milo-sdk-server 1.1.8 (the version this build resolves):
+         * {@code ManagedAddressSpace.write(AddressSpace.WriteContext, List<WriteValue>)}, synchronous,
+         * called once per Write request with that request's items for this namespace.
+         */
+        @Override
+        public synchronized List<StatusCode> write(AddressSpace.WriteContext context, List<WriteValue> writeValues) {
+            StatusCode[] results = new StatusCode[writeValues.size()];
+            List<WriteValue> accepted = new ArrayList<>(writeValues.size());
+            List<Integer> acceptedAt = new ArrayList<>(writeValues.size());
+            for (int i = 0; i < writeValues.size(); i++) {
+                WriteValue wv = writeValues.get(i);
+                if (isRejectedLine2ControlWrite(wv)) {
+                    results[i] = new StatusCode(StatusCodes.Bad_TypeMismatch);
+                } else {
+                    accepted.add(wv);
+                    acceptedAt.add(i);
+                }
+            }
+            if (!accepted.isEmpty()) {
+                List<StatusCode> written = super.write(context, accepted);
+                for (int j = 0; j < written.size(); j++) {
+                    results[acceptedAt.get(j)] = written.get(j);
+                }
+            }
+            return List.of(results);
+        }
+
+        /** True for a Value write to a Line2 control whose value is null, an array, or of another type. */
+        private boolean isRejectedLine2ControlWrite(WriteValue wv) {
+            Class<?> expected = line2ControlTypes.get(wv.getNodeId());
+            if (expected == null || !AttributeId.Value.uid().equals(wv.getAttributeId())) {
+                return false;
+            }
+            DataValue dv = wv.getValue();
+            Object v = dv == null || dv.getValue() == null ? null : dv.getValue().getValue();
+            return v == null || v.getClass().isArray() || v.getClass() != expected;
+        }
+
+        /**
+         * One Line2 control, {@code Sim/<member>.Value} or {@code Sim/<member>.StatusCode}: access
+         * level 3, not a component of anything, and NOT behind the governed-write filter, so it is
+         * writable anonymously even when identity is required - it models the equipment and its
+         * sensor, not a governed setpoint.
+         *
+         * <p>Unlike Mixer1's status controls it has no observer. A write only replaces the
+         * requested setting the control holds (and reads back); the live member keeps its committed
+         * snapshot until {@link #scanLine2} commits every control together. Applying a write at
+         * once would let a reader see a station half-updated between scans.
+         */
+        private UaVariableNode line2Control(String memberSuffixedId, NodeId dataType, Object initial) {
+            String id = STATUS_PREFIX + memberSuffixedId;
+            line2ControlTypes.put(newNodeId(id), LINE2_JAVA_TYPES.get(dataType));
+            return new UaVariableNode.UaVariableNodeBuilder(getNodeContext())
+                    .setNodeId(newNodeId(id))
+                    .setBrowseName(newQualifiedName(memberSuffixedId))
+                    .setDisplayName(LocalizedText.english(memberSuffixedId))
+                    .setDataType(dataType)
+                    .setTypeDefinition(NodeIds.BaseDataVariableType)
+                    .setAccessLevel(Unsigned.ubyte(3))
+                    .setUserAccessLevel(Unsigned.ubyte(3))
+                    .setValue(new DataValue(new Variant(initial)))
+                    .buildAndAdd();
         }
 
         /**
@@ -407,12 +673,62 @@ final class EmbeddedMiloSim implements AutoCloseable {
          * One scan: re-set each member with its current value and StatusCode. Read and set happen
          * under the same lock as a transfer or a status write, so a scan never puts back a value
          * that a concurrent write has just replaced.
+         *
+         * <p>The five pre-Line2 members keep their own {@code stamped()} loop, one clock read per
+         * member, exactly as before; the Line2 snapshot follows in the same locked scan.
          */
-        private synchronized void scan() {
+        synchronized void scan() {
             for (UaVariableNode member : scanned) {
                 member.setValue(stamped(member.getNodeId().getIdentifier().toString(),
                         member.getValue().getValue()));
             }
+            scanLine2();
+        }
+
+        /**
+         * Commit one Line2 snapshot: read every control's current setting (the last accepted
+         * request, so settings not written persist and repeated writes are last-write-wins), take
+         * ONE timestamp, build all 22 DataValues, then set them in the fixed order with
+         * SourceTimestamp = ServerTimestamp = that time.
+         *
+         * <p>Why one timestamp: OPC UA monitoring is per variable, so a subscriber can only see a
+         * snapshot as members that share a source timestamp. Building every DataValue before the
+         * first set keeps the values read and the values set from the same instant, and the lock
+         * (shared with {@link #write}) keeps a Write request from landing half before and half after.
+         *
+         * <p>Note that Milo's {@code UaVariableNode} answers every Value read with its own
+         * ServerTimestamp (the time of that read), so a client sees the shared time as the source
+         * timestamp; the server timestamp set here is what the node holds.
+         */
+        private void scanLine2() {
+            long ticks = nextSnapshotTicks(line2SnapshotTicks, line2Clock.getAsLong());
+            DateTime t = new DateTime(ticks);
+            List<DataValue> snapshot = new ArrayList<>(line2Slots.size());
+            for (Line2Slot slot : line2Slots) {
+                long code = ((UInteger) slot.status().getValue().getValue().getValue()).longValue();
+                snapshot.add(new DataValue(slot.value().getValue().getValue(), new StatusCode(code), t, t));
+            }
+            for (int i = 0; i < line2Slots.size(); i++) {
+                line2Slots.get(i).member().setValue(snapshot.get(i));
+            }
+            line2SnapshotTicks = ticks;
+        }
+
+        /**
+         * The next snapshot's time: the clock, unless it is not after the previous snapshot, in
+         * which case one tick (100 ns) after it. Successive snapshots are then strictly ordered even
+         * across a clock step back or two scans inside one clock tick, so "same source timestamp"
+         * means "same snapshot" and nothing else.
+         */
+        static long nextSnapshotTicks(long previousTicks, long clockTicks) {
+            return clockTicks > previousTicks ? clockTicks : previousTicks + 1;
+        }
+
+        /** The Line2 snapshot clock in UtcTime ticks; replaceable so a test can stop it. */
+        private volatile LongSupplier line2Clock = () -> DateTime.now().getUtcTime();
+
+        void setLine2Clock(LongSupplier clock) {
+            this.line2Clock = clock;
         }
 
         /**

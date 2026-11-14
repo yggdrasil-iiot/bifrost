@@ -3,7 +3,7 @@
 [![CI](https://github.com/yggdrasil-iiot/bifrost/actions/workflows/ci.yml/badge.svg)](https://github.com/yggdrasil-iiot/bifrost/actions/workflows/ci.yml)
 ![Java](https://img.shields.io/badge/Java-17-orange?logo=openjdk&logoColor=white)
 ![Build](https://img.shields.io/badge/build-Maven%20multi--module-blue)
-![Tests](https://img.shields.io/badge/tests-851-brightgreen)
+![Tests](https://img.shields.io/badge/tests-1279-brightgreen)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache_2.0-blue.svg)](LICENSE)
 
 **The governance core of the [Yggdrasil](https://github.com/yggdrasil-iiot) IIoT spine — the "IAM" for the OT governance boundary.**
@@ -160,10 +160,19 @@ heimdall/  the runtime edge — NCMD authorization + activation binding, fail-cl
 sim/       an embedded Eclipse Milo OPC-UA server the gates drive end-to-end.
 ```
 
+### The sim's Line2
+
+- `Line2/Station1`, `Line2/Station2`, and `Line2/Station3` are of `StationType`: `Running` (Boolean), `UnitId` (String), `VisitId` (String), `VisitPresent` (Boolean).
+- `Line2/Station1/Nutrunner1` and `Line2/Station1/Nutrunner2` are of `ToolType`, organized under Station1: `Torque` (Double), `Running`, `UnitId`, `VisitId`, `VisitPresent`.
+
+Besides `Line1/Mixer1`, `Line1/Mixer2` and `BodyShop/Weld1`, the sim serves a `Line2` folder for forseti's scenario driver, in namespace `urn:bifrost:opcua:sim` with string identifiers. The 22 members are read-only to clients and start at `false`, `""` and `0.0` with status Good. Each member `M` has two controls outside the governed-write filter, writable anonymously: `Sim/M.Value` (the member's DataType) and `Sim/M.StatusCode` (UInt32). A control reads back the last accepted setting. A write with a wrong DataType, a null or an array is refused with `Bad_TypeMismatch` and changes nothing.
+
+A member changes only at the next scan, which commits every control to every member as one snapshot with one source timestamp; the timestamp strictly increases from scan to scan. Settings not written persist; repeated writes before a scan are last-write-wins. The items of one Write request always land in the same scan, so a driver writes one equipment snapshot per request. The scan period is `-Dbifrost.sim.scanMs=<ms>` (1..86400000, default 1000). It also sets the re-stamp period of Mixer1, and an invalid value stops the sim at start with a message.
+
 ## Build & test
 
 ```bash
-mvn install     # Java 17 · 851 tests (core 572 · heimdall 123 · gates 133 · sim 23)
+mvn install     # Java 17 · 1,279 tests (core 897 · heimdall 178 · gates 139 · sim 65)
                 # also writes target/bifrost-sbom.{json,xml} — one CycloneDX 1.6 SBOM
                 # for the whole reactor (45 components, licences resolved)
 ```
