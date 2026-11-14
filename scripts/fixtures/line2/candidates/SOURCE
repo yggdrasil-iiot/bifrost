@@ -1,0 +1,5 @@
+Copied byte for byte from yggdrasil-iiot/mimir by scripts/publish-line2-definitions.sh.
+mimir HEAD: fa4de1e816a1277dde64d8df9488eb532b596cae
+commit = the last commit that changed the file; provenance publish records it as defRef.
+fixtures/line2/station-model-1.0.0.json commit=47091f220d1f102af2dc7be172fec9e9677a445d sha256=4d40df048267814f409ff93e16cb838cb0e5be710fbde83a39001f96c39efbac
+fixtures/line2/tool-model-1.0.0.json commit=47091f220d1f102af2dc7be172fec9e9677a445d sha256=276bf45c3f834818d359442395c40f2932af7436c81a4b72d20a8ff218c9a4dc
